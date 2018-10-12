@@ -8,23 +8,22 @@ from future.backports.datetime import date, datetime, timedelta
 from core.time import date_to_quarter
 
 ##################
-#
+# UTC
 ##################
+
+
 def utc_now_seconds():
     return calendar.timegm(time.gmtime())
+
 
 def utc_today():
     return datetime.datetime.utcnow().date()
 
 
 def utc_truncate_epoch_day(ts):
-    """
-    Returns the epoch representing the start of the day (UTC) containing the
-    given epoch timestamp.
-    """
     dt = datetime.datetime.utcfromtimestamp(ts)
     dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
-    return utc_datetime_to_seconds(dt)
+    return epoch_s(dt)
 
 
 def utc_from_timestamp(ts):
@@ -32,15 +31,10 @@ def utc_from_timestamp(ts):
 
 
 def epoch_s(dt):
-    """
-    Args:
-        dt(datetime.datetime):
-    Returns:
-        int: dt as epoch seconds
-    """
     if type(dt) is datetime.date:
         raise ValueError('epoch_s requires a datetime.')
     return calendar.timegm(dt.utctimetuple())
+
 
 def datetime_start_of_day(day):
     return datetime.datetime.combine(day, datetime.datetime.min.time())
