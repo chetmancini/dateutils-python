@@ -1,12 +1,55 @@
 
 from __future__ import absolute_import, unicode_literals
-
 import calendar
-
+import time
+from wsgiref.handlers import format_date_time
 from future.backports.datetime import date, datetime, timedelta
-from future.moves import itertools
 
 from core.time import date_to_quarter
+
+##################
+#
+##################
+def utc_now_seconds():
+    return calendar.timegm(time.gmtime())
+
+def utc_today():
+    return datetime.datetime.utcnow().date()
+
+
+def utc_truncate_epoch_day(ts):
+    """
+    Returns the epoch representing the start of the day (UTC) containing the
+    given epoch timestamp.
+    """
+    dt = datetime.datetime.utcfromtimestamp(ts)
+    dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    return utc_datetime_to_seconds(dt)
+
+
+def utc_from_timestamp(ts):
+    return datetime.datetime.utcfromtimestamp(ts)
+
+
+def epoch_s(dt):
+    """
+    Args:
+        dt(datetime.datetime):
+    Returns:
+        int: dt as epoch seconds
+    """
+    if type(dt) is datetime.date:
+        raise ValueError('epoch_s requires a datetime.')
+    return calendar.timegm(dt.utctimetuple())
+
+def datetime_start_of_day(day):
+    return datetime.datetime.combine(day, datetime.datetime.min.time())
+
+
+def datetime_end_of_day(day):
+    return datetime_start_of_day(day) + datetime.timedelta(
+        days=1) - datetime.timedelta(seconds=1)
+
 
 ##################
 # Quarter operations
@@ -99,3 +142,55 @@ def generate_weeks(count=500, until_date=None):
             return
 
 
+def _ts_difference(timestamp=None, now_override=None):
+    from datetime import datetime
+    now = datetime.now() if not now_override else datetime.fromtimestamp(
+        now_override)
+    if type(timestamp) is int:
+        diff = now - datetime.fromtimestamp(timestamp)
+    elif isinstance(timestamp, datetime):
+        diff = now - timestamp
+    elif not time:
+        diff = now - now
+    return diff
+
+
+def pretty_date(timestamp=None, now_override=None):  # NOQA
+    """
+    Adapted from
+    http://stackoverflow.com/questions/1551382/
+    user-friendly-time-format-in-python
+    """
+    diff = _ts_difference(timestamp, now_override)
+    second_diff = diff.seconds
+    day_diff = diff.days
+
+    if day_diff < 0:
+        return u''
+    elif day_diff == 0:
+        if second_diff < 10:
+            return u"just now"
+        if second_diff < 60:
+            return str(second_diff) + u" seconds ago"
+        if second_diff < 120:
+            return u"a minute ago"
+        if second_diff < 3600:
+            return str(second_diff / 60) + u" minutes ago"
+        if second_diff < 7200:
+            return u"an hour ago"
+        if second_diff < 86400:
+            return str(second_diff / 3600) + u" hours ago"
+    elif day_diff == 1:
+        return u"Yesterday"
+    elif day_diff < 7:
+        return str(day_diff) + u" days ago"
+    elif day_diff < 31:
+        return str(day_diff / 7) + u" weeks ago"
+    elif day_diff < 365:
+        return str(day_diff / 30) + u" months ago"
+    return str(day_diff / 365) + u" years ago"
+
+
+def httpdate(date_time):
+    stamp = time.mktime(date_time.timetuple())
+    return format_date_time(stamp)

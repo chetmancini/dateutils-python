@@ -1,7 +1,33 @@
 from __future__ import absolute_import, unicode_literals
 
+import pytest
 from freezegun import freeze_time
 from future.backports.datetime import datetime
+
+from dateutils.dateutils import date_to_quarter, generate_weeks, \
+    generate_months, date_to_start_of_quarter, generate_quarters, \
+    generate_years, start_of_year, end_of_year, epoch_s, datetime_end_of_day, \
+    datetime_start_of_day
+
+
+def test_epoch_s():
+    assert 1397488604 == epoch_s(datetime.datetime(2014, 4, 14, 15, 16, 44))
+    with pytest.raises(ValueError):
+        epoch_s(datetime.date(2014, 4, 14))
+
+
+def test_datetime_start_of_day():
+    day = datetime.datetime(2016, 11, 23, 5, 4, 3).date()
+    assert \
+        datetime_start_of_day(day) == \
+        datetime.datetime(2016, 11, 23, 0, 0, 0)
+
+
+def test_datetime_end_of_day():
+    day = datetime.datetime(2016, 11, 23, 5, 4, 3).date()
+    assert \
+        datetime_end_of_day(day) == \
+        datetime.datetime(2016, 11, 23, 23, 59, 59)
 
 
 def test_start_of_year():
@@ -97,3 +123,8 @@ def test_date_to_start_of_quarter():
 
     assert q4 == date_to_start_of_quarter(to_date(10, 1))
     assert q4 == date_to_start_of_quarter(to_date(12, 31))
+
+
+def test_httpdate():
+    dt = datetime.datetime(2014, 4, 14, 15, 16, 44)
+    assert 'Mon, 14 Apr 2014 15:16:44 GMT' == httpdate(dt)

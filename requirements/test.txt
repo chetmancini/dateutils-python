@@ -1,0 +1,9 @@
+atomicwrites==1.2.1
+attrs==18.2.0
+freezegun==0.3.10
+more-itertools==4.3.0
+pluggy==0.7.1
+py==1.7.0
+pytest==3.8.2
+python-dateutil==2.7.3
+six==1.11.0
