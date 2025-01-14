@@ -8,6 +8,9 @@ import datetime
 # UTC
 ##################
 def utc_now_seconds() -> int:
+    """
+    Get the current time in seconds since epoch in UTC
+    """
     return calendar.timegm(time.gmtime())
 
 
@@ -16,16 +19,22 @@ def utc_today() -> datetime.date:
 
 
 def utc_truncate_epoch_day(ts: int) -> int:
-    dt = datetime.datetime.utcfromtimestamp(ts)
+    dt = datetime.datetime.fromtimestamp(ts, datetime.timezone.utc)
     dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
     return epoch_s(dt)
 
 
 def utc_from_timestamp(ts: int):
-    return datetime.datetime.utcfromtimestamp(ts)
+    """
+    Convert a timestamp to a datetime object in UTC timezone
+    """
+    return datetime.datetime.fromtimestamp(ts, datetime.timezone.utc)
 
 
 def epoch_s(dt: datetime.datetime) -> int:
+    """
+    Convert a datetime object to a unix timestamp
+    """
     return calendar.timegm(dt.utctimetuple())
 
 
@@ -35,9 +44,9 @@ def datetime_start_of_day(day: datetime.date) -> datetime.datetime:
 
 def datetime_end_of_day(day: datetime.date) -> datetime.datetime:
     return (
-        datetime_start_of_day(day)
-        + datetime.timedelta(days=1)
-        - datetime.timedelta(seconds=1)
+            datetime_start_of_day(day)
+            + datetime.timedelta(days=1)
+            - datetime.timedelta(seconds=1)
     )
 
 
@@ -54,11 +63,17 @@ def date_to_start_of_quarter(dt: datetime.date) -> datetime.date:
 
 
 def start_of_quarter(year: int, q: int) -> datetime.datetime:
-    pass
+    """
+    Get the start of the quarter
+    """
+    return datetime.datetime(year, (q - 1) * 3 + 1, 1)
 
 
 def end_of_quarter(year: int, q: int):
-    pass
+    """
+    Get the end of the quarter
+    """
+    return datetime.datetime(year, q * 3, 1, 23, 59, 59)
 
 
 def generate_quarters(until_year=1970, until_q=1):
@@ -121,7 +136,7 @@ def generate_months(until_year=1970, until_m=1):
 ##################
 # Week operations
 ##################
-def generate_weeks(count=500, until_date=None):
+def generate_weeks(count: int = 500, until_date: datetime.date | None = None):
     this_dow = datetime.date.today().weekday()
     monday = datetime.date.today() - datetime.timedelta(days=this_dow)
     end = monday
@@ -129,7 +144,9 @@ def generate_weeks(count=500, until_date=None):
         start = end - datetime.timedelta(days=7)
         ret = (start, end)
         end = start
-        if start > until_date:
+        if until_date and start > until_date:
+            yield ret
+        elif not until_date:
             yield ret
         else:
             return
@@ -187,5 +204,8 @@ def pretty_date(timestamp=None, now_override=None):  # NOQA
 
 
 def httpdate(date_time: datetime.datetime) -> str:
+    """
+    Convert a datetime object to an HTTP date string
+    """
     stamp = time.mktime(date_time.timetuple())
     return format_date_time(stamp)
