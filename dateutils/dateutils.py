@@ -135,7 +135,7 @@ def generate_weeks(count=500, until_date=None):
             return
 
 
-def _ts_difference(timestamp=None, now_override=None):
+def _ts_difference(timestamp: int | datetime.datetime | None = None, now_override=None):
     now = (
         datetime.datetime.now()
         if not now_override
@@ -143,7 +143,7 @@ def _ts_difference(timestamp=None, now_override=None):
     )
     if type(timestamp) is int:
         diff = now - datetime.fromtimestamp(timestamp)
-    elif isinstance(timestamp, datetime):
+    elif isinstance(timestamp, datetime.datetime):
         diff = now - timestamp
     elif not time:
         diff = now - now
@@ -186,6 +186,6 @@ def pretty_date(timestamp=None, now_override=None):  # NOQA
     return str(day_diff / 365) + " years ago"
 
 
-def httpdate(date_time):
+def httpdate(date_time: datetime.datetime) -> str:
     stamp = time.mktime(date_time.timetuple())
     return format_date_time(stamp)
