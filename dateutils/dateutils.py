@@ -44,9 +44,9 @@ def datetime_start_of_day(day: datetime.date) -> datetime.datetime:
 
 def datetime_end_of_day(day: datetime.date) -> datetime.datetime:
     return (
-            datetime_start_of_day(day)
-            + datetime.timedelta(days=1)
-            - datetime.timedelta(seconds=1)
+        datetime_start_of_day(day)
+        + datetime.timedelta(days=1)
+        - datetime.timedelta(seconds=1)
     )
 
 

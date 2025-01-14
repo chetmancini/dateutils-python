@@ -14,7 +14,9 @@ from dateutils.dateutils import (
     end_of_year,
     epoch_s,
     datetime_end_of_day,
-    datetime_start_of_day, httpdate, start_of_quarter,
+    datetime_start_of_day,
+    httpdate,
+    start_of_quarter,
 )
 
 
@@ -48,45 +50,45 @@ def test_generate_years():
 @freeze_time("2018-9-12")
 def test_generate_quarters():
     assert [
-               (3, 2018),
-               (2, 2018),
-               (1, 2018),
-               (4, 2017),
-               (3, 2017),
-               (2, 2017),
-               (1, 2017),
-               (4, 2016),
-               (3, 2016),
-               (2, 2016),
-           ] == list(generate_quarters(until_year=2016, until_q=2))
+        (3, 2018),
+        (2, 2018),
+        (1, 2018),
+        (4, 2017),
+        (3, 2017),
+        (2, 2017),
+        (1, 2017),
+        (4, 2016),
+        (3, 2016),
+        (2, 2016),
+    ] == list(generate_quarters(until_year=2016, until_q=2))
 
 
 @freeze_time("2018-9-12")
 def test_generate_months():
     assert [
-               (9, 2018),
-               (8, 2018),
-               (7, 2018),
-               (6, 2018),
-               (5, 2018),
-               (4, 2018),
-               (3, 2018),
-               (2, 2018),
-               (1, 2018),
-               (12, 2017),
-               (11, 2017),
-               (10, 2017),
-               (9, 2017),
-               (8, 2017),
-           ] == list(generate_months(until_year=2017, until_m=8))
+        (9, 2018),
+        (8, 2018),
+        (7, 2018),
+        (6, 2018),
+        (5, 2018),
+        (4, 2018),
+        (3, 2018),
+        (2, 2018),
+        (1, 2018),
+        (12, 2017),
+        (11, 2017),
+        (10, 2017),
+        (9, 2017),
+        (8, 2017),
+    ] == list(generate_months(until_year=2017, until_m=8))
 
 
 @freeze_time("2018-9-12")
 def test_generate_weeks():
     assert [
-               (datetime.date(2018, 9, 3), datetime.date(2018, 9, 10)),
-               (datetime.date(2018, 8, 27), datetime.date(2018, 9, 3))
-           ] == list(generate_weeks(count=2))
+        (datetime.date(2018, 9, 3), datetime.date(2018, 9, 10)),
+        (datetime.date(2018, 8, 27), datetime.date(2018, 9, 3)),
+    ] == list(generate_weeks(count=2))
 
 
 def test_date_to_quarter():
@@ -133,6 +135,6 @@ def test_start_of_quarter():
 
 
 def test_httpdate():
-    tz = pytz.timezone('America/New_York')
+    tz = pytz.timezone("America/New_York")
     dt = tz.localize(datetime.datetime(2014, 4, 14, 15, 16, 44))
     assert "Mon, 14 Apr 2014 19:16:44 GMT" == httpdate(dt)
