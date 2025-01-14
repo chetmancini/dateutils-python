@@ -10,21 +10,11 @@ Features
 - Support for quarters. Great for reporting.
 - No production dependencies
 
-### Initialization
+Requires `uv` installed globally
 
+### Makefile
 ```sh
-python3 -m venv ve
-source ve/bin/activate
-pip install -r requirements/test.txt
+make test
+make lint
+make format
 ```
-
-### Tests
-```sh
-pytest tests
-```
-
-### Teardown
-```sh
-deactivate
-```
-
