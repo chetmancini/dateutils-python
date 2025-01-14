@@ -1,133 +1,132 @@
-
-from __future__ import absolute_import, unicode_literals
 import calendar
 import time
 from wsgiref.handlers import format_date_time
-from future.backports.datetime import date, datetime, timedelta
+import datetime
 
-from core.time import date_to_quarter
 
 ##################
 # UTC
 ##################
-
-
-def utc_now_seconds():
+def utc_now_seconds() -> int:
     return calendar.timegm(time.gmtime())
 
 
-def utc_today():
-    return datetime.datetime.utcnow().date()
+def utc_today() -> datetime.date:
+    return datetime.datetime.now(datetime.timezone.utc).date()
 
 
-def utc_truncate_epoch_day(ts):
+def utc_truncate_epoch_day(ts: int) -> int:
     dt = datetime.datetime.utcfromtimestamp(ts)
     dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
     return epoch_s(dt)
 
 
-def utc_from_timestamp(ts):
+def utc_from_timestamp(ts: int):
     return datetime.datetime.utcfromtimestamp(ts)
 
 
-def epoch_s(dt):
-    if type(dt) is datetime.date:
-        raise ValueError('epoch_s requires a datetime.')
+def epoch_s(dt: datetime.datetime) -> int:
     return calendar.timegm(dt.utctimetuple())
 
 
-def datetime_start_of_day(day):
+def datetime_start_of_day(day: datetime.date) -> datetime.datetime:
     return datetime.datetime.combine(day, datetime.datetime.min.time())
 
 
-def datetime_end_of_day(day):
-    return datetime_start_of_day(day) + datetime.timedelta(
-        days=1) - datetime.timedelta(seconds=1)
+def datetime_end_of_day(day: datetime.date) -> datetime.datetime:
+    return (
+        datetime_start_of_day(day)
+        + datetime.timedelta(days=1)
+        - datetime.timedelta(seconds=1)
+    )
 
 
 ##################
 # Quarter operations
 ##################
-def date_to_quarter(dt):
+def date_to_quarter(dt: datetime.date) -> int:
     return ((dt.month - 1) // 3) + 1
 
 
-def date_to_start_of_quarter(dt):
+def date_to_start_of_quarter(dt: datetime.date) -> datetime.date:
     new_month = (((dt.month - 1) // 3) * 3) + 1
     return dt.replace(day=1, month=new_month)
 
 
-def start_of_quarter(year, q):
+def start_of_quarter(year: int, q: int) -> datetime.datetime:
     pass
 
 
-def end_of_quarter(year, q):
+def end_of_quarter(year: int, q: int):
     pass
 
 
 def generate_quarters(until_year=1970, until_q=1):
-    today = date.today()
+    today = datetime.date.today()
     current_quarter = date_to_quarter(today)
     current_year = today.year
     for year in generate_years(until=until_year):
-        for q in xrange(4, 0, -1):
+        for q in range(4, 0, -1):
             if year == current_year and q > current_quarter:
                 continue
             if year == until_year and until_q > q:
                 return
             else:
-                yield (q, year)
+                yield q, year
 
 
 ##################
 # Year operations
 ##################
 
-def start_of_year(year):
-    return datetime(year, 1, 1)
+
+def start_of_year(year: int) -> datetime.datetime:
+    return datetime.datetime(year, 1, 1)
 
 
-def end_of_year(year):
-    return datetime(year, 12, 31, 23, 59, 59)
+def end_of_year(year: int) -> datetime.datetime:
+    return datetime.datetime(year, 12, 31, 23, 59, 59)
 
-def generate_years(until=1970):
-    current_year = date.today().year
-    for years_ago in xrange(current_year + 1 - until):
+
+def generate_years(until: int = 1970):
+    current_year = datetime.date.today().year
+    for years_ago in range(current_year + 1 - until):
         yield current_year - years_ago
 
 
 ##################
 # Month operations
 ##################
-def start_of_month(year, month):
-    return datetime(year, month, 1)
+def start_of_month(year: int, month: int) -> datetime.datetime:
+    return datetime.datetime(year, month, 1)
 
 
 def end_of_month(year, month):
     days_in_month = calendar.monthrange(year, month)[1]
-    return datetime(year, month, days_in_month, 23, 59, 59)
+    return datetime.datetime(year, month, days_in_month, 23, 59, 59)
 
 
 def generate_months(until_year=1970, until_m=1):
-    today = date.today()
+    today = datetime.date.today()
     for year in generate_years(until=until_year):
-        for month in xrange(12, 0, -1):
+        for month in range(12, 0, -1):
             if year == today.year and month > today.month:
                 continue
             if year == until_year and until_m > month:
                 return
             else:
-                yield (month, year)
+                yield month, year
+
 
 ##################
 # Week operations
 ##################
 def generate_weeks(count=500, until_date=None):
-    this_dow = date.today().weekday()
-    monday = date.today() - timedelta(days=this_dow)
+    this_dow = datetime.date.today().weekday()
+    monday = datetime.date.today() - datetime.timedelta(days=this_dow)
     end = monday
-    for i in xrange(count):
-        start = end - timedelta(days=7)
+    for i in range(count):
+        start = end - datetime.timedelta(days=7)
         ret = (start, end)
         end = start
         if start > until_date:
@@ -137,9 +136,11 @@ def generate_weeks(count=500, until_date=None):
 
 
 def _ts_difference(timestamp=None, now_override=None):
-    from datetime import datetime
-    now = datetime.now() if not now_override else datetime.fromtimestamp(
-        now_override)
+    now = (
+        datetime.datetime.now()
+        if not now_override
+        else datetime.datetime.fromtimestamp(now_override)
+    )
     if type(timestamp) is int:
         diff = now - datetime.fromtimestamp(timestamp)
     elif isinstance(timestamp, datetime):
@@ -160,29 +161,29 @@ def pretty_date(timestamp=None, now_override=None):  # NOQA
     day_diff = diff.days
 
     if day_diff < 0:
-        return u''
+        return ""
     elif day_diff == 0:
         if second_diff < 10:
-            return u"just now"
+            return "just now"
         if second_diff < 60:
-            return str(second_diff) + u" seconds ago"
+            return str(second_diff) + " seconds ago"
         if second_diff < 120:
-            return u"a minute ago"
+            return "a minute ago"
         if second_diff < 3600:
-            return str(second_diff / 60) + u" minutes ago"
+            return str(second_diff / 60) + " minutes ago"
         if second_diff < 7200:
-            return u"an hour ago"
+            return "an hour ago"
         if second_diff < 86400:
-            return str(second_diff / 3600) + u" hours ago"
+            return str(second_diff / 3600) + " hours ago"
     elif day_diff == 1:
-        return u"Yesterday"
+        return "Yesterday"
     elif day_diff < 7:
-        return str(day_diff) + u" days ago"
+        return str(day_diff) + " days ago"
     elif day_diff < 31:
-        return str(day_diff / 7) + u" weeks ago"
+        return str(day_diff / 7) + " weeks ago"
     elif day_diff < 365:
-        return str(day_diff / 30) + u" months ago"
-    return str(day_diff / 365) + u" years ago"
+        return str(day_diff / 30) + " months ago"
+    return str(day_diff / 365) + " years ago"
 
 
 def httpdate(date_time):

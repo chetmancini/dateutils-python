@@ -1,13 +1,20 @@
-from __future__ import absolute_import, unicode_literals
-
 import pytest
 from freezegun import freeze_time
-from future.backports.datetime import datetime
+import datetime
 
-from dateutils.dateutils import date_to_quarter, generate_weeks, \
-    generate_months, date_to_start_of_quarter, generate_quarters, \
-    generate_years, start_of_year, end_of_year, epoch_s, datetime_end_of_day, \
-    datetime_start_of_day
+from dateutils.dateutils import (
+    date_to_quarter,
+    generate_weeks,
+    generate_months,
+    date_to_start_of_quarter,
+    generate_quarters,
+    generate_years,
+    start_of_year,
+    end_of_year,
+    epoch_s,
+    datetime_end_of_day,
+    datetime_start_of_day,
+)
 
 
 def test_epoch_s():
@@ -18,70 +25,64 @@ def test_epoch_s():
 
 def test_datetime_start_of_day():
     day = datetime.datetime(2016, 11, 23, 5, 4, 3).date()
-    assert \
-        datetime_start_of_day(day) == \
-        datetime.datetime(2016, 11, 23, 0, 0, 0)
+    assert datetime_start_of_day(day) == datetime.datetime(2016, 11, 23, 0, 0, 0)
 
 
 def test_datetime_end_of_day():
     day = datetime.datetime(2016, 11, 23, 5, 4, 3).date()
-    assert \
-        datetime_end_of_day(day) == \
-        datetime.datetime(2016, 11, 23, 23, 59, 59)
+    assert datetime_end_of_day(day) == datetime.datetime(2016, 11, 23, 23, 59, 59)
 
 
 def test_start_of_year():
-    assert datetime(2018, 1, 1) == start_of_year(2018)
+    assert datetime.datetime(2018, 1, 1) == start_of_year(2018)
 
 
 def test_end_of_year():
-    assert datetime(2018, 12, 31, 23, 59, 59) == end_of_year(2018)
+    assert datetime.datetime(2018, 12, 31, 23, 59, 59) == end_of_year(2018)
 
 
-@freeze_time('2018-10-12')
+@freeze_time("2018-10-12")
 def test_generate_years():
     assert [2018, 2017, 2016, 2015, 2014] == list(generate_years(until=2014))
 
 
-@freeze_time('2018-9-12')
+@freeze_time("2018-9-12")
 def test_generate_quarters():
-    assert \
-        [
-            (3, 2018),
-            (2, 2018),
-            (1, 2018),
-            (4, 2017),
-            (3, 2017),
-            (2, 2017),
-            (1, 2017),
-            (4, 2016),
-            (3, 2016),
-            (2, 2016),
-        ] == list(generate_quarters(until_year=2016, until_q=2))
+    assert [
+        (3, 2018),
+        (2, 2018),
+        (1, 2018),
+        (4, 2017),
+        (3, 2017),
+        (2, 2017),
+        (1, 2017),
+        (4, 2016),
+        (3, 2016),
+        (2, 2016),
+    ] == list(generate_quarters(until_year=2016, until_q=2))
 
 
-@freeze_time('2018-9-12')
+@freeze_time("2018-9-12")
 def test_generate_months():
-    assert \
-        [
-            (9, 2018),
-            (8, 2018),
-            (7, 2018),
-            (6, 2018),
-            (5, 2018),
-            (4, 2018),
-            (3, 2018),
-            (2, 2018),
-            (1, 2018),
-            (12, 2017),
-            (11, 2017),
-            (10, 2017),
-            (9, 2017),
-            (8, 2017),
-        ] == list(generate_months(until_year=2017, until_m=8))
+    assert [
+        (9, 2018),
+        (8, 2018),
+        (7, 2018),
+        (6, 2018),
+        (5, 2018),
+        (4, 2018),
+        (3, 2018),
+        (2, 2018),
+        (1, 2018),
+        (12, 2017),
+        (11, 2017),
+        (10, 2017),
+        (9, 2017),
+        (8, 2017),
+    ] == list(generate_months(until_year=2017, until_m=8))
 
 
-@freeze_time('2018-9-12')
+@freeze_time("2018-9-12")
 def test_generate_weeks():
     assert [] == list(generate_weeks(count=10))
 
@@ -127,4 +128,4 @@ def test_date_to_start_of_quarter():
 
 def test_httpdate():
     dt = datetime.datetime(2014, 4, 14, 15, 16, 44)
-    assert 'Mon, 14 Apr 2014 15:16:44 GMT' == httpdate(dt)
+    assert "Mon, 14 Apr 2014 15:16:44 GMT" == httpdate(dt)
