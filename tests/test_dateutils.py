@@ -140,9 +140,10 @@ def test_start_of_quarter():
 
 def test_httpdate():
     from zoneinfo import ZoneInfo
-
-    dt = datetime.datetime(2014, 4, 14, 15, 16, 44, tzinfo=ZoneInfo("America/New_York"))
+    dt = datetime.datetime(
+        2015, 4, 14, 15, 16, 44,
+        tzinfo=ZoneInfo("America/New_York")
+    )
     dt_utc = dt.astimezone(datetime.timezone.utc)
     result = httpdate(dt_utc)
-    print(f"Expected: Mon, 14 Apr 2014 19:16:44 GMT, Got: {result}")
-    assert "Tue, 15 Apr 2014 01:16:44 GMT" == result
+    assert "Wed, 15 Apr 2015 01:16:44 GMT" == result
