@@ -276,20 +276,20 @@ def pretty_date(timestamp=None, now_override=None):  # NOQA
         if second_diff < 120:
             return "a minute ago"
         if second_diff < 3600:
-            return str(second_diff / 60) + " minutes ago"
+            return str(int(second_diff / 60)) + " minutes ago"
         if second_diff < 7200:
             return "an hour ago"
         if second_diff < 86400:
-            return str(second_diff / 3600) + " hours ago"
+            return str(int(second_diff / 3600)) + " hours ago"
     elif day_diff == 1:
         return "Yesterday"
     elif day_diff < 7:
-        return str(day_diff) + " days ago"
+        return str(int(day_diff)) + " days ago"
     elif day_diff < 31:
-        return str(day_diff / 7) + " weeks ago"
+        return str(int(day_diff / 7)) + " weeks ago"
     elif day_diff < 365:
-        return str(day_diff / 30) + " months ago"
-    return str(day_diff / 365) + " years ago"
+        return str(int(day_diff / 30)) + " months ago"
+    return str(int(day_diff / 365)) + " years ago"
 
 
 def httpdate(date_time: datetime) -> str:
