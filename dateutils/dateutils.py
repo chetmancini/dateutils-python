@@ -1,6 +1,5 @@
 import calendar
 import time
-from wsgiref.handlers import format_date_time
 from datetime import timezone
 from datetime import datetime
 from datetime import date

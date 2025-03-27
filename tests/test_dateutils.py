@@ -147,24 +147,32 @@ def test_httpdate_with_utc_aware_datetime():
     result = httpdate(dt_utc)
     assert result == "Tue, 14 Apr 2015 19:16:44 GMT"
 
+
 def test_httpdate_with_naive_datetime():
     """Test httpdate with a naive datetime (assumed UTC)."""
     dt_naive = datetime.datetime(2025, 12, 31, 23, 59, 59)
     result = httpdate(dt_naive)
     assert result == "Wed, 31 Dec 2025 23:59:59 GMT"
 
+
 def test_httpdate_with_non_utc_timezone():
     """Test httpdate with a non-UTC timezone converted to UTC."""
-    dt_ny = datetime.datetime(2015, 4, 14, 15, 16, 44, tzinfo=ZoneInfo("America/New_York"))
+    dt_ny = datetime.datetime(
+        2015, 4, 14, 15, 16, 44, tzinfo=ZoneInfo("America/New_York")
+    )
     dt_ny.astimezone(datetime.timezone.utc)
-    result = httpdate(dt_ny)  # Function should handle timezone conversion if designed to
+    result = httpdate(
+        dt_ny
+    )  # Function should handle timezone conversion if designed to
     assert result == "Tue, 14 Apr 2015 15:16:44 GMT"  # 15:16:44 EDT = 19:16:44 UTC
+
 
 def test_httpdate_edge_case_leap_year():
     """Test httpdate with a leap year date."""
     dt_leap = datetime.datetime(2020, 2, 29, 12, 0, 0, tzinfo=datetime.timezone.utc)
     result = httpdate(dt_leap)
     assert result == "Sat, 29 Feb 2020 12:00:00 GMT"
+
 
 def test_httpdate_invalid_input():
     """Test httpdate with invalid input raises an appropriate exception."""
