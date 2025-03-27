@@ -295,7 +295,9 @@ def pretty_date(timestamp=None, now_override=None):  # NOQA
 
 def httpdate(date_time: datetime) -> str:
     """
-    Convert a datetime object to an HTTP date string
+    Convert a datetime object to an HTTP date string (RFC 7231 compliant).
+    Assumes the input datetime is in UTC if not timezone-aware.
     """
-    stamp = time.mktime(date_time.timetuple())
-    return format_date_time(stamp)
+    if date_time.tzinfo is None:
+        date_time = date_time.replace(tzinfo=timezone.utc)
+    return date_time.strftime("%a, %d %b %Y %H:%M:%S GMT")
