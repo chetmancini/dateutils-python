@@ -156,7 +156,7 @@ def test_httpdate_with_naive_datetime():
 def test_httpdate_with_non_utc_timezone():
     """Test httpdate with a non-UTC timezone converted to UTC."""
     dt_ny = datetime.datetime(2015, 4, 14, 15, 16, 44, tzinfo=ZoneInfo("America/New_York"))
-    dt_utc = dt_ny.astimezone(datetime.timezone.utc)
+    dt_ny.astimezone(datetime.timezone.utc)
     result = httpdate(dt_ny)  # Function should handle timezone conversion if designed to
     assert result == "Tue, 14 Apr 2015 15:16:44 GMT"  # 15:16:44 EDT = 19:16:44 UTC
 
