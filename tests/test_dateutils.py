@@ -15,6 +15,7 @@ from dateutils.dateutils import (
     datetime_start_of_day,
     httpdate,
     start_of_quarter,
+    is_leap_year,
 )
 
 
@@ -43,6 +44,11 @@ def test_end_of_year():
 @freeze_time("2018-10-12")
 def test_generate_years():
     assert [2018, 2017, 2016, 2015, 2014] == list(generate_years(until=2014))
+
+
+def test_is_leap_year():
+    assert is_leap_year(2020)
+    assert not is_leap_year(2021)
 
 
 @freeze_time("2018-9-12")
