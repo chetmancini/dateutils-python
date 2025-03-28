@@ -57,7 +57,6 @@ from .dateutils import (
     today_in_timezone,
     convert_timezone,
     datetime_to_utc,
-    utc_to_local,
     get_timezone_offset,
     format_timezone_offset,
 )
@@ -114,7 +113,6 @@ __all__ = [
     "today_in_timezone",
     "convert_timezone",
     "datetime_to_utc",
-    "utc_to_local",
     "get_timezone_offset",
     "format_timezone_offset",
 ]

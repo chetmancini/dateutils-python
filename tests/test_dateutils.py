@@ -25,7 +25,6 @@ from dateutils.dateutils import (
     today_in_timezone,
     convert_timezone,
     datetime_to_utc,
-    utc_to_local,
     get_timezone_offset,
     format_timezone_offset,
     parse_date,
@@ -530,32 +529,6 @@ def test_datetime_to_utc():
     naive_dt = datetime.datetime(2024, 3, 27, 12, 0, 0)
     result = datetime_to_utc(naive_dt)
     assert result.tzinfo == datetime.timezone.utc
-
-
-def test_utc_to_local():
-    """Test converting UTC datetime to local timezone."""
-    # Test with UTC datetime
-    utc_dt = datetime.datetime(2024, 3, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
-    local_dt = utc_to_local(utc_dt)
-
-    # Check that the result has a timezone set
-    assert local_dt.tzinfo is not None
-
-    # Check that it's not UTC anymore
-    assert local_dt.tzinfo != datetime.timezone.utc
-
-    # The timestamps (seconds since epoch) should be equal even if the display time is different
-    assert local_dt.timestamp() == utc_dt.timestamp()
-
-    # Test with naive datetime (assumes UTC)
-    naive_dt = datetime.datetime(2024, 3, 27, 12, 0, 0)
-    local_from_naive = utc_to_local(naive_dt)
-    assert local_from_naive.tzinfo is not None
-
-    # Test with non-UTC timezone (should raise ValueError)
-    ny_dt = datetime.datetime(2024, 3, 27, 8, 0, 0, tzinfo=ZoneInfo("America/New_York"))
-    with pytest.raises(ValueError):
-        utc_to_local(ny_dt)
 
 
 def test_get_timezone_offset():

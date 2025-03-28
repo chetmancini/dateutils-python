@@ -713,30 +713,6 @@ def datetime_to_utc(dt: datetime) -> datetime:
     return dt.astimezone(timezone.utc)
 
 
-def utc_to_local(dt: datetime) -> datetime:
-    """
-    Convert a UTC datetime to the local timezone
-
-    Args:
-        dt: The datetime to convert (must be UTC)
-
-    Returns:
-        The datetime in the local timezone
-
-    Raises:
-        ValueError: If the input datetime is not in UTC
-    """
-    if dt.tzinfo != timezone.utc:
-        if dt.tzinfo is None:
-            # If naive, assume it's UTC
-            dt = dt.replace(tzinfo=timezone.utc)
-        else:
-            raise ValueError("Input datetime must be in UTC timezone")
-
-    # Convert to system's local timezone
-    return dt.astimezone()
-
-
 def get_timezone_offset(tz_name: str) -> timedelta:
     """
     Get the current offset from UTC for a timezone
