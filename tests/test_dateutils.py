@@ -3,6 +3,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from freezegun import freeze_time
 import datetime
+from zoneinfo import ZoneInfoNotFoundError
 
 from dateutils.dateutils import (
     date_to_quarter,
@@ -47,6 +48,15 @@ def test_utc_today():
     from dateutils.dateutils import utc_today
 
     assert utc_today() == datetime.date(2024, 3, 27)
+
+
+@freeze_time("2024-03-27 14:30:45", tz_offset=0)
+def test_utc_now_seconds():
+    """Test that utc_now_seconds returns the correct Unix timestamp."""
+    from dateutils.dateutils import utc_now_seconds
+
+    expected_timestamp = 1711549845
+    assert utc_now_seconds() == expected_timestamp
 
 
 def test_utc_truncate_epoch_day():
@@ -290,6 +300,47 @@ def test_workdays_between():
     end = datetime.date(2024, 3, 4)  # Monday
     assert workdays_between(start, end) == 2
 
+    # Edge cases
+
+    # Same day (weekday)
+    start = end = datetime.date(2024, 3, 25)  # Monday
+    assert workdays_between(start, end) == 1
+
+    # Same day (weekend)
+    start = end = datetime.date(2024, 3, 23)  # Saturday
+    assert workdays_between(start, end) == 0
+
+    # Same day (holiday)
+    holiday = datetime.date(2024, 3, 25)  # Monday
+    assert workdays_between(holiday, holiday, [holiday]) == 0
+
+    # End date before start date (should return 0)
+    start = datetime.date(2024, 3, 4)  # Monday
+    end = datetime.date(2024, 3, 1)  # Friday of previous week
+    assert workdays_between(start, end) == 0
+
+    # Multiple consecutive holidays
+    start = datetime.date(2024, 3, 25)  # Monday
+    end = datetime.date(2024, 3, 29)  # Friday
+    holidays = [
+        datetime.date(2024, 3, 25),  # Monday
+        datetime.date(2024, 3, 26),  # Tuesday
+        datetime.date(2024, 3, 27),  # Wednesday
+    ]
+    assert workdays_between(start, end, holidays) == 2  # Only Thu and Fri count
+
+    # All days are holidays or weekends
+    start = datetime.date(2024, 3, 25)  # Monday
+    end = datetime.date(2024, 3, 29)  # Friday
+    holidays = [
+        datetime.date(2024, 3, 25),  # Monday
+        datetime.date(2024, 3, 26),  # Tuesday
+        datetime.date(2024, 3, 27),  # Wednesday
+        datetime.date(2024, 3, 28),  # Thursday
+        datetime.date(2024, 3, 29),  # Friday
+    ]
+    assert workdays_between(start, end, holidays) == 0
+
 
 def test_add_business_days():
     """Test adding business days to a date."""
@@ -457,6 +508,14 @@ def test_convert_timezone():
     with pytest.raises(ValueError):
         convert_timezone(datetime.datetime(2024, 3, 27, 12, 0, 0), "America/New_York")
 
+    # Test error case with invalid timezone name
+    with pytest.raises(ZoneInfoNotFoundError):
+        convert_timezone(utc_dt, "Invalid/Timezone")
+
+    # Test with empty timezone name
+    with pytest.raises((ZoneInfoNotFoundError, ValueError)):
+        convert_timezone(utc_dt, "")
+
 
 def test_datetime_to_utc():
     """Test converting datetime to UTC timezone."""
@@ -530,6 +589,68 @@ def test_format_timezone_offset():
 
     # Test for timezone with half-hour offset (India is UTC+5:30)
     assert format_timezone_offset("Asia/Kolkata") == "+05:30"
+
+
+def test_dst_transitions():
+    """Test handling of DST transitions in timezone functions."""
+    # Test converting a datetime during DST transition
+
+    # US DST transition (March 10, 2024, 2am -> 3am)
+    # 1:59am (pre-transition)
+    pre_dst = datetime.datetime(
+        2024, 3, 10, 1, 59, 0, tzinfo=ZoneInfo("America/New_York")
+    )
+    # 3:01am (post-transition)
+    post_dst = datetime.datetime(
+        2024, 3, 10, 3, 1, 0, tzinfo=ZoneInfo("America/New_York")
+    )
+
+    # Convert both to UTC
+    from dateutils.dateutils import datetime_to_utc
+
+    pre_dst_utc = datetime_to_utc(pre_dst)
+    post_dst_utc = datetime_to_utc(post_dst)
+
+    # The UTC time difference should be only ~1 hour and 2 minutes, not 2 hours
+    # (since 1:59am EST -> 3:01am EDT is actually ~1:02 in real time)
+    time_diff = (post_dst_utc - pre_dst_utc).total_seconds()
+    assert time_diff == 120  # Only 2 minutes difference in UTC time
+
+    # Explanation: When converting local time to UTC:
+    # 1:59am EST = 6:59am UTC
+    # 3:01am EDT = 7:01am UTC
+    # So the actual difference is just 2 minutes in UTC
+
+    # Test autumn transition (November 3, 2024, 2am -> 1am)
+    # 1:30am (first occurrence, EDT)
+    before_fallback = datetime.datetime(
+        2024, 11, 3, 1, 30, 0, tzinfo=ZoneInfo("America/New_York")
+    )
+    # 1:30am (second occurrence, after fallback, EST)
+    after_fallback = datetime.datetime(
+        2024, 11, 3, 1, 30, 0, tzinfo=ZoneInfo("America/New_York")
+    )
+    after_fallback = after_fallback.replace(fold=1)  # Mark as the second occurrence
+
+    # Convert both to UTC
+    before_utc = datetime_to_utc(before_fallback)
+    after_utc = datetime_to_utc(after_fallback)
+
+    # The second 1:30am should be one hour later in UTC
+    assert (after_utc - before_utc).total_seconds() == 3600
+
+    # Test getting current time in a timezone around DST transition
+    with freeze_time(
+        "2024-03-10 06:30:00", tz_offset=0
+    ):  # UTC time during US DST spring forward
+        from dateutils.dateutils import now_in_timezone
+
+        ny_time = now_in_timezone("America/New_York")
+        # 6:30 UTC = 1:30 EST (before transition)
+        # The DST transition happens at 2:00 AM local time, so at 6:30 UTC
+        # it's still 1:30 AM in New York, not 2:30 EDT yet
+        assert ny_time.hour == 1
+        assert ny_time.minute == 30
 
 
 ##################
@@ -650,7 +771,26 @@ def test_parse_iso8601():
     assert with_tz_no_colon.hour == 14
     assert with_tz_no_colon.tzinfo.utcoffset(None) == datetime.timedelta(hours=-5)
 
-    # Test invalid ISO 8601 string
+    # Additional edge cases
+
+    # Test with microseconds precision
+    with_microseconds = parse_iso8601("2024-03-27T14:30:45.123456")
+    assert with_microseconds.microsecond == 123456
+
+    # Test with negative timezone at half-hour offset
+    half_hour_offset = parse_iso8601("2024-03-27T14:30:45-05:30")
+    assert half_hour_offset.tzinfo.utcoffset(None) == datetime.timedelta(
+        hours=-5, minutes=-30
+    )
+
+    # Test basic format without T separator (should fail)
+    assert parse_iso8601("2024-03-27 14:30:45") is None
+
+    # Test with partial time specification
+    assert parse_iso8601("2024-03-27T14") is None
+    assert parse_iso8601("2024-03-27T14:30") is None
+
+    # Test invalid patterns
     assert parse_iso8601("not iso8601") is None
     assert parse_iso8601("2024/03/27") is None  # Wrong date separator
     assert parse_iso8601("2024-03-27 14:30:45") is None  # Space instead of T
@@ -878,3 +1018,94 @@ def test_previous_business_day():
     assert previous_business_day(sunday, holidays) == datetime.date(
         2024, 3, 28
     )  # Thursday
+
+
+##################
+# Property-based tests
+##################
+
+
+@pytest.mark.parametrize(
+    "date_input",
+    [
+        datetime.date(2024, 1, 1),  # New Year
+        datetime.date(2024, 2, 29),  # Leap day
+        datetime.date(2024, 3, 15),  # Regular day
+        datetime.date(2024, 12, 31),  # Year end
+    ],
+)
+def test_date_add_business_days_properties(date_input):
+    """Test mathematical properties of adding business days."""
+    from dateutils.dateutils import add_business_days
+
+    # Property 1: Adding 0 business days returns the same date (if it's a business day)
+    if not is_weekend(date_input):
+        assert add_business_days(date_input, 0) == date_input
+
+    # Property 2: Adding then subtracting the same number of business days returns original date
+    for days in [1, 5, 10]:
+        assert (
+            add_business_days(add_business_days(date_input, days), -days) == date_input
+        )
+
+    # Property 3: Adding days in sequence is the same as adding the sum
+    assert add_business_days(add_business_days(date_input, 3), 2) == add_business_days(
+        date_input, 5
+    )
+
+
+@pytest.mark.parametrize(
+    "year,expected",
+    [
+        (2020, True),  # Divisible by 4 and 400
+        (2024, True),  # Divisible by 4 but not 100
+        (2100, False),  # Divisible by 100 but not 400
+        (2000, True),  # Divisible by 400
+        (1900, False),  # Divisible by 100 but not 400
+    ],
+)
+def test_is_leap_year_properties(year, expected):
+    """Test mathematical properties of leap year calculations."""
+    from dateutils.dateutils import is_leap_year, get_days_in_month
+
+    assert is_leap_year(year) == expected
+
+    # Property: February has 29 days in leap years, 28 in non-leap years
+    if expected:
+        assert get_days_in_month(year, 2) == 29
+    else:
+        assert get_days_in_month(year, 2) == 28
+
+
+@pytest.mark.parametrize(
+    "date1,date2,expected_days",
+    [
+        # One week apart, 5 business days
+        (datetime.date(2024, 3, 25), datetime.date(2024, 3, 29), 5),
+        # Weekend in between
+        (datetime.date(2024, 3, 22), datetime.date(2024, 3, 25), 2),
+        # Same day
+        (datetime.date(2024, 3, 26), datetime.date(2024, 3, 26), 1),
+    ],
+)
+def test_workdays_between_properties(date1, date2, expected_days):
+    """Test mathematical properties of counting business days."""
+    from dateutils.dateutils import workdays_between
+
+    # Property 1: Order of dates shouldn't matter (if both positive)
+    if date1 <= date2:
+        assert workdays_between(date1, date2) == expected_days
+        if date1 < date2:  # Only assert reversed order is 0 when dates are different
+            assert workdays_between(date2, date1) == 0  # If reversed, should be 0
+        else:  # Same date case
+            assert (
+                workdays_between(date2, date1) == 1
+            )  # Same date should return 1 workday
+
+    # Property 2: Consistency with next_business_day
+    if date1 < date2 and workdays_between(date1, date2) > 0:
+        from dateutils.dateutils import next_business_day
+
+        # The next business day from date1 should be included in the count
+        next_day = next_business_day(date1)
+        assert workdays_between(next_day, date2) == expected_days - 1

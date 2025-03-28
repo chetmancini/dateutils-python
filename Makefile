@@ -1,9 +1,8 @@
 init:
 	@command -v uv >/dev/null 2>&1 || { echo "Installing uv..."; curl -LsSf https://astral.sh/uv/install.sh | sh; }
 
-# Install development dependencies
-dev:
-	uv pip install -e ".[dev]"
+deps:
+	uv sync --group dev
 
 # Run tests
 test:
