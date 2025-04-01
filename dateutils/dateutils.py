@@ -25,6 +25,17 @@ from datetime import timedelta
 from typing import Generator, Optional, Union, Tuple, List
 from zoneinfo import ZoneInfo, available_timezones
 
+##################
+# Constants
+##################
+RECENT_SECONDS = 10
+SECONDS_IN_MINUTE = 60
+SECONDS_IN_HOUR = 60 * SECONDS_IN_MINUTE
+SECONDS_IN_DAY = 24 * SECONDS_IN_HOUR
+DAYS_IN_YEAR = 365
+DAYS_IN_MONTH_APPROX = 30
+DAYS_IN_WEEK = 7
+
 
 ##################
 # UTC
@@ -414,27 +425,27 @@ def pretty_date(
     if day_diff < 0:
         return ""
     elif day_diff == 0:
-        if second_diff < 10:
+        if second_diff < RECENT_SECONDS:
             return "just now"
-        if second_diff < 60:
+        if second_diff < SECONDS_IN_MINUTE:
             return str(second_diff) + " seconds ago"
-        if second_diff < 120:
+        if second_diff < 2 * SECONDS_IN_MINUTE:
             return "a minute ago"
-        if second_diff < 3600:
-            return str(int(second_diff / 60)) + " minutes ago"
-        if second_diff < 7200:
+        if second_diff < SECONDS_IN_HOUR:
+            return str(int(second_diff / SECONDS_IN_MINUTE)) + " minutes ago"
+        if second_diff < 2 * SECONDS_IN_HOUR:
             return "an hour ago"
-        if second_diff < 86400:
-            return str(int(second_diff / 3600)) + " hours ago"
+        if second_diff < 24 * SECONDS_IN_HOUR:
+            return str(int(second_diff / SECONDS_IN_HOUR)) + " hours ago"
     elif day_diff == 1:
         return "Yesterday"
-    elif day_diff < 7:
+    elif day_diff < DAYS_IN_WEEK:
         return str(int(day_diff)) + " days ago"
     elif day_diff < 31:
-        return str(int(day_diff / 7)) + " weeks ago"
-    elif day_diff < 365:
-        return str(int(day_diff / 30)) + " months ago"
-    return str(int(day_diff / 365)) + " years ago"
+        return str(int(day_diff / DAYS_IN_WEEK)) + " weeks ago"
+    elif day_diff < DAYS_IN_YEAR:
+        return str(int(day_diff / DAYS_IN_MONTH_APPROX)) + " months ago"
+    return str(int(day_diff / DAYS_IN_YEAR)) + " years ago"
 
 
 def httpdate(date_time: datetime) -> str:
@@ -742,8 +753,8 @@ def format_timezone_offset(tz_name: str) -> str:
 
     # Convert timedelta to hours and minutes
     total_seconds = int(offset.total_seconds())
-    hours, remainder = divmod(abs(total_seconds), 3600)
-    minutes, _ = divmod(remainder, 60)
+    hours, remainder = divmod(abs(total_seconds), SECONDS_IN_HOUR)
+    minutes, _ = divmod(remainder, SECONDS_IN_MINUTE)
 
     sign = "-" if total_seconds < 0 else "+"
     return f"{sign}{hours:02d}:{minutes:02d}"
