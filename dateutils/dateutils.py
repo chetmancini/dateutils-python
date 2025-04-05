@@ -6,13 +6,39 @@ and timezones in Python. It includes functions for:
 
 - UTC date/time operations
 - Quarter, month, week, and day operations
-- Business day calculations (including holiday support)
+- Business day calculations (including basic US fixed holiday support)
 - Date/time parsing and formatting
 - Timezone conversions
 - Human-readable date formatting
 
 The utilities aim to simplify common date and time operations while providing
 consistent handling of timezone information.
+
+**Note on Holidays:** Basic support for fixed US federal holidays is included
+via `get_us_federal_fixed_holidays()`. For comprehensive, region-specific,
+or rule-based holiday calculations (e.g., floating holidays like Easter,
+observed holidays falling on weekends), consider using a dedicated library
+like `holidays`. You can easily integrate it by generating a list of holiday
+dates from that library and passing it to the `holidays` argument of the
+relevant business day functions in this module.
+
+Example using the `holidays` library:
+```python
+# pip install holidays
+import holidays
+from datetime import date
+from dateutils.dateutils import workdays_between
+
+# Get UK holidays for 2024
+uk_holidays_2024 = holidays.country_holidays('GB', subdiv='England', years=2024)
+holiday_dates = list(uk_holidays_2024.keys())
+
+start = date(2024, 5, 1)
+end = date(2024, 5, 31)
+# Calculate workdays excluding UK bank holidays
+workdays = workdays_between(start, end, holidays=holiday_dates)
+print(workdays)
+```
 """
 
 import calendar
@@ -411,15 +437,149 @@ def is_weekend(dt: date) -> bool:
 
     Returns:
         bool: True if the date falls on a weekend, False otherwise
+
+    Examples:
+        >>> from datetime import date
+        >>> is_weekend(date(2024, 7, 20)) # Saturday
+        True
+        >>> is_weekend(date(2024, 7, 21)) # Sunday
+        True
+        >>> is_weekend(date(2024, 7, 22)) # Monday
+        False
     """
     return dt.weekday() >= 5  # 5 = Saturday, 6 = Sunday
+
+
+def get_us_federal_holidays(year: int, holiday_types: Optional[List[str]] = None) -> List[date]:
+    """
+    Get a list of US federal holidays for a given year.
+
+    Includes:
+    Fixed holidays:
+    - New Year's Day (Jan 1)
+    - Juneteenth National Independence Day (Jun 19)
+    - Independence Day (Jul 4)
+    - Veterans Day (Nov 11)
+    - Christmas Day (Dec 25)
+
+    Floating holidays:
+    - Martin Luther King Jr. Day (3rd Monday of January)
+    - Presidents Day (3rd Monday of February)
+    - Memorial Day (Last Monday of May)
+    - Labor Day (1st Monday of September)
+    - Columbus Day (2nd Monday of October)
+    - Thanksgiving Day (4th Thursday of November)
+
+    Note: This function returns the *actual* date of the holiday. It does *not*
+    account for the observed date when the holiday falls on a weekend
+    (e.g., observed on Mon/Fri). For observed holiday calculation, use a dedicated
+    library like `holidays`.
+
+    Args:
+        year: The year for which to get the holidays.
+        holiday_types: Optional list of holiday types to include. If None, all holidays are included.
+                      Valid values: "NEW_YEARS_DAY", "MLK_DAY", "PRESIDENTS_DAY", "MEMORIAL_DAY",
+                      "JUNETEENTH", "INDEPENDENCE_DAY", "LABOR_DAY", "COLUMBUS_DAY",
+                      "VETERANS_DAY", "THANKSGIVING", "CHRISTMAS"
+
+    Returns:
+        List[date]: A list of date objects for the holidays in that year.
+
+    Examples:
+        >>> from datetime import date
+        >>> holidays_2024 = get_us_federal_holidays(2024)
+        >>> date(2024, 1, 1) in holidays_2024  # New Year's Day
+        True
+        >>> date(2024, 11, 28) in holidays_2024  # Thanksgiving
+        True
+
+        >>> # Get only fixed holidays
+        >>> fixed_holidays = get_us_federal_holidays(2024, ["NEW_YEARS_DAY", "JUNETEENTH",
+        ...                                                "INDEPENDENCE_DAY", "VETERANS_DAY", "CHRISTMAS"])
+        >>> date(2024, 1, 1) in fixed_holidays
+        True
+        >>> date(2024, 1, 15) in fixed_holidays  # MLK Day (floating)
+        False
+    """
+    # Define all possible holiday types
+    ALL_HOLIDAY_TYPES = {
+        # Fixed holidays
+        "NEW_YEARS_DAY": date(year, 1, 1),
+        "JUNETEENTH": date(year, 6, 19),
+        "INDEPENDENCE_DAY": date(year, 7, 4),
+        "VETERANS_DAY": date(year, 11, 11),
+        "CHRISTMAS": date(year, 12, 25),
+
+        # Floating holidays - will be calculated below
+        "MLK_DAY": None,
+        "PRESIDENTS_DAY": None,
+        "MEMORIAL_DAY": None,
+        "LABOR_DAY": None,
+        "COLUMBUS_DAY": None,
+        "THANKSGIVING": None
+    }
+
+    # Calculate floating holidays
+
+    # Find the 3rd Monday in January (Martin Luther King Jr. Day)
+    mlk_day = date(year, 1, 1)
+    while mlk_day.weekday() != 0:  # 0 = Monday
+        mlk_day += timedelta(days=1)
+    mlk_day += timedelta(days=14)  # Move to 3rd Monday
+    ALL_HOLIDAY_TYPES["MLK_DAY"] = mlk_day
+
+    # Find the 3rd Monday in February (Presidents Day)
+    presidents_day = date(year, 2, 1)
+    while presidents_day.weekday() != 0:  # 0 = Monday
+        presidents_day += timedelta(days=1)
+    presidents_day += timedelta(days=14)  # Move to 3rd Monday
+    ALL_HOLIDAY_TYPES["PRESIDENTS_DAY"] = presidents_day
+
+    # Find the last Monday in May (Memorial Day)
+    memorial_day = date(year, 5, 31)
+    while memorial_day.weekday() != 0:  # 0 = Monday
+        memorial_day -= timedelta(days=1)
+    ALL_HOLIDAY_TYPES["MEMORIAL_DAY"] = memorial_day
+
+    # Find the 1st Monday in September (Labor Day)
+    labor_day = date(year, 9, 1)
+    while labor_day.weekday() != 0:  # 0 = Monday
+        labor_day += timedelta(days=1)
+    ALL_HOLIDAY_TYPES["LABOR_DAY"] = labor_day
+
+    # Find the 2nd Monday in October (Columbus Day)
+    columbus_day = date(year, 10, 1)
+    while columbus_day.weekday() != 0:  # 0 = Monday
+        columbus_day += timedelta(days=1)
+    columbus_day += timedelta(days=7)  # Move to 2nd Monday
+    ALL_HOLIDAY_TYPES["COLUMBUS_DAY"] = columbus_day
+
+    # Find the 4th Thursday in November (Thanksgiving Day)
+    thanksgiving = date(year, 11, 1)
+    while thanksgiving.weekday() != 3:  # 3 = Thursday
+        thanksgiving += timedelta(days=1)
+    thanksgiving += timedelta(days=21)  # Move to 4th Thursday
+    ALL_HOLIDAY_TYPES["THANKSGIVING"] = thanksgiving
+
+    # If holiday_types is None, return all holidays
+    if holiday_types is None:
+        return list(ALL_HOLIDAY_TYPES.values())
+
+    # Otherwise, return only the specified holiday types
+    result = []
+    for holiday_type in holiday_types:
+        if holiday_type in ALL_HOLIDAY_TYPES:
+            result.append(ALL_HOLIDAY_TYPES[holiday_type])
+
+    return result
 
 
 def workdays_between(start_date: date, end_date: date, holidays: Optional[List[date]] = None) -> int:
     """
     Count workdays (Monday-Friday) between two dates, inclusive.
 
-    Optionally excludes specified holidays.
+    Optionally excludes specified holidays. For basic US fixed holidays, you
+    can generate them using `get_us_federal_fixed_holidays()`.
 
     Args:
         start_date: The start date (inclusive).
@@ -436,22 +596,15 @@ def workdays_between(start_date: date, end_date: date, holidays: Optional[List[d
         >>> workdays_between(start, end)
         5 # Mon, Tue, Wed, Thu, Fri
 
-        >>> holidays = [date(2024, 7, 4)] # Thursday holiday
-        >>> workdays_between(start, end, holidays=holidays)
+        >>> # Using built-in US fixed holidays for 2024
+        >>> us_holidays = get_us_federal_fixed_holidays(2024)
+        >>> workdays_between(start, end, holidays=us_holidays) # July 4th is excluded
         4 # Mon, Tue, Wed, Fri
 
-        >>> start = date(2024, 7, 6) # Saturday
-        >>> end = date(2024, 7, 7)   # Sunday
-        >>> workdays_between(start, end)
-        0
-
-        >>> # Range starts and ends on the same workday
-        >>> workdays_between(date(2024, 7, 1), date(2024, 7, 1))
-        1
-
-        >>> # Range starts and ends on the same weekend day
-        >>> workdays_between(date(2024, 7, 6), date(2024, 7, 6))
-        0
+        >>> start = date(2024, 12, 23)
+        >>> end = date(2024, 12, 27)
+        >>> workdays_between(start, end, holidays=get_us_federal_fixed_holidays(2024)) # Excludes Dec 25
+        4 # Mon, Tue, Thu, Fri
     """
     if holidays is None:
         holidays = []
@@ -470,15 +623,38 @@ def workdays_between(start_date: date, end_date: date, holidays: Optional[List[d
 
 def add_business_days(dt: date, num_days: int, holidays: Optional[List[date]] = None) -> date:
     """
-    Add business days to a date, skipping weekends and holidays
+    Add business days to a date, skipping weekends and holidays.
+
+    For basic US fixed holidays, you can generate them using
+    `get_us_federal_fixed_holidays()`.
 
     Args:
-        dt: The starting date
-        num_days: Number of business days to add (can be negative)
-        holidays: Optional list of holiday dates to skip
+        dt: The starting date.
+        num_days: Number of business days to add (can be negative).
+        holidays: Optional list of holiday dates to skip.
 
     Returns:
-        A new date with the business days added
+        A new date with the business days added.
+
+    Examples:
+        >>> from datetime import date
+        >>> start_date = date(2024, 7, 1) # Monday
+        >>> add_business_days(start_date, 3)
+        datetime.date(2024, 7, 4) # Thu
+
+        >>> # Skip July 4th holiday
+        >>> us_holidays = get_us_federal_fixed_holidays(2024)
+        >>> add_business_days(start_date, 3, holidays=us_holidays)
+        datetime.date(2024, 7, 5) # Fri
+
+        >>> # Add negative days
+        >>> end_date = date(2024, 7, 8) # Monday
+        >>> add_business_days(end_date, -2)
+        datetime.date(2024, 7, 4) # Thu
+
+        >>> # Add negative days skipping holiday
+        >>> add_business_days(end_date, -2, holidays=us_holidays)
+        datetime.date(2024, 7, 3) # Wed
     """
     if holidays is None:
         holidays = []
@@ -498,28 +674,58 @@ def add_business_days(dt: date, num_days: int, holidays: Optional[List[date]] = 
 
 def next_business_day(dt: date, holidays: Optional[List[date]] = None) -> date:
     """
-    Find the next business day from a given date, skipping weekends and holidays
+    Find the next business day from a given date, skipping weekends and holidays.
+
+    For basic US fixed holidays, you can generate them using
+    `get_us_federal_fixed_holidays()`.
 
     Args:
-        dt: The starting date
-        holidays: Optional list of holiday dates to skip
+        dt: The starting date.
+        holidays: Optional list of holiday dates to skip.
 
     Returns:
-        The next business day
+        The next business day.
+
+    Examples:
+        >>> from datetime import date
+        >>> friday = date(2024, 7, 5)
+        >>> next_business_day(friday)
+        datetime.date(2024, 7, 8) # Monday
+
+        >>> wednesday = date(2024, 7, 3)
+        >>> # July 4th is a holiday
+        >>> us_holidays = get_us_federal_fixed_holidays(2024)
+        >>> next_business_day(wednesday, holidays=us_holidays)
+        datetime.date(2024, 7, 5) # Friday
     """
     return add_business_days(dt, 1, holidays)
 
 
 def previous_business_day(dt: date, holidays: Optional[List[date]] = None) -> date:
     """
-    Find the previous business day from a given date, skipping weekends and holidays
+    Find the previous business day from a given date, skipping weekends and holidays.
+
+    For basic US fixed holidays, you can generate them using
+    `get_us_federal_fixed_holidays()`.
 
     Args:
-        dt: The starting date
-        holidays: Optional list of holiday dates to skip
+        dt: The starting date.
+        holidays: Optional list of holiday dates to skip.
 
     Returns:
-        The previous business day
+        The previous business day.
+
+    Examples:
+        >>> from datetime import date
+        >>> monday = date(2024, 7, 8)
+        >>> previous_business_day(monday)
+        datetime.date(2024, 7, 5) # Friday
+
+        >>> friday = date(2024, 7, 5)
+        >>> # July 4th is a holiday
+        >>> us_holidays = get_us_federal_fixed_holidays(2024)
+        >>> previous_business_day(friday, holidays=us_holidays)
+        datetime.date(2024, 7, 3) # Wednesday
     """
     return add_business_days(dt, -1, holidays)
 

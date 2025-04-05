@@ -38,6 +38,7 @@ from dateutils.dateutils import (
     add_business_days,
     next_business_day,
     previous_business_day,
+    get_us_federal_holidays,
 )
 
 
@@ -922,6 +923,109 @@ def test_previous_business_day() -> None:
         2024, 3, 28
     )  # Thursday (skipping weekend and holiday)
     assert previous_business_day(sunday, holidays) == datetime.date(2024, 3, 28)  # Thursday
+
+
+def test_get_us_federal_holidays_all_2024() -> None:
+    """Test getting all US federal holidays for 2024."""
+    holidays_2024 = get_us_federal_holidays(2024)
+    # Expected count: 5 fixed + 6 floating = 11
+    assert len(holidays_2024) == 11
+
+    # Check fixed holidays
+    assert datetime.date(2024, 1, 1) in holidays_2024    # New Year's Day
+    assert datetime.date(2024, 6, 19) in holidays_2024   # Juneteenth
+    assert datetime.date(2024, 7, 4) in holidays_2024    # Independence Day
+    assert datetime.date(2024, 11, 11) in holidays_2024  # Veterans Day
+    assert datetime.date(2024, 12, 25) in holidays_2024  # Christmas Day
+
+    # Check floating holidays for 2024
+    assert datetime.date(2024, 1, 15) in holidays_2024   # MLK Day (3rd Mon Jan)
+    assert datetime.date(2024, 2, 19) in holidays_2024   # Presidents Day (3rd Mon Feb)
+    assert datetime.date(2024, 5, 27) in holidays_2024   # Memorial Day (Last Mon May)
+    assert datetime.date(2024, 9, 2) in holidays_2024    # Labor Day (1st Mon Sep)
+    assert datetime.date(2024, 10, 14) in holidays_2024  # Columbus Day (2nd Mon Oct)
+    assert datetime.date(2024, 11, 28) in holidays_2024  # Thanksgiving (4th Thu Nov)
+
+
+def test_get_us_federal_holidays_all_2025() -> None:
+    """Test getting all US federal holidays for 2025 (different floating dates)."""
+    holidays_2025 = get_us_federal_holidays(2025)
+    assert len(holidays_2025) == 11
+
+    # Check a few floating holidays for 2025
+    assert datetime.date(2025, 1, 20) in holidays_2025   # MLK Day
+    assert datetime.date(2025, 2, 17) in holidays_2025   # Presidents Day
+    assert datetime.date(2025, 5, 26) in holidays_2025   # Memorial Day
+    assert datetime.date(2025, 9, 1) in holidays_2025    # Labor Day
+    assert datetime.date(2025, 10, 13) in holidays_2025  # Columbus Day
+    assert datetime.date(2025, 11, 27) in holidays_2025  # Thanksgiving
+
+    # Check fixed holidays remain the same date (different year)
+    assert datetime.date(2025, 1, 1) in holidays_2025
+    assert datetime.date(2025, 7, 4) in holidays_2025
+    assert datetime.date(2025, 12, 25) in holidays_2025
+
+
+def test_get_us_federal_holidays_filter_fixed() -> None:
+    """Test filtering for only fixed holidays."""
+    fixed_types = [
+        "NEW_YEARS_DAY", "JUNETEENTH", "INDEPENDENCE_DAY",
+        "VETERANS_DAY", "CHRISTMAS"
+    ]
+    holidays = get_us_federal_holidays(2024, holiday_types=fixed_types)
+    assert len(holidays) == 5
+    assert datetime.date(2024, 1, 1) in holidays
+    assert datetime.date(2024, 6, 19) in holidays
+    assert datetime.date(2024, 7, 4) in holidays
+    assert datetime.date(2024, 11, 11) in holidays
+    assert datetime.date(2024, 12, 25) in holidays
+    # Ensure floating are excluded
+    assert datetime.date(2024, 1, 15) not in holidays # MLK Day
+    assert datetime.date(2024, 11, 28) not in holidays # Thanksgiving
+
+
+def test_get_us_federal_holidays_filter_floating() -> None:
+    """Test filtering for only floating holidays."""
+    floating_types = [
+        "MLK_DAY", "PRESIDENTS_DAY", "MEMORIAL_DAY",
+        "LABOR_DAY", "COLUMBUS_DAY", "THANKSGIVING"
+    ]
+    holidays = get_us_federal_holidays(2024, holiday_types=floating_types)
+    assert len(holidays) == 6
+    assert datetime.date(2024, 1, 15) in holidays
+    assert datetime.date(2024, 2, 19) in holidays
+    assert datetime.date(2024, 5, 27) in holidays
+    assert datetime.date(2024, 9, 2) in holidays
+    assert datetime.date(2024, 10, 14) in holidays
+    assert datetime.date(2024, 11, 28) in holidays
+    # Ensure fixed are excluded
+    assert datetime.date(2024, 1, 1) not in holidays   # New Year's Day
+    assert datetime.date(2024, 7, 4) not in holidays   # Independence Day
+
+
+def test_get_us_federal_holidays_filter_subset() -> None:
+    """Test filtering for a specific subset of holidays."""
+    subset_types = ["THANKSGIVING", "CHRISTMAS", "NEW_YEARS_DAY"]
+    holidays = get_us_federal_holidays(2024, holiday_types=subset_types)
+    assert len(holidays) == 3
+    assert datetime.date(2024, 11, 28) in holidays # Thanksgiving
+    assert datetime.date(2024, 12, 25) in holidays # Christmas
+    assert datetime.date(2024, 1, 1) in holidays   # New Year's Day
+    assert datetime.date(2024, 7, 4) not in holidays # Independence Day (not requested)
+    assert datetime.date(2024, 1, 15) not in holidays # MLK Day (not requested)
+
+
+def test_get_us_federal_holidays_filter_empty() -> None:
+    """Test filtering with an empty list."""
+    holidays = get_us_federal_holidays(2024, holiday_types=[])
+    assert len(holidays) == 0
+
+
+def test_get_us_federal_holidays_filter_invalid_type() -> None:
+    """Test filtering with an invalid holiday type (should be ignored)."""
+    holidays = get_us_federal_holidays(2024, holiday_types=["INVALID_HOLIDAY", "CHRISTMAS"])
+    assert len(holidays) == 1
+    assert datetime.date(2024, 12, 25) in holidays
 
 
 ##################
