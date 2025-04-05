@@ -209,6 +209,13 @@ def end_of_quarter(year: int, q: int) -> datetime:
 def generate_quarters(until_year: int = 1970, until_q: int = 1) -> Generator[Tuple[int, int], None, None]:
     """
     Generate quarters from the current quarter until a specific year and quarter
+
+    Args:
+        until_year: Year to generate quarters until
+        until_q: Quarter to generate quarters until (1-4)
+
+    Returns:
+        Generator[Tuple[int, int], None, None]: Quarters from current quarter to the specified year and quarter
     """
     today = date.today()
     current_quarter = date_to_quarter(today)
@@ -270,6 +277,9 @@ def is_leap_year(year: int) -> bool:
     """
     Check if a year is a leap year
 
+    Args:
+        year: Year to check if it is a leap year
+
     Returns:
         bool: True if the year is a leap year, False otherwise
     """
@@ -283,6 +293,10 @@ def start_of_month(year: int, month: int) -> datetime:
     """
     Get the start of the month
 
+    Args:
+        year: Year to get start of month for
+        month: Month to get start of (1-12)
+
     Returns:
         datetime: Datetime at 00:00:00
     """
@@ -292,6 +306,10 @@ def start_of_month(year: int, month: int) -> datetime:
 def end_of_month(year: int, month: int) -> datetime:
     """
     Get the end of the month
+
+    Args:
+        year: Year to get end of month for
+        month: Month to get end of (1-12)
 
     Returns:
         datetime: Datetime at 23:59:59
@@ -322,6 +340,10 @@ def get_days_in_month(year: int, month: int) -> int:
     """
     Get the number of days in a specific month and year
 
+    Args:
+        year: Year to get days in month for
+        month: Month to get days in (1-12)
+
     Returns:
         int: Number of days in the specified month
     """
@@ -334,6 +356,10 @@ def get_days_in_month(year: int, month: int) -> int:
 def generate_weeks(count: int = 500, until_date: Optional[date] = None) -> Generator[Tuple[date, date], None, None]:
     """
     Generate weeks from the current week until a specific date
+
+    Args:
+        count: Number of weeks to generate
+        until_date: Date to generate weeks until
 
     Returns:
         Generator[Tuple[date, date], None, None]: Weeks from current week to the specified date
@@ -362,6 +388,10 @@ def date_range(start_date: date, end_date: date) -> list[date]:
     """
     Generate a list of dates between start_date and end_date inclusive
 
+    Args:
+        start_date: The start date (inclusive)
+        end_date: The end date (inclusive)
+
     Returns:
         list[date]: List of dates between start_date and end_date inclusive
     """
@@ -375,6 +405,9 @@ def date_range(start_date: date, end_date: date) -> list[date]:
 def is_weekend(dt: date) -> bool:
     """
     Check if a date falls on a weekend (Saturday or Sunday)
+
+    Args:
+        dt: The date to check
 
     Returns:
         bool: True if the date falls on a weekend, False otherwise
