@@ -444,7 +444,7 @@ def test_now_in_timezone() -> None:
     # Get NY time (UTC-5 or UTC-4 depending on DST)
     ny_now = now_in_timezone("America/New_York")
     assert ny_now.tzinfo is not None
-    assert ny_now.tzname() == "America/New_York"
+    assert ny_now.tzname() == "EDT"
 
     # In March 2024, NY is in EDT (UTC-4)
     assert ny_now.hour == 8  # 12 UTC - 4 = 8 EDT
@@ -452,7 +452,7 @@ def test_now_in_timezone() -> None:
     # Test Tokyo (UTC+9)
     tokyo_now = now_in_timezone("Asia/Tokyo")
     assert tokyo_now.tzinfo is not None
-    assert tokyo_now.tzname() == "Asia/Tokyo"
+    assert tokyo_now.tzname() == "JST"
     assert tokyo_now.hour == 21  # 12 UTC + 9 = 21 JST
 
 
@@ -478,13 +478,13 @@ def test_convert_timezone() -> None:
 
     # Convert to New York (EDT in March 2024, UTC-4)
     ny_dt = convert_timezone(utc_dt, "America/New_York")
-    assert ny_dt.tzname() == "America/New_York"
+    assert ny_dt.tzname() == "EDT"
     assert ny_dt.hour == 8  # 12 - 4 = 8
     assert ny_dt.date() == utc_dt.date()
 
     # Convert to Tokyo (UTC+9)
     tokyo_dt = convert_timezone(utc_dt, "Asia/Tokyo")
-    assert tokyo_dt.tzname() == "Asia/Tokyo"
+    assert tokyo_dt.tzname() == "JST"
     assert tokyo_dt.hour == 21  # 12 + 9 = 21
     assert tokyo_dt.date() == utc_dt.date()
 
