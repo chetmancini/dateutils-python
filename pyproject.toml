@@ -32,14 +32,10 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/chetmancini/dateutils-python"
+Homepage = "https://github.com/chetmancini/dateutils-python"
 "Bug Tracker" = "https://github.com/chetmancini/dateutils-python/issues"
-"Documentation" = "https://github.com/chetmancini/dateutils-python#readme"
+Documentation = "https://github.com/chetmancini/dateutils-python#readme"
 "Source Code" = "https://github.com/chetmancini/dateutils-python"
-
-[tool.setuptools]
-packages = ["dateutils"]
-package-data = {"dateutils" = ["py.typed"]}
 
 [dependency-groups]
 dev = [
@@ -84,6 +80,11 @@ line-length = 120
     "S101",
     "PLR2004",
 ]
+
+[tool.setuptools]
+packages = ["dateutils"]
+package-data = {"dateutils" = ["py.typed"]}
+
 
 [tool.black]
 line-length = 120
