@@ -151,6 +151,12 @@ def datetime_end_of_day(day: date) -> datetime:
 def date_to_quarter(dt: date) -> int:
     """
     Get the quarter of the year for a specific date
+
+    Args:
+        dt: Date to get quarter for
+
+    Returns:
+        int: Quarter of the year (1-4)
     """
     return ((dt.month - 1) // 3) + 1
 
@@ -158,6 +164,12 @@ def date_to_quarter(dt: date) -> int:
 def date_to_start_of_quarter(dt: date) -> date:
     """
     Get the start of the quarter for a specific date
+
+    Args:
+        dt: Date to get start of quarter for
+
+    Returns:
+        datetime: Datetime at 00:00:00
     """
     new_month = (((dt.month - 1) // 3) * 3) + 1
     return dt.replace(day=1, month=new_month)
@@ -166,13 +178,26 @@ def date_to_start_of_quarter(dt: date) -> date:
 def start_of_quarter(year: int, q: int) -> datetime:
     """
     Get the start of the quarter
+
+    Args:
+        year: Year to get start of quarter for
+        q: Quarter to get start of (1-4)
+
+    Returns:
+        datetime: Datetime at 00:00:00
     """
     return datetime(year, (q - 1) * 3 + 1, 1)
-
 
 def end_of_quarter(year: int, q: int) -> datetime:
     """
     Get the end of the quarter
+
+    Args:
+        year: Year to get end of quarter for
+        q: Quarter to get end of (1-4)
+
+    Returns:
+        datetime: Datetime at 23:59:59
     """
     # Calculate the month at the end of the quarter
     month = q * 3
@@ -206,13 +231,25 @@ def generate_quarters(until_year: int = 1970, until_q: int = 1) -> Generator[Tup
 def start_of_year(year: int) -> datetime:
     """
     Get the start of the year
+
+    Args:
+        year: Year to get start of year for
+
+    Returns:
+        datetime: Datetime at 00:00:00
     """
-    return datetime(year, 1, 1)
+    return datetime(year, 1, 1, 0, 0, 0)
 
 
 def end_of_year(year: int) -> datetime:
     """
     Get the end of the year
+
+    Args:
+        year: Year to get end of year for
+
+    Returns:
+        datetime: Datetime at 23:59:59
     """
     return datetime(year, 12, 31, 23, 59, 59)
 
@@ -220,6 +257,9 @@ def end_of_year(year: int) -> datetime:
 def generate_years(until: int = 1970) -> Generator[int, None, None]:
     """
     Generate years from the current year until a specific year
+
+    Returns:
+        Generator[int, None, None]: Years from current year to the specified year
     """
     current_year = date.today().year
     for years_ago in range(current_year + 1 - until):
@@ -229,6 +269,9 @@ def generate_years(until: int = 1970) -> Generator[int, None, None]:
 def is_leap_year(year: int) -> bool:
     """
     Check if a year is a leap year
+
+    Returns:
+        bool: True if the year is a leap year, False otherwise
     """
     return (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
 
@@ -239,6 +282,9 @@ def is_leap_year(year: int) -> bool:
 def start_of_month(year: int, month: int) -> datetime:
     """
     Get the start of the month
+
+    Returns:
+        datetime: Datetime at 00:00:00
     """
     return datetime(year, month, 1)
 
@@ -246,6 +292,9 @@ def start_of_month(year: int, month: int) -> datetime:
 def end_of_month(year: int, month: int) -> datetime:
     """
     Get the end of the month
+
+    Returns:
+        datetime: Datetime at 23:59:59
     """
     days_in_month = calendar.monthrange(year, month)[1]
     return datetime(year, month, days_in_month, 23, 59, 59)
@@ -254,6 +303,9 @@ def end_of_month(year: int, month: int) -> datetime:
 def generate_months(until_year: int = 1970, until_m: int = 1) -> Generator[Tuple[int, int], None, None]:
     """
     Generate months from the current month until a specific year and month
+
+    Returns:
+        Generator[Tuple[int, int], None, None]: Months from current month to the specified year and month
     """
     today = date.today()
     for year in generate_years(until=until_year):
@@ -269,6 +321,9 @@ def generate_months(until_year: int = 1970, until_m: int = 1) -> Generator[Tuple
 def get_days_in_month(year: int, month: int) -> int:
     """
     Get the number of days in a specific month and year
+
+    Returns:
+        int: Number of days in the specified month
     """
     return calendar.monthrange(year, month)[1]
 
@@ -279,6 +334,9 @@ def get_days_in_month(year: int, month: int) -> int:
 def generate_weeks(count: int = 500, until_date: Optional[date] = None) -> Generator[Tuple[date, date], None, None]:
     """
     Generate weeks from the current week until a specific date
+
+    Returns:
+        Generator[Tuple[date, date], None, None]: Weeks from current week to the specified date
     """
     this_dow = date.today().weekday()
     monday = date.today() - timedelta(days=this_dow)
@@ -303,6 +361,9 @@ def generate_weeks(count: int = 500, until_date: Optional[date] = None) -> Gener
 def date_range(start_date: date, end_date: date) -> list[date]:
     """
     Generate a list of dates between start_date and end_date inclusive
+
+    Returns:
+        list[date]: List of dates between start_date and end_date inclusive
     """
     days = (end_date - start_date).days + 1
     return [start_date + timedelta(days=i) for i in range(days)]
@@ -314,6 +375,9 @@ def date_range(start_date: date, end_date: date) -> list[date]:
 def is_weekend(dt: date) -> bool:
     """
     Check if a date falls on a weekend (Saturday or Sunday)
+
+    Returns:
+        bool: True if the date falls on a weekend, False otherwise
     """
     return dt.weekday() >= 5  # 5 = Saturday, 6 = Sunday
 
