@@ -27,3 +27,9 @@ jobs:
 
       - name: Run tests
         run: make test
+
+      - name: Run typecheck
+        run: make typecheck
+
+      - name: Run coverage
+        run: make coverage
