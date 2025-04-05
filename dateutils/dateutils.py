@@ -90,13 +90,31 @@ def utc_from_timestamp(ts: int) -> datetime:
 
 def epoch_s(dt: datetime) -> int:
     """
-    Convert a datetime object to a unix timestamp.
+    Convert a datetime object to a Unix timestamp (seconds since epoch).
+
+    Note: Timezone-aware datetimes are converted to UTC before calculating
+          the timestamp. Naive datetimes are assumed to be in UTC.
 
     Args:
-        dt: Datetime object to convert
+        dt: Datetime object to convert.
 
     Returns:
-        int: Unix timestamp (seconds since epoch)
+        int: Unix timestamp (seconds since epoch).
+
+    Examples:
+        >>> from datetime import datetime, timezone, timedelta
+        >>> dt_utc = datetime(2023, 10, 26, 12, 0, 0, tzinfo=timezone.utc)
+        >>> epoch_s(dt_utc)
+        1698321600
+
+        >>> dt_naive = datetime(2023, 10, 26, 12, 0, 0)
+        >>> epoch_s(dt_naive) # Assumed UTC
+        1698321600
+
+        >>> tz_est = timezone(timedelta(hours=-5))
+        >>> dt_est = datetime(2023, 10, 26, 7, 0, 0, tzinfo=tz_est)
+        >>> epoch_s(dt_est) # Converted to UTC
+        1698321600
     """
     return calendar.timegm(dt.utctimetuple())
 
@@ -302,15 +320,41 @@ def is_weekend(dt: date) -> bool:
 
 def workdays_between(start_date: date, end_date: date, holidays: Optional[List[date]] = None) -> int:
     """
-    Count workdays (Mon-Fri) between two dates, excluding holidays
+    Count workdays (Monday-Friday) between two dates, inclusive.
+
+    Optionally excludes specified holidays.
 
     Args:
-        start_date: The start date (inclusive)
-        end_date: The end date (inclusive)
-        holidays: Optional list of holiday dates to exclude
+        start_date: The start date (inclusive).
+        end_date: The end date (inclusive).
+        holidays: Optional list of holiday dates to exclude.
 
     Returns:
-        Number of workdays between the two dates
+        int: Number of workdays between the start and end dates.
+
+    Examples:
+        >>> from datetime import date
+        >>> start = date(2024, 7, 1) # Monday
+        >>> end = date(2024, 7, 7)   # Sunday
+        >>> workdays_between(start, end)
+        5 # Mon, Tue, Wed, Thu, Fri
+
+        >>> holidays = [date(2024, 7, 4)] # Thursday holiday
+        >>> workdays_between(start, end, holidays=holidays)
+        4 # Mon, Tue, Wed, Fri
+
+        >>> start = date(2024, 7, 6) # Saturday
+        >>> end = date(2024, 7, 7)   # Sunday
+        >>> workdays_between(start, end)
+        0
+
+        >>> # Range starts and ends on the same workday
+        >>> workdays_between(date(2024, 7, 1), date(2024, 7, 1))
+        1
+
+        >>> # Range starts and ends on the same weekend day
+        >>> workdays_between(date(2024, 7, 6), date(2024, 7, 6))
+        0
     """
     if holidays is None:
         holidays = []
@@ -445,14 +489,41 @@ def httpdate(date_time: datetime) -> str:
 ##################
 def parse_date(date_str: str, formats: Optional[List[str]] = None) -> Optional[date]:
     """
-    Parse a date string using multiple possible formats
+    Parse a date string using multiple possible formats.
+
+    Tries a list of common formats if `formats` is not provided.
+    See the function code for the default list.
 
     Args:
-        date_str: The date string to parse
-        formats: List of format strings to try (if None, uses common formats)
+        date_str: The date string to parse.
+        formats: Optional list of format strings (e.g., "%Y/%m/%d") to try.
 
     Returns:
-        A date object if parsing was successful, None otherwise
+        A date object if parsing was successful, None otherwise.
+
+    Examples:
+        >>> from datetime import date
+        >>> parse_date("2024-07-22")
+        datetime.date(2024, 7, 22)
+
+        >>> parse_date("07/22/2024")
+        datetime.date(2024, 7, 22)
+
+        >>> parse_date("22 Jul 2024")
+        datetime.date(2024, 7, 22)
+
+        >>> parse_date("July 22, 2024")
+        datetime.date(2024, 7, 22)
+
+        >>> # Using a custom format
+        >>> parse_date("20242207", formats=["%Y%d%m"])
+        datetime.date(2024, 7, 22)
+
+        >>> # Parsing fails
+        >>> parse_date("invalid date string")
+
+        >>> parse_date("2024-20-80")
+
     """
     if formats is None:
         formats = [
@@ -668,17 +739,42 @@ def today_in_timezone(tz_name: str) -> date:
 
 def convert_timezone(dt: datetime, to_tz: str) -> datetime:
     """
-    Convert a datetime from its current timezone to another timezone
+    Convert a timezone-aware datetime object to another timezone.
 
     Args:
-        dt: The datetime to convert (should have tzinfo set)
-        to_tz: Target timezone name
+        dt: The datetime object to convert. Must have tzinfo set.
+        to_tz: Target timezone name (e.g., "America/New_York", "Europe/London").
+               See `get_available_timezones()` for options.
 
     Returns:
-        The datetime in the target timezone
+        datetime: A new datetime object representing the same point in time
+                  in the target timezone.
 
     Raises:
-        ValueError: If the input datetime doesn't have timezone info
+        ValueError: If the input datetime `dt` is naive (tzinfo is None).
+        zoneinfo.ZoneInfoNotFoundError: If `to_tz` is not a valid timezone name.
+
+    Examples:
+        >>> from datetime import datetime, timezone, timedelta
+        >>> utc_time = datetime(2024, 7, 22, 14, 30, 0, tzinfo=timezone.utc)
+        >>> local_time = convert_timezone(utc_time, "America/Los_Angeles")
+        >>> print(local_time)
+        2024-07-22 07:30:00-07:00
+
+        >>> # Convert from one specific zone to another
+        >>> ny_tz = ZoneInfo("America/New_York")
+        >>> ny_time = datetime(2024, 7, 22, 10, 30, 0, tzinfo=ny_tz)
+        >>> london_time = convert_timezone(ny_time, "Europe/London")
+        >>> print(london_time)
+        2024-07-22 15:30:00+01:00
+
+        >>> # Example of error for naive datetime
+        >>> naive_time = datetime(2024, 7, 22, 14, 30, 0)
+        >>> try:
+        ...     convert_timezone(naive_time, "America/New_York")
+        ... except ValueError as e:
+        ...     print(e)
+        Input datetime must include timezone information
     """
     if dt.tzinfo is None:
         raise ValueError("Input datetime must include timezone information")
