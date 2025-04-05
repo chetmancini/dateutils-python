@@ -502,7 +502,7 @@ def get_us_federal_holidays(year: int, holiday_types: Optional[List[str]] = None
         False
     """
     # Define all possible holiday types
-    ALL_HOLIDAY_TYPES = {
+    ALL_HOLIDAY_TYPES: dict[str, date] = {
         # Fixed holidays
         "NEW_YEARS_DAY": date(year, 1, 1),
         "JUNETEENTH": date(year, 6, 19),
@@ -511,12 +511,12 @@ def get_us_federal_holidays(year: int, holiday_types: Optional[List[str]] = None
         "CHRISTMAS": date(year, 12, 25),
 
         # Floating holidays - will be calculated below
-        "MLK_DAY": None,
-        "PRESIDENTS_DAY": None,
-        "MEMORIAL_DAY": None,
-        "LABOR_DAY": None,
-        "COLUMBUS_DAY": None,
-        "THANKSGIVING": None
+        # "MLK_DAY": None,
+        # "PRESIDENTS_DAY": None,
+        # "MEMORIAL_DAY": None,
+        # "LABOR_DAY": None,
+        # "COLUMBUS_DAY": None,
+        # "THANKSGIVING": None
     }
 
     # Calculate floating holidays
