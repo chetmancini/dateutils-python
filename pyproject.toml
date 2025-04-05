@@ -12,6 +12,8 @@ authors = [
 ]
 license = {text = "MIT"}
 classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -21,6 +23,8 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Utilities",
+    "Topic :: Software Development :: Libraries",
+    "Typing :: Typed",
 ]
 requires-python = ">=3.9"
 dependencies = [
@@ -28,11 +32,14 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/yourusername/dateutils-python"
-"Bug Tracker" = "https://github.com/yourusername/dateutils-python/issues"
+"Homepage" = "https://github.com/chetmancini/dateutils-python"
+"Bug Tracker" = "https://github.com/chetmancini/dateutils-python/issues"
+"Documentation" = "https://github.com/chetmancini/dateutils-python#readme"
+"Source Code" = "https://github.com/chetmancini/dateutils-python"
 
 [tool.setuptools]
 packages = ["dateutils"]
+package-data = {"dateutils" = ["py.typed"]}
 
 [dependency-groups]
 dev = [
@@ -40,18 +47,60 @@ dev = [
     "pytest>=8.3.5",
     "ruff>=0.11.2",
     "pytest-cov>=4.1.0",
+    "mypy>=1.8.0",
+    "types-setuptools>=69.2.0.20240317",
 ]
+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
+addopts = "--cov=dateutils --cov-report=term-missing"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]
 
 [tool.coverage.run]
 source = ["dateutils"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
 
 [tool.ruff]
 target-version = "py39"
+line-length = 120
+
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "S101",
+    "PLR2004",
+]
 
 [tool.black]
 line-length = 120
 target-version = ["py39"]
+include = '\.pyi?$'
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_optional = true

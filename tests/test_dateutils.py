@@ -242,12 +242,8 @@ def test_end_of_month():
     """Test getting the end of a month."""
     from dateutils.dateutils import end_of_month
 
-    assert end_of_month(2024, 2) == datetime.datetime(
-        2024, 2, 29, 23, 59, 59
-    )  # Leap year
-    assert end_of_month(2023, 2) == datetime.datetime(
-        2023, 2, 28, 23, 59, 59
-    )  # Non-leap year
+    assert end_of_month(2024, 2) == datetime.datetime(2024, 2, 29, 23, 59, 59)  # Leap year
+    assert end_of_month(2023, 2) == datetime.datetime(2023, 2, 28, 23, 59, 59)  # Non-leap year
     assert end_of_month(2024, 4) == datetime.datetime(2024, 4, 30, 23, 59, 59)
     assert end_of_month(2024, 12) == datetime.datetime(2024, 12, 31, 23, 59, 59)
 
@@ -404,13 +400,9 @@ def test_httpdate_with_naive_datetime():
 
 def test_httpdate_with_non_utc_timezone():
     """Test httpdate with a non-UTC timezone converted to UTC."""
-    dt_ny = datetime.datetime(
-        2015, 4, 14, 15, 16, 44, tzinfo=ZoneInfo("America/New_York")
-    )
+    dt_ny = datetime.datetime(2015, 4, 14, 15, 16, 44, tzinfo=ZoneInfo("America/New_York"))
     dt_ny.astimezone(datetime.timezone.utc)
-    result = httpdate(
-        dt_ny
-    )  # Function should handle timezone conversion if designed to
+    result = httpdate(dt_ny)  # Function should handle timezone conversion if designed to
     assert result == "Tue, 14 Apr 2015 15:16:44 GMT"  # 15:16:44 EDT = 19:16:44 UTC
 
 
@@ -497,9 +489,7 @@ def test_convert_timezone():
     assert tokyo_dt.date() == utc_dt.date()
 
     # Test with a non-UTC starting timezone
-    ny_dt_orig = datetime.datetime(
-        2024, 3, 27, 8, 0, 0, tzinfo=ZoneInfo("America/New_York")
-    )
+    ny_dt_orig = datetime.datetime(2024, 3, 27, 8, 0, 0, tzinfo=ZoneInfo("America/New_York"))
     tokyo_from_ny = convert_timezone(ny_dt_orig, "Asia/Tokyo")
     assert tokyo_from_ny.hour == 21  # 8 EDT = 21 JST
 
@@ -570,13 +560,9 @@ def test_dst_transitions():
 
     # US DST transition (March 10, 2024, 2am -> 3am)
     # 1:59am (pre-transition)
-    pre_dst = datetime.datetime(
-        2024, 3, 10, 1, 59, 0, tzinfo=ZoneInfo("America/New_York")
-    )
+    pre_dst = datetime.datetime(2024, 3, 10, 1, 59, 0, tzinfo=ZoneInfo("America/New_York"))
     # 3:01am (post-transition)
-    post_dst = datetime.datetime(
-        2024, 3, 10, 3, 1, 0, tzinfo=ZoneInfo("America/New_York")
-    )
+    post_dst = datetime.datetime(2024, 3, 10, 3, 1, 0, tzinfo=ZoneInfo("America/New_York"))
 
     # Convert both to UTC
     from dateutils.dateutils import datetime_to_utc
@@ -596,13 +582,9 @@ def test_dst_transitions():
 
     # Test autumn transition (November 3, 2024, 2am -> 1am)
     # 1:30am (first occurrence, EDT)
-    before_fallback = datetime.datetime(
-        2024, 11, 3, 1, 30, 0, tzinfo=ZoneInfo("America/New_York")
-    )
+    before_fallback = datetime.datetime(2024, 11, 3, 1, 30, 0, tzinfo=ZoneInfo("America/New_York"))
     # 1:30am (second occurrence, after fallback, EST)
-    after_fallback = datetime.datetime(
-        2024, 11, 3, 1, 30, 0, tzinfo=ZoneInfo("America/New_York")
-    )
+    after_fallback = datetime.datetime(2024, 11, 3, 1, 30, 0, tzinfo=ZoneInfo("America/New_York"))
     after_fallback = after_fallback.replace(fold=1)  # Mark as the second occurrence
 
     # Convert both to UTC
@@ -613,9 +595,7 @@ def test_dst_transitions():
     assert (after_utc - before_utc).total_seconds() == 3600
 
     # Test getting current time in a timezone around DST transition
-    with freeze_time(
-        "2024-03-10 06:30:00", tz_offset=0
-    ):  # UTC time during US DST spring forward
+    with freeze_time("2024-03-10 06:30:00", tz_offset=0):  # UTC time during US DST spring forward
         from dateutils.dateutils import now_in_timezone
 
         ny_time = now_in_timezone("America/New_York")
@@ -661,14 +641,10 @@ def test_parse_date():
 def test_parse_datetime():
     """Test parsing datetime strings in various formats."""
     # Test ISO format with space separator
-    assert parse_datetime("2024-03-27 14:30:45") == datetime.datetime(
-        2024, 3, 27, 14, 30, 45
-    )
+    assert parse_datetime("2024-03-27 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)
 
     # Test ISO format with T separator
-    assert parse_datetime("2024-03-27T14:30:45") == datetime.datetime(
-        2024, 3, 27, 14, 30, 45
-    )
+    assert parse_datetime("2024-03-27T14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)
 
     # Test with milliseconds
     expected_with_ms = datetime.datetime(2024, 3, 27, 14, 30, 45, 123456)
@@ -676,40 +652,26 @@ def test_parse_datetime():
 
     # Test with timezone designator Z
     with_z = parse_datetime("2024-03-27T14:30:45Z")
-    assert with_z == datetime.datetime(
-        2024, 3, 27, 14, 30, 45, tzinfo=datetime.timezone.utc
-    )
+    assert with_z == datetime.datetime(2024, 3, 27, 14, 30, 45, tzinfo=datetime.timezone.utc)
 
     # Test with microseconds and Z
     with_ms_z = parse_datetime("2024-03-27T14:30:45.123456Z")
-    assert with_ms_z == datetime.datetime(
-        2024, 3, 27, 14, 30, 45, 123456, tzinfo=datetime.timezone.utc
-    )
+    assert with_ms_z == datetime.datetime(2024, 3, 27, 14, 30, 45, 123456, tzinfo=datetime.timezone.utc)
 
     # Test other date formats with time
-    assert parse_datetime("27/03/2024 14:30:45") == datetime.datetime(
-        2024, 3, 27, 14, 30, 45
-    )  # DD/MM/YYYY
-    assert parse_datetime("03/27/2024 14:30:45") == datetime.datetime(
-        2024, 3, 27, 14, 30, 45
-    )  # MM/DD/YYYY
-    assert parse_datetime("27-03-2024 14:30:45") == datetime.datetime(
-        2024, 3, 27, 14, 30, 45
-    )  # DD-MM-YYYY
-    assert parse_datetime("2024/03/27 14:30:45") == datetime.datetime(
-        2024, 3, 27, 14, 30, 45
-    )  # YYYY/MM/DD
+    assert parse_datetime("27/03/2024 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)  # DD/MM/YYYY
+    assert parse_datetime("03/27/2024 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)  # MM/DD/YYYY
+    assert parse_datetime("27-03-2024 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)  # DD-MM-YYYY
+    assert parse_datetime("2024/03/27 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)  # YYYY/MM/DD
 
     # Test with custom format
-    assert parse_datetime(
-        "2024|03|27|14|30|45", formats=["%Y|%m|%d|%H|%M|%S"]
-    ) == datetime.datetime(2024, 3, 27, 14, 30, 45)
+    assert parse_datetime("2024|03|27|14|30|45", formats=["%Y|%m|%d|%H|%M|%S"]) == datetime.datetime(
+        2024, 3, 27, 14, 30, 45
+    )
 
     # Test invalid datetime
     assert parse_datetime("not a datetime") is None
-    assert (
-        parse_datetime("2024-03-27T25:70:80") is None
-    )  # Invalid hours, minutes, seconds
+    assert parse_datetime("2024-03-27T25:70:80") is None  # Invalid hours, minutes, seconds
 
 
 def test_parse_iso8601():
@@ -718,9 +680,7 @@ def test_parse_iso8601():
     assert parse_iso8601("2024-03-27") == datetime.datetime(2024, 3, 27)
 
     # Test date and time
-    assert parse_iso8601("2024-03-27T14:30:45") == datetime.datetime(
-        2024, 3, 27, 14, 30, 45
-    )
+    assert parse_iso8601("2024-03-27T14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)
 
     # Test with milliseconds
     expected_with_ms = datetime.datetime(2024, 3, 27, 14, 30, 45, 123000)
@@ -728,9 +688,7 @@ def test_parse_iso8601():
 
     # Test with timezone designator Z
     with_z = parse_iso8601("2024-03-27T14:30:45Z")
-    assert with_z == datetime.datetime(
-        2024, 3, 27, 14, 30, 45, tzinfo=datetime.timezone.utc
-    )
+    assert with_z == datetime.datetime(2024, 3, 27, 14, 30, 45, tzinfo=datetime.timezone.utc)
 
     # Test with timezone offset with colon
     with_tz_colon = parse_iso8601("2024-03-27T14:30:45+02:00")
@@ -752,9 +710,7 @@ def test_parse_iso8601():
 
     # Test with negative timezone at half-hour offset
     half_hour_offset = parse_iso8601("2024-03-27T14:30:45-05:30")
-    assert half_hour_offset.tzinfo.utcoffset(None) == datetime.timedelta(
-        hours=-5, minutes=-30
-    )
+    assert half_hour_offset.tzinfo.utcoffset(None) == datetime.timedelta(hours=-5, minutes=-30)
 
     # Test basic format without T separator (should fail)
     assert parse_iso8601("2024-03-27 14:30:45") is None
@@ -784,9 +740,7 @@ def test_format_date():
 
     # Test with datetime input
     test_datetime = datetime.datetime(2024, 3, 27, 14, 30, 45)
-    assert (
-        format_date(test_datetime) == "2024-03-27"
-    )  # Should extract just the date part
+    assert format_date(test_datetime) == "2024-03-27"  # Should extract just the date part
 
 
 def test_format_datetime():
@@ -799,19 +753,11 @@ def test_format_datetime():
     # Test custom formats
     assert format_datetime(test_datetime, "%Y-%m-%dT%H:%M:%S") == "2024-03-27T14:30:45"
     assert format_datetime(test_datetime, "%d/%m/%Y %H:%M") == "27/03/2024 14:30"
-    assert (
-        format_datetime(test_datetime, "%B %d, %Y, %I:%M %p")
-        == "March 27, 2024, 02:30 PM"
-    )
+    assert format_datetime(test_datetime, "%B %d, %Y, %I:%M %p") == "March 27, 2024, 02:30 PM"
 
     # With timezone
-    test_datetime_tz = datetime.datetime(
-        2024, 3, 27, 14, 30, 45, tzinfo=datetime.timezone.utc
-    )
-    assert (
-        format_datetime(test_datetime_tz, "%Y-%m-%d %H:%M:%S %Z")
-        == "2024-03-27 14:30:45 UTC"
-    )
+    test_datetime_tz = datetime.datetime(2024, 3, 27, 14, 30, 45, tzinfo=datetime.timezone.utc)
+    assert format_datetime(test_datetime_tz, "%Y-%m-%d %H:%M:%S %Z") == "2024-03-27 14:30:45 UTC"
 
 
 def test_to_iso8601():
@@ -826,9 +772,7 @@ def test_to_iso8601():
     assert to_iso8601(test_datetime) == "2024-03-27T14:30:45+00:00"
 
     # Test with timezone-aware datetime
-    ny_dt = datetime.datetime(
-        2024, 3, 27, 10, 30, 45, tzinfo=ZoneInfo("America/New_York")
-    )
+    ny_dt = datetime.datetime(2024, 3, 27, 10, 30, 45, tzinfo=ZoneInfo("America/New_York"))
     # Should preserve timezone in output
     iso_ny = to_iso8601(ny_dt)
     assert "2024-03-27T10:30:45" in iso_ny
@@ -890,9 +834,7 @@ def test_workdays_between_with_holidays():
 
     # Test with holiday on the single day
     holiday_day = datetime.date(2024, 3, 29)  # Friday (Good Friday)
-    assert (
-        workdays_between(holiday_day, holiday_day, holidays) == 0
-    )  # Holiday doesn't count
+    assert workdays_between(holiday_day, holiday_day, holidays) == 0  # Holiday doesn't count
 
 
 def test_add_business_days_with_holidays():
@@ -910,9 +852,7 @@ def test_add_business_days_with_holidays():
     assert add_business_days(start, 5) == datetime.date(2024, 4, 1)  # Monday
 
     # With holidays, adding 5 days should be Wednesday (skipping weekend and holidays)
-    assert add_business_days(start, 5, holidays) == datetime.date(
-        2024, 4, 3
-    )  # Wednesday
+    assert add_business_days(start, 5, holidays) == datetime.date(2024, 4, 3)  # Wednesday
 
     # Test adding negative days (going backwards)
     end = datetime.date(2024, 4, 5)  # Friday
@@ -921,26 +861,20 @@ def test_add_business_days_with_holidays():
     assert add_business_days(end, -5) == datetime.date(2024, 3, 29)  # Friday
 
     # With holidays, subtracting 5 days should be Wednesday (skipping holidays)
-    assert add_business_days(end, -5, holidays) == datetime.date(
-        2024, 3, 27
-    )  # Wednesday
+    assert add_business_days(end, -5, holidays) == datetime.date(2024, 3, 27)  # Wednesday
 
     # Test starting on a weekend
     weekend_start = datetime.date(2024, 3, 30)  # Saturday
 
     # Adding business days from weekend should start from next business day
     assert add_business_days(weekend_start, 1) == datetime.date(2024, 4, 1)  # Monday
-    assert add_business_days(weekend_start, 1, holidays) == datetime.date(
-        2024, 4, 2
-    )  # Tuesday (Monday is holiday)
+    assert add_business_days(weekend_start, 1, holidays) == datetime.date(2024, 4, 2)  # Tuesday (Monday is holiday)
 
     # Test adding 0 days (should return same day if business day, or error/next business day if not)
     assert add_business_days(start, 0) == start  # Monday stays Monday
 
     # Edge case: adding a large number of days
-    assert add_business_days(start, 10, holidays) == datetime.date(
-        2024, 4, 10
-    )  # Wednesday, 2 weeks later
+    assert add_business_days(start, 10, holidays) == datetime.date(2024, 4, 10)  # Wednesday, 2 weeks later
 
 
 def test_next_business_day():
@@ -951,9 +885,7 @@ def test_next_business_day():
 
     # From a Friday
     friday = datetime.date(2024, 3, 29)
-    assert next_business_day(friday) == datetime.date(
-        2024, 4, 1
-    )  # Monday (skipping weekend)
+    assert next_business_day(friday) == datetime.date(2024, 4, 1)  # Monday (skipping weekend)
 
     # From a weekend
     saturday = datetime.date(2024, 3, 30)
@@ -961,9 +893,7 @@ def test_next_business_day():
 
     # With holidays
     holidays = [datetime.date(2024, 4, 1)]  # Easter Monday
-    assert next_business_day(friday, holidays) == datetime.date(
-        2024, 4, 2
-    )  # Tuesday (skipping weekend and holiday)
+    assert next_business_day(friday, holidays) == datetime.date(2024, 4, 2)  # Tuesday (skipping weekend and holiday)
     assert next_business_day(saturday, holidays) == datetime.date(2024, 4, 2)  # Tuesday
 
 
@@ -975,9 +905,7 @@ def test_previous_business_day():
 
     # From a Monday
     monday = datetime.date(2024, 4, 1)
-    assert previous_business_day(monday) == datetime.date(
-        2024, 3, 29
-    )  # Friday (skipping weekend)
+    assert previous_business_day(monday) == datetime.date(2024, 3, 29)  # Friday (skipping weekend)
 
     # From a weekend
     sunday = datetime.date(2024, 3, 31)
@@ -988,9 +916,7 @@ def test_previous_business_day():
     assert previous_business_day(monday, holidays) == datetime.date(
         2024, 3, 28
     )  # Thursday (skipping weekend and holiday)
-    assert previous_business_day(sunday, holidays) == datetime.date(
-        2024, 3, 28
-    )  # Thursday
+    assert previous_business_day(sunday, holidays) == datetime.date(2024, 3, 28)  # Thursday
 
 
 ##################
@@ -1017,14 +943,10 @@ def test_date_add_business_days_properties(date_input):
 
     # Property 2: Adding then subtracting the same number of business days returns original date
     for days in [1, 5, 10]:
-        assert (
-            add_business_days(add_business_days(date_input, days), -days) == date_input
-        )
+        assert add_business_days(add_business_days(date_input, days), -days) == date_input
 
     # Property 3: Adding days in sequence is the same as adding the sum
-    assert add_business_days(add_business_days(date_input, 3), 2) == add_business_days(
-        date_input, 5
-    )
+    assert add_business_days(add_business_days(date_input, 3), 2) == add_business_days(date_input, 5)
 
 
 @pytest.mark.parametrize(
@@ -1071,9 +993,7 @@ def test_workdays_between_properties(date1, date2, expected_days):
         if date1 < date2:  # Only assert reversed order is 0 when dates are different
             assert workdays_between(date2, date1) == 0  # If reversed, should be 0
         else:  # Same date case
-            assert (
-                workdays_between(date2, date1) == 1
-            )  # Same date should return 1 workday
+            assert workdays_between(date2, date1) == 1  # Same date should return 1 workday
 
     # Property 2: Consistency with next_business_day
     if date1 < date2 and workdays_between(date1, date2) > 0:

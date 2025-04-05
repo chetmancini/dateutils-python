@@ -163,9 +163,7 @@ def end_of_quarter(year: int, q: int) -> datetime:
     return datetime(year, month, days_in_month, 23, 59, 59)
 
 
-def generate_quarters(
-    until_year: int = 1970, until_q: int = 1
-) -> Generator[Tuple[int, int], None, None]:
+def generate_quarters(until_year: int = 1970, until_q: int = 1) -> Generator[Tuple[int, int], None, None]:
     """
     Generate quarters from the current quarter until a specific year and quarter
     """
@@ -235,9 +233,7 @@ def end_of_month(year: int, month: int) -> datetime:
     return datetime(year, month, days_in_month, 23, 59, 59)
 
 
-def generate_months(
-    until_year: int = 1970, until_m: int = 1
-) -> Generator[Tuple[int, int], None, None]:
+def generate_months(until_year: int = 1970, until_m: int = 1) -> Generator[Tuple[int, int], None, None]:
     """
     Generate months from the current month until a specific year and month
     """
@@ -262,9 +258,7 @@ def get_days_in_month(year: int, month: int) -> int:
 ##################
 # Week operations
 ##################
-def generate_weeks(
-    count: int = 500, until_date: Optional[date] = None
-) -> Generator[Tuple[date, date], None, None]:
+def generate_weeks(count: int = 500, until_date: Optional[date] = None) -> Generator[Tuple[date, date], None, None]:
     """
     Generate weeks from the current week until a specific date
     """
@@ -306,9 +300,7 @@ def is_weekend(dt: date) -> bool:
     return dt.weekday() >= 5  # 5 = Saturday, 6 = Sunday
 
 
-def workdays_between(
-    start_date: date, end_date: date, holidays: Optional[List[date]] = None
-) -> int:
+def workdays_between(start_date: date, end_date: date, holidays: Optional[List[date]] = None) -> int:
     """
     Count workdays (Mon-Fri) between two dates, excluding holidays
 
@@ -328,18 +320,14 @@ def workdays_between(
     current = start_date
 
     while current <= end_date:
-        if (
-            current.weekday() < 5 and current not in holidays_set
-        ):  # Weekday and not a holiday
+        if current.weekday() < 5 and current not in holidays_set:  # Weekday and not a holiday
             count += 1
         current += timedelta(days=1)
 
     return count
 
 
-def add_business_days(
-    dt: date, num_days: int, holidays: Optional[List[date]] = None
-) -> date:
+def add_business_days(dt: date, num_days: int, holidays: Optional[List[date]] = None) -> date:
     """
     Add business days to a date, skipping weekends and holidays
 
@@ -361,9 +349,7 @@ def add_business_days(
 
     while added < abs(num_days):
         current += timedelta(days=days_to_add)
-        if (
-            current.weekday() < 5 and current not in holidays_set
-        ):  # Weekday and not a holiday
+        if current.weekday() < 5 and current not in holidays_set:  # Weekday and not a holiday
             added += 1
 
     return current
@@ -397,9 +383,7 @@ def previous_business_day(dt: date, holidays: Optional[List[date]] = None) -> da
     return add_business_days(dt, -1, holidays)
 
 
-def _ts_difference(
-    timestamp: Optional[Union[int, datetime]] = None, now_override: Optional[int] = None
-) -> timedelta:
+def _ts_difference(timestamp: Optional[Union[int, datetime]] = None, now_override: Optional[int] = None) -> timedelta:
     now = datetime.now() if not now_override else datetime.fromtimestamp(now_override)
     if type(timestamp) is int:
         diff = now - datetime.fromtimestamp(timestamp)
@@ -410,9 +394,7 @@ def _ts_difference(
     return diff
 
 
-def pretty_date(
-    timestamp: Optional[Union[int, datetime]] = None, now_override: Optional[int] = None
-) -> str:  # NOQA
+def pretty_date(timestamp: Optional[Union[int, datetime]] = None, now_override: Optional[int] = None) -> str:  # NOQA
     """
     Adapted from
     http://stackoverflow.com/questions/1551382/
@@ -496,9 +478,7 @@ def parse_date(date_str: str, formats: Optional[List[str]] = None) -> Optional[d
     return None
 
 
-def parse_datetime(
-    datetime_str: str, formats: Optional[List[str]] = None
-) -> Optional[datetime]:
+def parse_datetime(datetime_str: str, formats: Optional[List[str]] = None) -> Optional[datetime]:
     """
     Parse a datetime string using multiple possible formats
 
