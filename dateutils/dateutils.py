@@ -214,6 +214,7 @@ def start_of_quarter(year: int, q: int) -> datetime:
     """
     return datetime(year, (q - 1) * 3 + 1, 1)
 
+
 def end_of_quarter(year: int, q: int) -> datetime:
     """
     Get the end of the quarter
@@ -509,7 +510,6 @@ def get_us_federal_holidays(year: int, holiday_types: Optional[List[str]] = None
         "INDEPENDENCE_DAY": date(year, 7, 4),
         "VETERANS_DAY": date(year, 11, 11),
         "CHRISTMAS": date(year, 12, 25),
-
         # Floating holidays - will be calculated below
         # "MLK_DAY": None,
         # "PRESIDENTS_DAY": None,
