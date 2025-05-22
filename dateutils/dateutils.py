@@ -42,13 +42,11 @@ print(workdays)
 """
 
 import calendar
-import time
 import re
-from datetime import timezone
-from datetime import datetime
-from datetime import date
-from datetime import timedelta
-from typing import Generator, Optional, Union, Tuple, List
+import time
+from collections.abc import Generator
+from datetime import date, datetime, timedelta, timezone
+from typing import Optional, Union
 from zoneinfo import ZoneInfo, available_timezones
 
 ##################
@@ -60,7 +58,9 @@ SECONDS_IN_HOUR = 60 * SECONDS_IN_MINUTE
 SECONDS_IN_DAY = 24 * SECONDS_IN_HOUR
 DAYS_IN_YEAR = 365
 DAYS_IN_MONTH_APPROX = 30
+DAYS_IN_MONTH_MAX = 31
 DAYS_IN_WEEK = 7
+WEEKDAYS_IN_WEEK = 5
 
 
 ##################
@@ -233,7 +233,7 @@ def end_of_quarter(year: int, q: int) -> datetime:
     return datetime(year, month, days_in_month, 23, 59, 59)
 
 
-def generate_quarters(until_year: int = 1970, until_q: int = 1) -> Generator[Tuple[int, int], None, None]:
+def generate_quarters(until_year: int = 1970, until_q: int = 1) -> Generator[tuple[int, int], None, None]:
     """
     Generate quarters from the current quarter until a specific year and quarter
 
@@ -242,7 +242,7 @@ def generate_quarters(until_year: int = 1970, until_q: int = 1) -> Generator[Tup
         until_q: Quarter to generate quarters until (1-4)
 
     Returns:
-        Generator[Tuple[int, int], None, None]: Quarters from current quarter to the specified year and quarter
+        Generator[tuple[int, int], None, None]: Quarters from current quarter to the specified year and quarter
     """
     today = date.today()
     current_quarter = date_to_quarter(today)
@@ -345,12 +345,12 @@ def end_of_month(year: int, month: int) -> datetime:
     return datetime(year, month, days_in_month, 23, 59, 59)
 
 
-def generate_months(until_year: int = 1970, until_m: int = 1) -> Generator[Tuple[int, int], None, None]:
+def generate_months(until_year: int = 1970, until_m: int = 1) -> Generator[tuple[int, int], None, None]:
     """
     Generate months from the current month until a specific year and month
 
     Returns:
-        Generator[Tuple[int, int], None, None]: Months from current month to the specified year and month
+        Generator[tuple[int, int], None, None]: Months from current month to the specified year and month
     """
     today = date.today()
     for year in generate_years(until=until_year):
@@ -380,7 +380,7 @@ def get_days_in_month(year: int, month: int) -> int:
 ##################
 # Week operations
 ##################
-def generate_weeks(count: int = 500, until_date: Optional[date] = None) -> Generator[Tuple[date, date], None, None]:
+def generate_weeks(count: int = 500, until_date: Optional[date] = None) -> Generator[tuple[date, date], None, None]:
     """
     Generate weeks from the current week until a specific date
 
@@ -389,12 +389,12 @@ def generate_weeks(count: int = 500, until_date: Optional[date] = None) -> Gener
         until_date: Date to generate weeks until
 
     Returns:
-        Generator[Tuple[date, date], None, None]: Weeks from current week to the specified date
+        Generator[tuple[date, date], None, None]: Weeks from current week to the specified date
     """
     this_dow = date.today().weekday()
     monday = date.today() - timedelta(days=this_dow)
     end = monday
-    for i in range(count):
+    for _i in range(count):
         start = end - timedelta(days=7)
         ret = (start, end)
         end = start
@@ -448,10 +448,10 @@ def is_weekend(dt: date) -> bool:
         >>> is_weekend(date(2024, 7, 22)) # Monday
         False
     """
-    return dt.weekday() >= 5  # 5 = Saturday, 6 = Sunday
+    return dt.weekday() >= calendar.SATURDAY  # 5 = Saturday, 6 = Sunday
 
 
-def get_us_federal_holidays(year: int, holiday_types: Optional[List[str]] = None) -> List[date]:
+def get_us_federal_holidays(year: int, holiday_types: Optional[list[str]] = None) -> list[date]:
     """
     Get a list of US federal holidays for a given year.
 
@@ -503,7 +503,7 @@ def get_us_federal_holidays(year: int, holiday_types: Optional[List[str]] = None
         False
     """
     # Define all possible holiday types
-    ALL_HOLIDAY_TYPES: dict[str, date] = {
+    all_holiday_types: dict[str, date] = {
         # Fixed holidays
         "NEW_YEARS_DAY": date(year, 1, 1),
         "JUNETEENTH": date(year, 6, 19),
@@ -526,55 +526,55 @@ def get_us_federal_holidays(year: int, holiday_types: Optional[List[str]] = None
     while mlk_day.weekday() != 0:  # 0 = Monday
         mlk_day += timedelta(days=1)
     mlk_day += timedelta(days=14)  # Move to 3rd Monday
-    ALL_HOLIDAY_TYPES["MLK_DAY"] = mlk_day
+    all_holiday_types["MLK_DAY"] = mlk_day
 
     # Find the 3rd Monday in February (Presidents Day)
     presidents_day = date(year, 2, 1)
     while presidents_day.weekday() != 0:  # 0 = Monday
         presidents_day += timedelta(days=1)
     presidents_day += timedelta(days=14)  # Move to 3rd Monday
-    ALL_HOLIDAY_TYPES["PRESIDENTS_DAY"] = presidents_day
+    all_holiday_types["PRESIDENTS_DAY"] = presidents_day
 
     # Find the last Monday in May (Memorial Day)
     memorial_day = date(year, 5, 31)
     while memorial_day.weekday() != 0:  # 0 = Monday
         memorial_day -= timedelta(days=1)
-    ALL_HOLIDAY_TYPES["MEMORIAL_DAY"] = memorial_day
+    all_holiday_types["MEMORIAL_DAY"] = memorial_day
 
     # Find the 1st Monday in September (Labor Day)
     labor_day = date(year, 9, 1)
     while labor_day.weekday() != 0:  # 0 = Monday
         labor_day += timedelta(days=1)
-    ALL_HOLIDAY_TYPES["LABOR_DAY"] = labor_day
+    all_holiday_types["LABOR_DAY"] = labor_day
 
     # Find the 2nd Monday in October (Columbus Day)
     columbus_day = date(year, 10, 1)
     while columbus_day.weekday() != 0:  # 0 = Monday
         columbus_day += timedelta(days=1)
     columbus_day += timedelta(days=7)  # Move to 2nd Monday
-    ALL_HOLIDAY_TYPES["COLUMBUS_DAY"] = columbus_day
+    all_holiday_types["COLUMBUS_DAY"] = columbus_day
 
     # Find the 4th Thursday in November (Thanksgiving Day)
     thanksgiving = date(year, 11, 1)
-    while thanksgiving.weekday() != 3:  # 3 = Thursday
+    while thanksgiving.weekday() != calendar.THURSDAY:  # 3 = Thursday
         thanksgiving += timedelta(days=1)
     thanksgiving += timedelta(days=21)  # Move to 4th Thursday
-    ALL_HOLIDAY_TYPES["THANKSGIVING"] = thanksgiving
+    all_holiday_types["THANKSGIVING"] = thanksgiving
 
     # If holiday_types is None, return all holidays
     if holiday_types is None:
-        return list(ALL_HOLIDAY_TYPES.values())
+        return list(all_holiday_types.values())
 
     # Otherwise, return only the specified holiday types
     result = []
     for holiday_type in holiday_types:
-        if holiday_type in ALL_HOLIDAY_TYPES:
-            result.append(ALL_HOLIDAY_TYPES[holiday_type])
+        if holiday_type in all_holiday_types:
+            result.append(all_holiday_types[holiday_type])
 
     return result
 
 
-def workdays_between(start_date: date, end_date: date, holidays: Optional[List[date]] = None) -> int:
+def workdays_between(start_date: date, end_date: date, holidays: Optional[list[date]] = None) -> int:
     """
     Count workdays (Monday-Friday) between two dates, inclusive.
 
@@ -614,14 +614,14 @@ def workdays_between(start_date: date, end_date: date, holidays: Optional[List[d
     current = start_date
 
     while current <= end_date:
-        if current.weekday() < 5 and current not in holidays_set:  # Weekday and not a holiday
+        if current.weekday() < calendar.SATURDAY and current not in holidays_set:  # Weekday and not a holiday
             count += 1
         current += timedelta(days=1)
 
     return count
 
 
-def add_business_days(dt: date, num_days: int, holidays: Optional[List[date]] = None) -> date:
+def add_business_days(dt: date, num_days: int, holidays: Optional[list[date]] = None) -> date:
     """
     Add business days to a date, skipping weekends and holidays.
 
@@ -666,13 +666,13 @@ def add_business_days(dt: date, num_days: int, holidays: Optional[List[date]] = 
 
     while added < abs(num_days):
         current += timedelta(days=days_to_add)
-        if current.weekday() < 5 and current not in holidays_set:  # Weekday and not a holiday
+        if current.weekday() < calendar.SATURDAY and current not in holidays_set:  # Weekday and not a holiday
             added += 1
 
     return current
 
 
-def next_business_day(dt: date, holidays: Optional[List[date]] = None) -> date:
+def next_business_day(dt: date, holidays: Optional[list[date]] = None) -> date:
     """
     Find the next business day from a given date, skipping weekends and holidays.
 
@@ -701,7 +701,7 @@ def next_business_day(dt: date, holidays: Optional[List[date]] = None) -> date:
     return add_business_days(dt, 1, holidays)
 
 
-def previous_business_day(dt: date, holidays: Optional[List[date]] = None) -> date:
+def previous_business_day(dt: date, holidays: Optional[list[date]] = None) -> date:
     """
     Find the previous business day from a given date, skipping weekends and holidays.
 
@@ -770,7 +770,7 @@ def pretty_date(timestamp: Optional[Union[int, datetime]] = None, now_override: 
         return "Yesterday"
     elif day_diff < DAYS_IN_WEEK:
         return str(int(day_diff)) + " days ago"
-    elif day_diff < 31:
+    elif day_diff < DAYS_IN_MONTH_MAX:
         return str(int(day_diff / DAYS_IN_WEEK)) + " weeks ago"
     elif day_diff < DAYS_IN_YEAR:
         return str(int(day_diff / DAYS_IN_MONTH_APPROX)) + " months ago"
@@ -790,7 +790,7 @@ def httpdate(date_time: datetime) -> str:
 ##################
 # Parsing and formatting
 ##################
-def parse_date(date_str: str, formats: Optional[List[str]] = None) -> Optional[date]:
+def parse_date(date_str: str, formats: Optional[list[str]] = None) -> Optional[date]:
     """
     Parse a date string using multiple possible formats.
 
@@ -852,7 +852,7 @@ def parse_date(date_str: str, formats: Optional[List[str]] = None) -> Optional[d
     return None
 
 
-def parse_datetime(datetime_str: str, formats: Optional[List[str]] = None) -> Optional[datetime]:
+def parse_datetime(datetime_str: str, formats: Optional[list[str]] = None) -> Optional[datetime]:
     """
     Parse a datetime string using multiple possible formats
 
@@ -1003,7 +1003,7 @@ def to_iso8601(dt: Union[date, datetime]) -> str:
 ##################
 # Timezone operations
 ##################
-def get_available_timezones() -> List[str]:
+def get_available_timezones() -> list[str]:
     """
     Get a list of available timezone names
 

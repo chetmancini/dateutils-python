@@ -25,6 +25,9 @@ coverage: ## Run tests with coverage report
 lint: ## Run linting checks
 	@uv run ruff check .
 
+lint-fix: ## Run linting checks and fix errors
+	@uv run ruff check --fix .
+
 format: ## Format code using ruff
 	@uv run ruff format .
 

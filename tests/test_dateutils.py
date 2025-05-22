@@ -1,44 +1,43 @@
-from zoneinfo import ZoneInfo
+import datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pytest
 from freezegun import freeze_time
-import datetime
-from zoneinfo import ZoneInfoNotFoundError
 
 from dateutils.dateutils import (
+    add_business_days,
+    convert_timezone,
     date_to_quarter,
-    generate_weeks,
-    generate_months,
     date_to_start_of_quarter,
-    generate_quarters,
-    generate_years,
-    start_of_year,
-    end_of_year,
-    epoch_s,
     datetime_end_of_day,
     datetime_start_of_day,
-    httpdate,
-    start_of_quarter,
-    is_leap_year,
-    get_available_timezones,
-    now_in_timezone,
-    today_in_timezone,
-    convert_timezone,
     datetime_to_utc,
-    get_timezone_offset,
+    end_of_year,
+    epoch_s,
+    format_date,
+    format_datetime,
     format_timezone_offset,
+    generate_months,
+    generate_quarters,
+    generate_weeks,
+    generate_years,
+    get_available_timezones,
+    get_timezone_offset,
+    get_us_federal_holidays,
+    httpdate,
+    is_leap_year,
+    is_weekend,
+    next_business_day,
+    now_in_timezone,
     parse_date,
     parse_datetime,
     parse_iso8601,
-    format_date,
-    format_datetime,
-    to_iso8601,
-    is_weekend,
-    workdays_between,
-    add_business_days,
-    next_business_day,
     previous_business_day,
-    get_us_federal_holidays,
+    start_of_quarter,
+    start_of_year,
+    to_iso8601,
+    today_in_timezone,
+    workdays_between,
 )
 
 
@@ -1064,7 +1063,7 @@ def test_date_add_business_days_properties(date_input: datetime.date) -> None:
 )
 def test_is_leap_year_properties(year: int, expected: bool) -> None:
     """Test mathematical properties of leap year calculations."""
-    from dateutils.dateutils import is_leap_year, get_days_in_month
+    from dateutils.dateutils import get_days_in_month, is_leap_year
 
     assert is_leap_year(year) == expected
 
