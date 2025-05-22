@@ -131,7 +131,6 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_optional = true
-plugins = ["pydantic.mypy"]
 exclude = [
     '\.git',
     '\.hg',
