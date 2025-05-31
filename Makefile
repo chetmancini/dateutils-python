@@ -135,9 +135,9 @@ build-check: build ## Build and check the package
 # Versioning and Release
 version-patch: ## Bump patch version (e.g., 1.0.0 → 1.0.1)
 	@echo "${BLUE}Bumping patch version...${NC}"
-	@OLD_VERSION=$$(grep 'current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	@OLD_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
 	uv run bump2version patch; \
-	NEW_VERSION=$$(grep 'current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
 	git add .; \
 	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"
@@ -145,9 +145,9 @@ version-patch: ## Bump patch version (e.g., 1.0.0 → 1.0.1)
 
 version-minor: ## Bump minor version (e.g., 1.0.0 → 1.1.0)
 	@echo "${BLUE}Bumping minor version...${NC}"
-	@OLD_VERSION=$$(grep 'current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	@OLD_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
 	uv run bump2version minor; \
-	NEW_VERSION=$$(grep 'current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
 	git add .; \
 	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"
@@ -155,9 +155,9 @@ version-minor: ## Bump minor version (e.g., 1.0.0 → 1.1.0)
 
 version-major: ## Bump major version (e.g., 1.0.0 → 2.0.0)
 	@echo "${BLUE}Bumping major version...${NC}"
-	@OLD_VERSION=$$(grep 'current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	@OLD_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
 	uv run bump2version major; \
-	NEW_VERSION=$$(grep 'current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
 	git add .; \
 	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"
