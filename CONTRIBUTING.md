@@ -94,6 +94,51 @@ This project uses automated tooling with pre-commit hooks:
 
 Pre-commit hooks automatically run these checks on every commit. The `make fix` command automatically resolves most style issues. Ensure `make check` passes before submitting your PR.
 
+## Release Process
+
+**Note:** This section is for maintainers who have push access to the repository.
+
+We use automated semantic versioning and GitHub Actions for releases. The process is streamlined with Make targets:
+
+### Quick Release Commands
+
+```bash
+# For bug fixes and patches
+make release-patch  # 0.1.0 → 0.1.1
+
+# For new features (backward compatible)
+make release-minor  # 0.1.0 → 0.2.0
+
+# For breaking changes
+make release-major  # 0.1.0 → 1.0.0
+```
+
+### What Happens During Release
+
+1. **Quality checks** - Runs full test suite and builds package
+2. **Version bump** - Updates version in `pyproject.toml` and `dateutils/__init__.py`
+3. **Git operations** - Creates commit, tags with version, and pushes
+4. **GitHub Actions** - Automatically builds, tests, and publishes to PyPI
+5. **GitHub Release** - Creates release with auto-generated notes
+
+### Manual Steps (if needed)
+
+```bash
+# Check if ready for release
+make release-check
+
+# Bump version only (without pushing)
+make version-patch   # or version-minor, version-major
+
+# Test publish to TestPyPI first
+make publish-test
+
+# Manual publish to PyPI (if needed)
+make publish
+```
+
+The automated workflow handles everything from testing to PyPI publication when you push a version tag.
+
 ## Getting Help
 
 If you need help:

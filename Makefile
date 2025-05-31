@@ -132,16 +132,60 @@ build-check: build ## Build and check the package
 	@uv run python -m twine check dist/*
 	@echo "${GREEN}✓ Package check completed${NC}"
 
+# Versioning and Release
+version-patch: ## Bump patch version (e.g., 1.0.0 → 1.0.1)
+	@echo "${BLUE}Bumping patch version...${NC}"
+	@uv run bump2version patch
+	@echo "${GREEN}✓ Patch version bumped${NC}"
+
+version-minor: ## Bump minor version (e.g., 1.0.0 → 1.1.0)
+	@echo "${BLUE}Bumping minor version...${NC}"
+	@uv run bump2version minor
+	@echo "${GREEN}✓ Minor version bumped${NC}"
+
+version-major: ## Bump major version (e.g., 1.0.0 → 2.0.0)
+	@echo "${BLUE}Bumping major version...${NC}"
+	@uv run bump2version major
+	@echo "${GREEN}✓ Major version bumped${NC}"
+
+release-check: ## Check if ready for release (run all quality checks)
+	@echo "${BLUE}Checking release readiness...${NC}"
+	@$(MAKE) --no-print-directory clean
+	@$(MAKE) --no-print-directory check
+	@$(MAKE) --no-print-directory build-check
+	@echo "${GREEN}✓ Ready for release${NC}"
+
+release-patch: ## Create patch release (bump version, tag, and push)
+	@echo "${BLUE}Creating patch release...${NC}"
+	@$(MAKE) --no-print-directory release-check
+	@$(MAKE) --no-print-directory version-patch
+	@git push origin HEAD --follow-tags
+	@echo "${GREEN}✓ Patch release created and pushed${NC}"
+
+release-minor: ## Create minor release (bump version, tag, and push)
+	@echo "${BLUE}Creating minor release...${NC}"
+	@$(MAKE) --no-print-directory release-check
+	@$(MAKE) --no-print-directory version-minor
+	@git push origin HEAD --follow-tags
+	@echo "${GREEN}✓ Minor release created and pushed${NC}"
+
+release-major: ## Create major release (bump version, tag, and push)
+	@echo "${BLUE}Creating major release...${NC}"
+	@$(MAKE) --no-print-directory release-check
+	@$(MAKE) --no-print-directory version-major
+	@git push origin HEAD --follow-tags
+	@echo "${GREEN}✓ Major release created and pushed${NC}"
+
 publish-test: build-check ## Publish to TestPyPI
 	@echo "${BLUE}Publishing to TestPyPI...${NC}"
-	@uv run python -m twine upload --repository testpypi dist/*
+	@uv publish --repository testpypi dist/*
 
 publish: build-check ## Publish to PyPI (production)
 	@echo "${RED}Publishing to PyPI (production)...${NC}"
 	@read -p "Are you sure you want to publish to PyPI? [y/N] " -n 1 -r; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		uv run python -m twine upload dist/*; \
+		uv publish dist/*; \
 		echo "${GREEN}✓ Published to PyPI${NC}"; \
 	else \
 		echo "${YELLOW}Publication cancelled${NC}"; \
@@ -174,4 +218,4 @@ version: ## Show current version information
 	@echo "UV version: $(UV_VERSION)"
 
 # Safety check for dangerous operations
-.PHONY: init deps install pre-commit pre-commit-run lint lint-fix format format-check typecheck test test-fast coverage coverage-html watch-test check dev fix build build-check publish-test publish clean requirements version help
+.PHONY: init deps install pre-commit pre-commit-run lint lint-fix format format-check typecheck test test-fast coverage coverage-html watch-test check dev fix build build-check version-patch version-minor version-major release-check release-patch release-minor release-major publish-test publish clean requirements version help
