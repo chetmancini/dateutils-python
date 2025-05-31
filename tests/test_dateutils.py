@@ -6,12 +6,19 @@ from freezegun import freeze_time
 
 from dateutils.dateutils import (
     add_business_days,
+    age_in_years,
     convert_timezone,
+    date_range,
+    date_range_generator,
     date_to_quarter,
     date_to_start_of_quarter,
     datetime_end_of_day,
     datetime_start_of_day,
     datetime_to_utc,
+    days_since_weekend,
+    days_until_weekend,
+    end_of_month,
+    end_of_quarter,
     end_of_year,
     epoch_s,
     format_date,
@@ -22,9 +29,14 @@ from dateutils.dateutils import (
     generate_weeks,
     generate_years,
     get_available_timezones,
+    get_days_in_month,
+    get_quarter_start_end,
     get_timezone_offset,
     get_us_federal_holidays,
+    get_us_federal_holidays_list,
+    get_week_number,
     httpdate,
+    is_business_day,
     is_leap_year,
     is_weekend,
     next_business_day,
@@ -33,10 +45,14 @@ from dateutils.dateutils import (
     parse_datetime,
     parse_iso8601,
     previous_business_day,
+    start_of_month,
     start_of_quarter,
     start_of_year,
+    time_until_next_occurrence,
     to_iso8601,
     today_in_timezone,
+    utc_from_timestamp,
+    utc_truncate_epoch_day,
     workdays_between,
 )
 
@@ -309,32 +325,11 @@ def test_workdays_between() -> None:
     holiday = datetime.date(2024, 3, 25)  # Monday
     assert workdays_between(holiday, holiday, [holiday]) == 0
 
-    # End date before start date (should return 0)
+    # End date before start date (should raise ValueError now)
     start = datetime.date(2024, 3, 4)  # Monday
     end = datetime.date(2024, 3, 1)  # Friday of previous week
-    assert workdays_between(start, end) == 0
-
-    # Multiple consecutive holidays
-    start = datetime.date(2024, 3, 25)  # Monday
-    end = datetime.date(2024, 3, 29)  # Friday
-    holidays = [
-        datetime.date(2024, 3, 25),  # Monday
-        datetime.date(2024, 3, 26),  # Tuesday
-        datetime.date(2024, 3, 27),  # Wednesday
-    ]
-    assert workdays_between(start, end, holidays) == 2  # Only Thu and Fri count
-
-    # All days are holidays or weekends
-    start = datetime.date(2024, 3, 25)  # Monday
-    end = datetime.date(2024, 3, 29)  # Friday
-    holidays = [
-        datetime.date(2024, 3, 25),  # Monday
-        datetime.date(2024, 3, 26),  # Tuesday
-        datetime.date(2024, 3, 27),  # Wednesday
-        datetime.date(2024, 3, 28),  # Thursday
-        datetime.date(2024, 3, 29),  # Friday
-    ]
-    assert workdays_between(start, end, holidays) == 0
+    with pytest.raises(ValueError):
+        workdays_between(start, end)
 
 
 def test_add_business_days() -> None:
@@ -497,8 +492,8 @@ def test_convert_timezone() -> None:
     with pytest.raises(ValueError):
         convert_timezone(datetime.datetime(2024, 3, 27, 12, 0, 0), "America/New_York")
 
-    # Test error case with invalid timezone name
-    with pytest.raises(ZoneInfoNotFoundError):
+    # Test error case with invalid timezone name (now raises ValueError instead of ZoneInfoNotFoundError)
+    with pytest.raises(ValueError, match="Invalid timezone name"):
         convert_timezone(utc_dt, "Invalid/Timezone")
 
     # Test with empty timezone name
@@ -967,7 +962,7 @@ def test_get_us_federal_holidays_all_2025() -> None:
 
 def test_get_us_federal_holidays_filter_fixed() -> None:
     """Test filtering for only fixed holidays."""
-    fixed_types = ["NEW_YEARS_DAY", "JUNETEENTH", "INDEPENDENCE_DAY", "VETERANS_DAY", "CHRISTMAS"]
+    fixed_types = ("NEW_YEARS_DAY", "JUNETEENTH", "INDEPENDENCE_DAY", "VETERANS_DAY", "CHRISTMAS")
     holidays = get_us_federal_holidays(2024, holiday_types=fixed_types)
     assert len(holidays) == 5
     assert datetime.date(2024, 1, 1) in holidays
@@ -982,7 +977,7 @@ def test_get_us_federal_holidays_filter_fixed() -> None:
 
 def test_get_us_federal_holidays_filter_floating() -> None:
     """Test filtering for only floating holidays."""
-    floating_types = ["MLK_DAY", "PRESIDENTS_DAY", "MEMORIAL_DAY", "LABOR_DAY", "COLUMBUS_DAY", "THANKSGIVING"]
+    floating_types = ("MLK_DAY", "PRESIDENTS_DAY", "MEMORIAL_DAY", "LABOR_DAY", "COLUMBUS_DAY", "THANKSGIVING")
     holidays = get_us_federal_holidays(2024, holiday_types=floating_types)
     assert len(holidays) == 6
     assert datetime.date(2024, 1, 15) in holidays
@@ -998,7 +993,7 @@ def test_get_us_federal_holidays_filter_floating() -> None:
 
 def test_get_us_federal_holidays_filter_subset() -> None:
     """Test filtering for a specific subset of holidays."""
-    subset_types = ["THANKSGIVING", "CHRISTMAS", "NEW_YEARS_DAY"]
+    subset_types = ("THANKSGIVING", "CHRISTMAS", "NEW_YEARS_DAY")
     holidays = get_us_federal_holidays(2024, holiday_types=subset_types)
     assert len(holidays) == 3
     assert datetime.date(2024, 11, 28) in holidays  # Thanksgiving
@@ -1009,14 +1004,14 @@ def test_get_us_federal_holidays_filter_subset() -> None:
 
 
 def test_get_us_federal_holidays_filter_empty() -> None:
-    """Test filtering with an empty list."""
-    holidays = get_us_federal_holidays(2024, holiday_types=[])
+    """Test filtering with an empty tuple."""
+    holidays = get_us_federal_holidays(2024, holiday_types=())
     assert len(holidays) == 0
 
 
 def test_get_us_federal_holidays_filter_invalid_type() -> None:
     """Test filtering with an invalid holiday type (should be ignored)."""
-    holidays = get_us_federal_holidays(2024, holiday_types=["INVALID_HOLIDAY", "CHRISTMAS"])
+    holidays = get_us_federal_holidays(2024, holiday_types=("INVALID_HOLIDAY", "CHRISTMAS"))
     assert len(holidays) == 1
     assert datetime.date(2024, 12, 25) in holidays
 
@@ -1089,18 +1084,374 @@ def test_workdays_between_properties(date1: datetime.date, date2: datetime.date,
     """Test mathematical properties of counting business days."""
     from dateutils.dateutils import workdays_between
 
-    # Property 1: Order of dates shouldn't matter (if both positive)
+    # Property 1: Valid date order should work
     if date1 <= date2:
         assert workdays_between(date1, date2) == expected_days
-        if date1 < date2:  # Only assert reversed order is 0 when dates are different
-            assert workdays_between(date2, date1) == 0  # If reversed, should be 0
-        else:  # Same date case
-            assert workdays_between(date2, date1) == 1  # Same date should return 1 workday
 
-    # Property 2: Consistency with next_business_day
+        # Property 2: Reversed order should raise ValueError (with new validation)
+        if date1 < date2:
+            with pytest.raises(ValueError):
+                workdays_between(date2, date1)
+
+    # Property 3: Consistency with next_business_day
     if date1 < date2 and workdays_between(date1, date2) > 0:
         from dateutils.dateutils import next_business_day
 
         # The next business day from date1 should be included in the count
         next_day = next_business_day(date1)
         assert workdays_between(next_day, date2) == expected_days - 1
+
+
+##################
+# Validation and Error Handling Tests
+##################
+
+
+def test_start_of_quarter_validation() -> None:
+    """Test that start_of_quarter validates quarter input."""
+    # Valid quarters should work
+    assert start_of_quarter(2024, 1) == datetime.datetime(2024, 1, 1)
+    assert start_of_quarter(2024, 4) == datetime.datetime(2024, 10, 1)
+
+    # Invalid quarters should raise ValueError
+    with pytest.raises(ValueError, match="Quarter must be between 1 and 4, got 0"):
+        start_of_quarter(2024, 0)
+
+    with pytest.raises(ValueError, match="Quarter must be between 1 and 4, got 5"):
+        start_of_quarter(2024, 5)
+
+    with pytest.raises(ValueError, match="Quarter must be between 1 and 4, got -1"):
+        start_of_quarter(2024, -1)
+
+
+def test_end_of_quarter_validation() -> None:
+    """Test that end_of_quarter validates quarter input."""
+    # Valid quarters should work
+    assert end_of_quarter(2024, 1) == datetime.datetime(2024, 3, 31, 23, 59, 59)
+    assert end_of_quarter(2024, 4) == datetime.datetime(2024, 12, 31, 23, 59, 59)
+
+    # Invalid quarters should raise ValueError
+    with pytest.raises(ValueError, match="Quarter must be between 1 and 4, got 0"):
+        end_of_quarter(2024, 0)
+
+    with pytest.raises(ValueError, match="Quarter must be between 1 and 4, got 6"):
+        end_of_quarter(2024, 6)
+
+
+def test_workdays_between_validation() -> None:
+    """Test that workdays_between validates date ordering."""
+    start = datetime.date(2024, 1, 1)
+    end = datetime.date(2024, 1, 10)
+
+    # Valid order should work
+    assert workdays_between(start, end) >= 0
+
+    # Invalid order should raise ValueError
+    with pytest.raises(ValueError, match="start_date .* must be <= end_date"):
+        workdays_between(end, start)
+
+
+def test_add_business_days_validation() -> None:
+    """Test that add_business_days validates num_days range."""
+    start_date = datetime.date(2024, 1, 1)
+
+    # Valid ranges should work
+    assert add_business_days(start_date, 100) is not None
+    assert add_business_days(start_date, -100) is not None
+
+    # Invalid ranges should raise ValueError
+    with pytest.raises(ValueError, match="num_days must be between -10000 and 10000, got 10001"):
+        add_business_days(start_date, 10001)
+
+    with pytest.raises(ValueError, match="num_days must be between -10000 and 10000, got -10001"):
+        add_business_days(start_date, -10001)
+
+
+def test_month_function_validation() -> None:
+    """Test that month functions validate year and month inputs."""
+    # Valid inputs should work
+    assert start_of_month(2024, 6) == datetime.datetime(2024, 6, 1)
+    assert end_of_month(2024, 6) == datetime.datetime(2024, 6, 30, 23, 59, 59)
+    assert get_days_in_month(2024, 6) == 30
+
+    # Invalid month should raise ValueError
+    with pytest.raises(ValueError, match="Month must be between 1 and 12, got 0"):
+        start_of_month(2024, 0)
+
+    with pytest.raises(ValueError, match="Month must be between 1 and 12, got 13"):
+        end_of_month(2024, 13)
+
+    with pytest.raises(ValueError, match="Month must be between 1 and 12, got -1"):
+        get_days_in_month(2024, -1)
+
+    # Invalid year should raise ValueError
+    with pytest.raises(ValueError, match="Year must be a positive integer, got 0"):
+        start_of_month(0, 6)
+
+    with pytest.raises(ValueError, match="Year must be a positive integer, got -1"):
+        end_of_month(-1, 6)
+
+
+def test_generate_months_validation() -> None:
+    """Test that generate_months validates until_m parameter."""
+    # Valid month should work
+    list(generate_months(until_year=2023, until_m=6))  # Should not raise
+
+    # Invalid month should raise ValueError
+    with pytest.raises(ValueError, match="until_m must be between 1 and 12, got 0"):
+        list(generate_months(until_year=2023, until_m=0))
+
+    with pytest.raises(ValueError, match="until_m must be between 1 and 12, got 13"):
+        list(generate_months(until_year=2023, until_m=13))
+
+
+def test_timezone_error_handling() -> None:
+    """Test that timezone functions handle invalid timezone names."""
+    # Valid timezone should work
+    assert now_in_timezone("UTC") is not None
+    assert today_in_timezone("America/New_York") is not None
+
+    # Invalid timezone should raise ValueError with helpful message
+    with pytest.raises(ValueError, match="Invalid timezone name 'Invalid/Timezone'"):
+        now_in_timezone("Invalid/Timezone")
+
+    with pytest.raises(ValueError, match="Invalid timezone name 'Bad_Zone'"):
+        today_in_timezone("Bad_Zone")
+
+    with pytest.raises(ValueError, match="Invalid timezone name 'Invalid/Zone'"):
+        get_timezone_offset("Invalid/Zone")
+
+    with pytest.raises(ValueError, match="Invalid timezone name 'Bad_TZ'"):
+        format_timezone_offset("Bad_TZ")
+
+
+def test_convert_timezone_validation() -> None:
+    """Test that convert_timezone validates inputs properly."""
+    utc_dt = datetime.datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
+
+    # Valid conversion should work
+    result = convert_timezone(utc_dt, "America/New_York")
+    assert result.tzinfo is not None
+
+    # Naive datetime should raise ValueError
+    naive_dt = datetime.datetime(2024, 1, 1, 12, 0, 0)
+    with pytest.raises(ValueError, match="Input datetime must include timezone information"):
+        convert_timezone(naive_dt, "America/New_York")
+
+    # Invalid timezone should raise ValueError
+    with pytest.raises(ValueError, match="Invalid timezone name 'Invalid/Zone'"):
+        convert_timezone(utc_dt, "Invalid/Zone")
+
+
+def test_utc_functions_error_handling() -> None:
+    """Test that UTC functions handle invalid timestamps."""
+    # Valid timestamp should work
+    valid_ts = 1640995200  # 2022-01-01 00:00:00 UTC
+    assert utc_from_timestamp(valid_ts) is not None
+    assert utc_truncate_epoch_day(valid_ts) is not None
+
+    # Invalid timestamp should raise ValueError
+    # Use a timestamp that's definitely out of range for most systems
+    invalid_ts = 2**63  # Very large timestamp that will cause overflow
+    with pytest.raises(ValueError, match=f"Invalid timestamp: {invalid_ts}"):
+        utc_from_timestamp(invalid_ts)
+
+    with pytest.raises(ValueError, match=f"Invalid timestamp: {invalid_ts}"):
+        utc_truncate_epoch_day(invalid_ts)
+
+
+def test_date_range_validation() -> None:
+    """Test that date_range validates inputs and size limits."""
+    start = datetime.date(2024, 1, 1)
+    end = datetime.date(2024, 1, 10)
+
+    # Valid range should work
+    dates = date_range(start, end)
+    assert len(dates) == 10
+    assert dates[0] == start
+    assert dates[-1] == end
+
+    # Invalid order should raise ValueError
+    with pytest.raises(ValueError, match="start_date .* must be <= end_date"):
+        date_range(end, start)
+
+    # Large range should raise ValueError
+    large_end = start + datetime.timedelta(days=4000)
+    with pytest.raises(ValueError, match="Date range too large .* Consider using a generator"):
+        date_range(start, large_end)
+
+
+##################
+# New Utility Function Tests
+##################
+
+
+def test_is_business_day() -> None:
+    """Test the is_business_day function."""
+    # Monday is a business day
+    monday = datetime.date(2024, 7, 22)
+    assert is_business_day(monday) is True
+
+    # Friday is a business day
+    friday = datetime.date(2024, 7, 26)
+    assert is_business_day(friday) is True
+
+    # Saturday is not a business day
+    saturday = datetime.date(2024, 7, 27)
+    assert is_business_day(saturday) is False
+
+    # Sunday is not a business day
+    sunday = datetime.date(2024, 7, 28)
+    assert is_business_day(sunday) is False
+
+    # Business day with holiday
+    july_4th = datetime.date(2024, 7, 4)  # Thursday
+    assert is_business_day(july_4th) is True  # Without holidays
+    assert is_business_day(july_4th, holidays=[july_4th]) is False  # With holiday
+
+
+def test_days_until_weekend() -> None:
+    """Test the days_until_weekend function."""
+    # Monday (0) -> 5 days until Saturday
+    monday = datetime.date(2024, 7, 22)
+    assert days_until_weekend(monday) == 5
+
+    # Friday (4) -> 1 day until Saturday
+    friday = datetime.date(2024, 7, 26)
+    assert days_until_weekend(friday) == 1
+
+    # Saturday (5) -> 0 days (already weekend)
+    saturday = datetime.date(2024, 7, 27)
+    assert days_until_weekend(saturday) == 0
+
+    # Sunday (6) -> 0 days (already weekend)
+    sunday = datetime.date(2024, 7, 28)
+    assert days_until_weekend(sunday) == 0
+
+
+def test_days_since_weekend() -> None:
+    """Test the days_since_weekend function."""
+    # Monday (0) -> 1 day since Sunday
+    monday = datetime.date(2024, 7, 22)
+    assert days_since_weekend(monday) == 1
+
+    # Friday (4) -> 5 days since Sunday
+    friday = datetime.date(2024, 7, 26)
+    assert days_since_weekend(friday) == 5
+
+    # Saturday (5) -> 0 days (currently weekend)
+    saturday = datetime.date(2024, 7, 27)
+    assert days_since_weekend(saturday) == 0
+
+    # Sunday (6) -> 0 days (currently weekend)
+    sunday = datetime.date(2024, 7, 28)
+    assert days_since_weekend(sunday) == 0
+
+
+def test_get_week_number() -> None:
+    """Test the get_week_number function."""
+    # January 1, 2024 is in week 1
+    jan_1 = datetime.date(2024, 1, 1)
+    assert get_week_number(jan_1) == 1
+
+    # July 22, 2024 is in week 30
+    july_22 = datetime.date(2024, 7, 22)
+    assert get_week_number(july_22) == 30
+
+    # December 31, 2024 is in week 1 of 2025 (ISO week date)
+    dec_31 = datetime.date(2024, 12, 31)
+    assert get_week_number(dec_31) == 1
+
+
+def test_get_quarter_start_end() -> None:
+    """Test the get_quarter_start_end function."""
+    # Q1 2024
+    start, end = get_quarter_start_end(2024, 1)
+    assert start == datetime.date(2024, 1, 1)
+    assert end == datetime.date(2024, 3, 31)
+
+    # Q4 2024
+    start, end = get_quarter_start_end(2024, 4)
+    assert start == datetime.date(2024, 10, 1)
+    assert end == datetime.date(2024, 12, 31)
+
+    # Invalid quarter should raise ValueError
+    with pytest.raises(ValueError, match="Quarter must be between 1 and 4, got 5"):
+        get_quarter_start_end(2024, 5)
+
+
+def test_age_in_years() -> None:
+    """Test the age_in_years function."""
+    birth_date = datetime.date(1990, 6, 15)
+
+    # Age on exact birthday
+    birthday_2024 = datetime.date(2024, 6, 15)
+    assert age_in_years(birth_date, birthday_2024) == 34
+
+    # Age before birthday
+    before_birthday = datetime.date(2024, 6, 14)
+    assert age_in_years(birth_date, before_birthday) == 33
+
+    # Age after birthday
+    after_birthday = datetime.date(2024, 6, 16)
+    assert age_in_years(birth_date, after_birthday) == 34
+
+    # Future birth date should raise ValueError
+    future_birth = datetime.date(2025, 1, 1)
+    with pytest.raises(ValueError, match="Birth date cannot be in the future"):
+        age_in_years(future_birth, datetime.date(2024, 1, 1))
+
+
+@freeze_time("2024-07-22 10:00:00")
+def test_time_until_next_occurrence() -> None:
+    """Test the time_until_next_occurrence function."""
+    # Target time today at 14:00
+    target = datetime.datetime(2024, 7, 22, 14, 0, 0)
+    delta = time_until_next_occurrence(target)
+    assert delta == datetime.timedelta(hours=4)
+
+    # Target time that already passed today (should be tomorrow)
+    past_target = datetime.datetime(2024, 7, 22, 8, 0, 0)
+    delta = time_until_next_occurrence(past_target)
+    assert delta == datetime.timedelta(hours=22)  # Next day at 8:00
+
+
+def test_date_range_generator() -> None:
+    """Test the date_range_generator function."""
+    start = datetime.date(2024, 1, 1)
+    end = datetime.date(2024, 1, 5)
+
+    # Generate dates and convert to list
+    dates = list(date_range_generator(start, end))
+    assert len(dates) == 5
+    assert dates[0] == start
+    assert dates[-1] == end
+    assert dates[2] == datetime.date(2024, 1, 3)
+
+    # Invalid order should raise ValueError
+    with pytest.raises(ValueError, match="start_date .* must be <= end_date"):
+        list(date_range_generator(end, start))
+
+    # Test memory efficiency for large ranges (generator shouldn't consume memory upfront)
+    large_end = start + datetime.timedelta(days=10000)
+    gen = date_range_generator(start, large_end)
+    # Just getting the generator shouldn't raise or consume memory
+    first_date = next(gen)
+    assert first_date == start
+
+
+def test_get_us_federal_holidays_list_wrapper() -> None:
+    """Test the list wrapper for US federal holidays."""
+    # Test with list (should work via wrapper)
+    holidays_list = get_us_federal_holidays_list(2024, ["NEW_YEARS_DAY", "CHRISTMAS"])
+    assert len(holidays_list) == 2
+    assert datetime.date(2024, 1, 1) in holidays_list
+    assert datetime.date(2024, 12, 25) in holidays_list
+
+    # Test without arguments (should get all holidays)
+    all_holidays = get_us_federal_holidays_list(2024)
+    assert len(all_holidays) == 11
+
+    # Should produce same results as tuple version
+    holidays_tuple = get_us_federal_holidays(2024, ("NEW_YEARS_DAY", "CHRISTMAS"))
+    assert holidays_list == holidays_tuple

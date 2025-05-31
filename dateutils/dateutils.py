@@ -43,9 +43,9 @@ print(workdays)
 
 import calendar
 import re
-import time
 from collections.abc import Generator
 from datetime import date, datetime, timedelta, timezone
+from functools import lru_cache
 from typing import Optional, Union
 from zoneinfo import ZoneInfo, available_timezones
 
@@ -60,6 +60,8 @@ DAYS_IN_YEAR = 365
 DAYS_IN_MONTH_APPROX = 30
 DAYS_IN_MONTH_MAX = 31
 DAYS_IN_WEEK = 7
+QUARTERS_IN_YEAR = 4
+MONTHS_IN_YEAR = 12
 WEEKDAYS_IN_WEEK = 5
 
 
@@ -73,7 +75,7 @@ def utc_now_seconds() -> int:
     Returns:
         int: Current UTC time as Unix timestamp (seconds since epoch)
     """
-    return calendar.timegm(time.gmtime())
+    return int(datetime.now(timezone.utc).timestamp())
 
 
 def utc_today() -> date:
@@ -95,10 +97,16 @@ def utc_truncate_epoch_day(ts: int) -> int:
 
     Returns:
         int: Timestamp truncated to start of day in UTC
+
+    Raises:
+        ValueError: If timestamp is invalid
     """
-    dt = datetime.fromtimestamp(ts, timezone.utc)
-    dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
-    return epoch_s(dt)
+    try:
+        dt = datetime.fromtimestamp(ts, timezone.utc)
+        dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        return epoch_s(dt)
+    except (ValueError, OSError, OverflowError) as e:
+        raise ValueError(f"Invalid timestamp: {ts}") from e
 
 
 def utc_from_timestamp(ts: int) -> datetime:
@@ -110,8 +118,14 @@ def utc_from_timestamp(ts: int) -> datetime:
 
     Returns:
         datetime: Datetime object in UTC timezone
+
+    Raises:
+        ValueError: If timestamp is invalid
     """
-    return datetime.fromtimestamp(ts, timezone.utc)
+    try:
+        return datetime.fromtimestamp(ts, timezone.utc)
+    except (ValueError, OSError, OverflowError) as e:
+        raise ValueError(f"Invalid timestamp: {ts}") from e
 
 
 def epoch_s(dt: datetime) -> int:
@@ -195,7 +209,7 @@ def date_to_start_of_quarter(dt: date) -> date:
         dt: Date to get start of quarter for
 
     Returns:
-        datetime: Datetime at 00:00:00
+        date: Date at the start of the quarter
     """
     new_month = (((dt.month - 1) // 3) * 3) + 1
     return dt.replace(day=1, month=new_month)
@@ -211,7 +225,12 @@ def start_of_quarter(year: int, q: int) -> datetime:
 
     Returns:
         datetime: Datetime at 00:00:00
+
+    Raises:
+        ValueError: If quarter is not between 1 and 4
     """
+    if not 1 <= q <= QUARTERS_IN_YEAR:
+        raise ValueError(f"Quarter must be between 1 and 4, got {q}")
     return datetime(year, (q - 1) * 3 + 1, 1)
 
 
@@ -225,7 +244,12 @@ def end_of_quarter(year: int, q: int) -> datetime:
 
     Returns:
         datetime: Datetime at 23:59:59
+
+    Raises:
+        ValueError: If quarter is not between 1 and 4
     """
+    if not 1 <= q <= QUARTERS_IN_YEAR:
+        raise ValueError(f"Quarter must be between 1 and 4, got {q}")
     # Calculate the month at the end of the quarter
     month = q * 3
     # Get the last day of that month
@@ -316,6 +340,14 @@ def is_leap_year(year: int) -> bool:
 ##################
 # Month operations
 ##################
+def _validate_year_month(year: int, month: int) -> None:
+    """Helper function to validate year and month values."""
+    if not isinstance(year, int) or year < 1:
+        raise ValueError(f"Year must be a positive integer, got {year}")
+    if not isinstance(month, int) or not 1 <= month <= MONTHS_IN_YEAR:
+        raise ValueError(f"Month must be between 1 and 12, got {month}")
+
+
 def start_of_month(year: int, month: int) -> datetime:
     """
     Get the start of the month
@@ -326,7 +358,11 @@ def start_of_month(year: int, month: int) -> datetime:
 
     Returns:
         datetime: Datetime at 00:00:00
+
+    Raises:
+        ValueError: If year or month is invalid
     """
+    _validate_year_month(year, month)
     return datetime(year, month, 1)
 
 
@@ -340,7 +376,11 @@ def end_of_month(year: int, month: int) -> datetime:
 
     Returns:
         datetime: Datetime at 23:59:59
+
+    Raises:
+        ValueError: If year or month is invalid
     """
+    _validate_year_month(year, month)
     days_in_month = calendar.monthrange(year, month)[1]
     return datetime(year, month, days_in_month, 23, 59, 59)
 
@@ -349,9 +389,19 @@ def generate_months(until_year: int = 1970, until_m: int = 1) -> Generator[tuple
     """
     Generate months from the current month until a specific year and month
 
+    Args:
+        until_year: Year to generate months until
+        until_m: Month to generate months until (1-12)
+
     Returns:
         Generator[tuple[int, int], None, None]: Months from current month to the specified year and month
+
+    Raises:
+        ValueError: If until_m is not between 1 and 12
     """
+    if not 1 <= until_m <= MONTHS_IN_YEAR:
+        raise ValueError(f"until_m must be between 1 and 12, got {until_m}")
+
     today = date.today()
     for year in generate_years(until=until_year):
         for month in range(12, 0, -1):
@@ -373,7 +423,11 @@ def get_days_in_month(year: int, month: int) -> int:
 
     Returns:
         int: Number of days in the specified month
+
+    Raises:
+        ValueError: If year or month is invalid
     """
+    _validate_year_month(year, month)
     return calendar.monthrange(year, month)[1]
 
 
@@ -421,9 +475,43 @@ def date_range(start_date: date, end_date: date) -> list[date]:
 
     Returns:
         list[date]: List of dates between start_date and end_date inclusive
+
+    Raises:
+        ValueError: If start_date is after end_date or if the range is too large (>10 years)
     """
-    days = (end_date - start_date).days + 1
-    return [start_date + timedelta(days=i) for i in range(days)]
+    if start_date > end_date:
+        raise ValueError(f"start_date ({start_date}) must be <= end_date ({end_date})")
+
+    days_diff = (end_date - start_date).days + 1
+    if days_diff > (10 * DAYS_IN_YEAR):
+        raise ValueError(f"Date range too large ({days_diff} days). Consider using a generator for large ranges.")
+
+    return [start_date + timedelta(days=i) for i in range(days_diff)]
+
+
+def date_range_generator(start_date: date, end_date: date) -> Generator[date, None, None]:
+    """
+    Generate dates between start_date and end_date inclusive using a generator.
+
+    This is more memory-efficient for large date ranges than date_range().
+
+    Args:
+        start_date: The start date (inclusive)
+        end_date: The end date (inclusive)
+
+    Yields:
+        date: Each date in the range
+
+    Raises:
+        ValueError: If start_date is after end_date
+    """
+    if start_date > end_date:
+        raise ValueError(f"start_date ({start_date}) must be <= end_date ({end_date})")
+
+    current = start_date
+    while current <= end_date:
+        yield current
+        current += timedelta(days=1)
 
 
 ##################
@@ -451,7 +539,8 @@ def is_weekend(dt: date) -> bool:
     return dt.weekday() >= calendar.SATURDAY  # 5 = Saturday, 6 = Sunday
 
 
-def get_us_federal_holidays(year: int, holiday_types: Optional[list[str]] = None) -> list[date]:
+@lru_cache(maxsize=32)
+def get_us_federal_holidays(year: int, holiday_types: Optional[tuple[str, ...]] = None) -> list[date]:
     """
     Get a list of US federal holidays for a given year.
 
@@ -478,7 +567,7 @@ def get_us_federal_holidays(year: int, holiday_types: Optional[list[str]] = None
 
     Args:
         year: The year for which to get the holidays.
-        holiday_types: Optional list of holiday types to include. If None, all holidays are included.
+        holiday_types: Optional tuple of holiday types to include. If None, all holidays are included.
                       Valid values: "NEW_YEARS_DAY", "MLK_DAY", "PRESIDENTS_DAY", "MEMORIAL_DAY",
                       "JUNETEENTH", "INDEPENDENCE_DAY", "LABOR_DAY", "COLUMBUS_DAY",
                       "VETERANS_DAY", "THANKSGIVING", "CHRISTMAS"
@@ -495,8 +584,8 @@ def get_us_federal_holidays(year: int, holiday_types: Optional[list[str]] = None
         True
 
         >>> # Get only fixed holidays
-        >>> fixed_holidays = get_us_federal_holidays(2024, ["NEW_YEARS_DAY", "JUNETEENTH",
-        ...                                                "INDEPENDENCE_DAY", "VETERANS_DAY", "CHRISTMAS"])
+        >>> fixed_holidays = get_us_federal_holidays(2024, ("NEW_YEARS_DAY", "JUNETEENTH",
+        ...                                                "INDEPENDENCE_DAY", "VETERANS_DAY", "CHRISTMAS"))
         >>> date(2024, 1, 1) in fixed_holidays
         True
         >>> date(2024, 1, 15) in fixed_holidays  # MLK Day (floating)
@@ -510,56 +599,44 @@ def get_us_federal_holidays(year: int, holiday_types: Optional[list[str]] = None
         "INDEPENDENCE_DAY": date(year, 7, 4),
         "VETERANS_DAY": date(year, 11, 11),
         "CHRISTMAS": date(year, 12, 25),
-        # Floating holidays - will be calculated below
-        # "MLK_DAY": None,
-        # "PRESIDENTS_DAY": None,
-        # "MEMORIAL_DAY": None,
-        # "LABOR_DAY": None,
-        # "COLUMBUS_DAY": None,
-        # "THANKSGIVING": None
     }
 
-    # Calculate floating holidays
+    # Calculate floating holidays more efficiently
+    def find_nth_weekday(year: int, month: int, weekday: int, n: int, from_end: bool = False) -> date:
+        """Find the nth occurrence of a weekday in a month."""
+        if from_end:
+            # Start from the last day of the month
+            last_day = calendar.monthrange(year, month)[1]
+            d = date(year, month, last_day)
+            while d.weekday() != weekday:
+                d -= timedelta(days=1)
+            return d
+        else:
+            # Start from the first day of the month
+            d = date(year, month, 1)
+            while d.weekday() != weekday:
+                d += timedelta(days=1)
+            # Move to the nth occurrence
+            d += timedelta(days=7 * (n - 1))
+            return d
 
-    # Find the 3rd Monday in January (Martin Luther King Jr. Day)
-    mlk_day = date(year, 1, 1)
-    while mlk_day.weekday() != 0:  # 0 = Monday
-        mlk_day += timedelta(days=1)
-    mlk_day += timedelta(days=14)  # Move to 3rd Monday
-    all_holiday_types["MLK_DAY"] = mlk_day
+    # 3rd Monday in January (Martin Luther King Jr. Day)
+    all_holiday_types["MLK_DAY"] = find_nth_weekday(year, 1, 0, 3)  # Monday = 0
 
-    # Find the 3rd Monday in February (Presidents Day)
-    presidents_day = date(year, 2, 1)
-    while presidents_day.weekday() != 0:  # 0 = Monday
-        presidents_day += timedelta(days=1)
-    presidents_day += timedelta(days=14)  # Move to 3rd Monday
-    all_holiday_types["PRESIDENTS_DAY"] = presidents_day
+    # 3rd Monday in February (Presidents Day)
+    all_holiday_types["PRESIDENTS_DAY"] = find_nth_weekday(year, 2, 0, 3)
 
-    # Find the last Monday in May (Memorial Day)
-    memorial_day = date(year, 5, 31)
-    while memorial_day.weekday() != 0:  # 0 = Monday
-        memorial_day -= timedelta(days=1)
-    all_holiday_types["MEMORIAL_DAY"] = memorial_day
+    # Last Monday in May (Memorial Day)
+    all_holiday_types["MEMORIAL_DAY"] = find_nth_weekday(year, 5, 0, 1, from_end=True)
 
-    # Find the 1st Monday in September (Labor Day)
-    labor_day = date(year, 9, 1)
-    while labor_day.weekday() != 0:  # 0 = Monday
-        labor_day += timedelta(days=1)
-    all_holiday_types["LABOR_DAY"] = labor_day
+    # 1st Monday in September (Labor Day)
+    all_holiday_types["LABOR_DAY"] = find_nth_weekday(year, 9, 0, 1)
 
-    # Find the 2nd Monday in October (Columbus Day)
-    columbus_day = date(year, 10, 1)
-    while columbus_day.weekday() != 0:  # 0 = Monday
-        columbus_day += timedelta(days=1)
-    columbus_day += timedelta(days=7)  # Move to 2nd Monday
-    all_holiday_types["COLUMBUS_DAY"] = columbus_day
+    # 2nd Monday in October (Columbus Day)
+    all_holiday_types["COLUMBUS_DAY"] = find_nth_weekday(year, 10, 0, 2)
 
-    # Find the 4th Thursday in November (Thanksgiving Day)
-    thanksgiving = date(year, 11, 1)
-    while thanksgiving.weekday() != calendar.THURSDAY:  # 3 = Thursday
-        thanksgiving += timedelta(days=1)
-    thanksgiving += timedelta(days=21)  # Move to 4th Thursday
-    all_holiday_types["THANKSGIVING"] = thanksgiving
+    # 4th Thursday in November (Thanksgiving Day)
+    all_holiday_types["THANKSGIVING"] = find_nth_weekday(year, 11, 3, 4)  # Thursday = 3
 
     # If holiday_types is None, return all holidays
     if holiday_types is None:
@@ -572,6 +649,17 @@ def get_us_federal_holidays(year: int, holiday_types: Optional[list[str]] = None
             result.append(all_holiday_types[holiday_type])
 
     return result
+
+
+def get_us_federal_holidays_list(year: int, holiday_types: Optional[list[str]] = None) -> list[date]:
+    """
+    Convenience wrapper for get_us_federal_holidays that accepts a list instead of tuple.
+
+    This function converts the list to a tuple and calls the cached version.
+    """
+    if holiday_types is None:
+        return get_us_federal_holidays(year, None)
+    return get_us_federal_holidays(year, tuple(holiday_types))
 
 
 def workdays_between(start_date: date, end_date: date, holidays: Optional[list[date]] = None) -> int:
@@ -588,6 +676,9 @@ def workdays_between(start_date: date, end_date: date, holidays: Optional[list[d
 
     Returns:
         int: Number of workdays between the start and end dates.
+
+    Raises:
+        ValueError: If start_date is after end_date
 
     Examples:
         >>> from datetime import date
@@ -606,6 +697,9 @@ def workdays_between(start_date: date, end_date: date, holidays: Optional[list[d
         >>> workdays_between(start, end, holidays=get_us_federal_holidays(2024)) # Excludes Dec 25
         4 # Mon, Tue, Thu, Fri
     """
+    if start_date > end_date:
+        raise ValueError(f"start_date ({start_date}) must be <= end_date ({end_date})")
+
     if holidays is None:
         holidays = []
 
@@ -636,6 +730,9 @@ def add_business_days(dt: date, num_days: int, holidays: Optional[list[date]] = 
     Returns:
         A new date with the business days added.
 
+    Raises:
+        ValueError: If num_days is extremely large (> 10000 or < -10000)
+
     Examples:
         >>> from datetime import date
         >>> start_date = date(2024, 7, 1) # Monday
@@ -656,6 +753,9 @@ def add_business_days(dt: date, num_days: int, holidays: Optional[list[date]] = 
         >>> add_business_days(end_date, -2, holidays=us_holidays)
         datetime.date(2024, 7, 3) # Wed
     """
+    if not -10000 <= num_days <= 10000:  # noqa: PLR2004
+        raise ValueError(f"num_days must be between -10000 and 10000, got {num_days}")
+
     if holidays is None:
         holidays = []
 
@@ -731,14 +831,27 @@ def previous_business_day(dt: date, holidays: Optional[list[date]] = None) -> da
 
 
 def _ts_difference(timestamp: Optional[Union[int, datetime]] = None, now_override: Optional[int] = None) -> timedelta:
-    now = datetime.now() if not now_override else datetime.fromtimestamp(now_override)
-    if type(timestamp) is int:
-        diff = now - datetime.fromtimestamp(timestamp)
+    """Helper function to calculate time difference for pretty_date."""
+    if now_override is not None:
+        now = datetime.fromtimestamp(now_override)
+    else:
+        now = datetime.now()
+
+    if timestamp is None:
+        return timedelta(0)
+    elif isinstance(timestamp, int):
+        try:
+            ts_dt = datetime.fromtimestamp(timestamp)
+        except (ValueError, OSError):
+            return timedelta(0)  # Return zero diff for invalid timestamps
+        return now - ts_dt
     elif isinstance(timestamp, datetime):
-        diff = now - timestamp
-    elif not timestamp:
-        diff = now - now
-    return diff
+        # Handle timezone-aware datetimes
+        if timestamp.tzinfo is not None and now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+        elif timestamp.tzinfo is None and now.tzinfo is not None:
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
+        return now - timestamp
 
 
 def pretty_date(timestamp: Optional[Union[int, datetime]] = None, now_override: Optional[int] = None) -> str:  # NOQA
@@ -1022,9 +1135,18 @@ def now_in_timezone(tz_name: str) -> datetime:
 
     Returns:
         Current datetime in the specified timezone
+
+    Raises:
+        zoneinfo.ZoneInfoNotFoundError: If timezone name is invalid
     """
-    tz = ZoneInfo(tz_name)
-    return datetime.now(tz)
+    try:
+        tz = ZoneInfo(tz_name)
+        return datetime.now(tz)
+    except Exception as e:
+        # Re-raise with more context
+        raise ValueError(
+            f"Invalid timezone name '{tz_name}'. Use get_available_timezones() to see valid options."
+        ) from e
 
 
 def today_in_timezone(tz_name: str) -> date:
@@ -1036,6 +1158,9 @@ def today_in_timezone(tz_name: str) -> date:
 
     Returns:
         Current date in the specified timezone
+
+    Raises:
+        ValueError: If timezone name is invalid
     """
     return now_in_timezone(tz_name).date()
 
@@ -1054,8 +1179,8 @@ def convert_timezone(dt: datetime, to_tz: str) -> datetime:
                   in the target timezone.
 
     Raises:
-        ValueError: If the input datetime `dt` is naive (tzinfo is None).
-        zoneinfo.ZoneInfoNotFoundError: If `to_tz` is not a valid timezone name.
+        ValueError: If the input datetime `dt` is naive (tzinfo is None) or if
+                   the timezone name is invalid.
 
     Examples:
         >>> from datetime import datetime, timezone, timedelta
@@ -1082,8 +1207,11 @@ def convert_timezone(dt: datetime, to_tz: str) -> datetime:
     if dt.tzinfo is None:
         raise ValueError("Input datetime must include timezone information")
 
-    target_tz = ZoneInfo(to_tz)
-    return dt.astimezone(target_tz)
+    try:
+        target_tz = ZoneInfo(to_tz)
+        return dt.astimezone(target_tz)
+    except Exception as e:
+        raise ValueError(f"Invalid timezone name '{to_tz}'. Use get_available_timezones() to see valid options.") from e
 
 
 def datetime_to_utc(dt: datetime) -> datetime:
@@ -1112,10 +1240,18 @@ def get_timezone_offset(tz_name: str) -> timedelta:
 
     Returns:
         Timedelta representing the offset from UTC
+
+    Raises:
+        ValueError: If timezone name is invalid
     """
-    tz = ZoneInfo(tz_name)
-    now = datetime.now(tz)
-    return now.utcoffset() or timedelta(0)
+    try:
+        tz = ZoneInfo(tz_name)
+        now = datetime.now(tz)
+        return now.utcoffset() or timedelta(0)
+    except Exception as e:
+        raise ValueError(
+            f"Invalid timezone name '{tz_name}'. Use get_available_timezones() to see valid options."
+        ) from e
 
 
 def format_timezone_offset(tz_name: str) -> str:
@@ -1127,6 +1263,9 @@ def format_timezone_offset(tz_name: str) -> str:
 
     Returns:
         String in format "+HH:MM" or "-HH:MM"
+
+    Raises:
+        ValueError: If timezone name is invalid
     """
     offset = get_timezone_offset(tz_name)
 
@@ -1137,3 +1276,154 @@ def format_timezone_offset(tz_name: str) -> str:
 
     sign = "-" if total_seconds < 0 else "+"
     return f"{sign}{hours:02d}:{minutes:02d}"
+
+
+##################
+# Additional utility functions
+##################
+def is_business_day(dt: date, holidays: Optional[list[date]] = None) -> bool:
+    """
+    Check if a date is a business day (not weekend or holiday).
+
+    Args:
+        dt: Date to check
+        holidays: Optional list of holiday dates
+
+    Returns:
+        bool: True if the date is a business day, False otherwise
+    """
+    if holidays is None:
+        holidays = []
+    return dt.weekday() < calendar.SATURDAY and dt not in holidays
+
+
+def days_until_weekend(dt: date) -> int:
+    """
+    Get the number of days until the next weekend.
+
+    Args:
+        dt: Date to check from
+
+    Returns:
+        int: Number of days until Saturday (0 if already weekend)
+    """
+    if dt.weekday() >= calendar.SATURDAY:  # Already weekend
+        return 0
+    return calendar.SATURDAY - dt.weekday()
+
+
+def days_since_weekend(dt: date) -> int:
+    """
+    Get the number of days since the last weekend ended.
+
+    Args:
+        dt: Date to check from
+
+    Returns:
+        int: Number of days since Sunday (0 if currently weekend)
+    """
+    if dt.weekday() >= calendar.SATURDAY:  # Currently weekend
+        return 0
+    return dt.weekday() + 1  # Monday = 1 day since Sunday
+
+
+def get_week_number(dt: date) -> int:
+    """
+    Get the ISO week number for a date.
+
+    Args:
+        dt: Date to get week number for
+
+    Returns:
+        int: ISO week number (1-53)
+    """
+    return dt.isocalendar()[1]
+
+
+def get_quarter_start_end(year: int, quarter: int) -> tuple[date, date]:
+    """
+    Get the start and end dates for a quarter.
+
+    Args:
+        year: Year
+        quarter: Quarter (1-4)
+
+    Returns:
+        tuple[date, date]: Start and end dates of the quarter
+
+    Raises:
+        ValueError: If quarter is not between 1 and 4
+    """
+    if not 1 <= quarter <= QUARTERS_IN_YEAR:
+        raise ValueError(f"Quarter must be between 1 and 4, got {quarter}")
+
+    start = start_of_quarter(year, quarter).date()
+    end = end_of_quarter(year, quarter).date()
+    return start, end
+
+
+def age_in_years(birth_date: date, as_of_date: Optional[date] = None) -> int:
+    """
+    Calculate age in years.
+
+    Args:
+        birth_date: Date of birth
+        as_of_date: Date to calculate age as of (defaults to today)
+
+    Returns:
+        int: Age in years
+
+    Raises:
+        ValueError: If birth_date is in the future
+    """
+    if as_of_date is None:
+        as_of_date = date.today()
+
+    if birth_date > as_of_date:
+        raise ValueError("Birth date cannot be in the future")
+
+    years = as_of_date.year - birth_date.year
+    # Adjust if birthday hasn't occurred yet this year
+    if (as_of_date.month, as_of_date.day) < (birth_date.month, birth_date.day):
+        years -= 1
+
+    return years
+
+
+def time_until_next_occurrence(target_time: datetime, from_time: Optional[datetime] = None) -> timedelta:
+    """
+    Calculate time until the next occurrence of a target time.
+
+    Args:
+        target_time: The target time (timezone-aware or naive)
+        from_time: Time to calculate from (defaults to now in target_time's timezone)
+
+    Returns:
+        timedelta: Time until next occurrence
+
+    Examples:
+        >>> from datetime import datetime, timezone
+        >>> target = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        >>> # Will calculate time until next 12:00 UTC
+        >>> delta = time_until_next_occurrence(target)
+    """
+    if from_time is None:
+        if target_time.tzinfo is not None:
+            from_time = datetime.now(target_time.tzinfo)
+        else:
+            from_time = datetime.now()
+
+    # Ensure both have the same timezone handling
+    if target_time.tzinfo is None and from_time.tzinfo is not None:
+        target_time = target_time.replace(tzinfo=from_time.tzinfo)
+    elif target_time.tzinfo is not None and from_time.tzinfo is None:
+        from_time = from_time.replace(tzinfo=target_time.tzinfo)
+
+    # Calculate next occurrence
+    next_occurrence = target_time.replace(year=from_time.year, month=from_time.month, day=from_time.day)
+
+    if next_occurrence <= from_time:
+        # Target time has already passed today, move to next day
+        next_occurrence += timedelta(days=1)
+
+    return next_occurrence - from_time
