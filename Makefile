@@ -135,17 +135,32 @@ build-check: build ## Build and check the package
 # Versioning and Release
 version-patch: ## Bump patch version (e.g., 1.0.0 → 1.0.1)
 	@echo "${BLUE}Bumping patch version...${NC}"
-	@uv run bump2version patch
+	@OLD_VERSION=$$(grep 'current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	uv run bump2version patch; \
+	NEW_VERSION=$$(grep 'current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	git add .; \
+	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
+	git tag "v$$NEW_VERSION"
 	@echo "${GREEN}✓ Patch version bumped${NC}"
 
 version-minor: ## Bump minor version (e.g., 1.0.0 → 1.1.0)
 	@echo "${BLUE}Bumping minor version...${NC}"
-	@uv run bump2version minor
+	@OLD_VERSION=$$(grep 'current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	uv run bump2version minor; \
+	NEW_VERSION=$$(grep 'current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	git add .; \
+	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
+	git tag "v$$NEW_VERSION"
 	@echo "${GREEN}✓ Minor version bumped${NC}"
 
 version-major: ## Bump major version (e.g., 1.0.0 → 2.0.0)
 	@echo "${BLUE}Bumping major version...${NC}"
-	@uv run bump2version major
+	@OLD_VERSION=$$(grep 'current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	uv run bump2version major; \
+	NEW_VERSION=$$(grep 'current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	git add .; \
+	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
+	git tag "v$$NEW_VERSION"
 	@echo "${GREEN}✓ Major version bumped${NC}"
 
 release-check: ## Check if ready for release (run all quality checks)
