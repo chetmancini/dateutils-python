@@ -145,9 +145,8 @@ version-patch: ## Bump patch version (e.g., 1.0.0 → 1.0.1)
 	uv run bump2version --allow-dirty patch; \
 	NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
 	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
-	echo "${BLUE}Updating uv.lock file...${NC}"; \
 	uv lock; \
-	echo "${BLUE}Staging all changes including uv.lock...${NC}"; \
+	echo "${BLUE}Staging all changes...${NC}"; \
 	git add -A; \
 	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"
@@ -163,9 +162,8 @@ version-minor: ## Bump minor version (e.g., 1.0.0 → 1.1.0)
 	uv run bump2version --allow-dirty minor; \
 	NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
 	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
-	echo "${BLUE}Updating uv.lock file...${NC}"; \
 	uv lock; \
-	echo "${BLUE}Staging all changes including uv.lock...${NC}"; \
+	echo "${BLUE}Staging all changes...${NC}"; \
 	git add -A; \
 	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"
@@ -181,9 +179,8 @@ version-major: ## Bump major version (e.g., 1.0.0 → 2.0.0)
 	uv run bump2version --allow-dirty major; \
 	NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
 	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
-	echo "${BLUE}Updating uv.lock file...${NC}"; \
 	uv lock; \
-	echo "${BLUE}Staging all changes including uv.lock...${NC}"; \
+	echo "${BLUE}Staging all changes...${NC}"; \
 	git add -A; \
 	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"
