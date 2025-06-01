@@ -133,78 +133,178 @@ build-check: build ## Build and check the package
 	@echo "${GREEN}✓ Package check completed${NC}"
 
 # Versioning and Release
+update-changelog: ## Update CHANGELOG.md with new version info
+	@if [ -z "$(VERSION)" ]; then echo "${RED}Error: VERSION parameter required. Usage: make update-changelog VERSION=x.y.z${NC}"; exit 1; fi
+	@echo "${BLUE}Updating CHANGELOG.md for version $(VERSION)...${NC}"
+	@uv run python scripts/update_changelog.py $(VERSION)
+	@echo "${GREEN}✓ CHANGELOG.md updated${NC}"
+
 version-patch: ## Bump patch version (e.g., 1.0.0 → 1.0.1)
 	@echo "${BLUE}Bumping patch version...${NC}"
 	@OLD_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
 	uv run bump2version --allow-dirty patch; \
 	NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
 	git add .; \
 	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"
 	@echo "${GREEN}✓ Patch version bumped${NC}"
+	@echo "${YELLOW}Next steps:${NC}"
+	@echo "  - Review CHANGELOG.md and edit as needed"
+	@echo "  - Run 'make release-draft' to create a draft release for review"
+	@echo "  - Run 'make release' to publish the release"
 
 version-minor: ## Bump minor version (e.g., 1.0.0 → 1.1.0)
 	@echo "${BLUE}Bumping minor version...${NC}"
 	@OLD_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
 	uv run bump2version --allow-dirty minor; \
 	NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
 	git add .; \
 	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"
 	@echo "${GREEN}✓ Minor version bumped${NC}"
+	@echo "${YELLOW}Next steps:${NC}"
+	@echo "  - Review CHANGELOG.md and edit as needed"
+	@echo "  - Run 'make release-draft' to create a draft release for review"
+	@echo "  - Run 'make release' to publish the release"
 
 version-major: ## Bump major version (e.g., 1.0.0 → 2.0.0)
 	@echo "${BLUE}Bumping major version...${NC}"
 	@OLD_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
 	uv run bump2version --allow-dirty major; \
 	NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
 	git add .; \
 	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"
 	@echo "${GREEN}✓ Major version bumped${NC}"
+	@echo "${YELLOW}Next steps:${NC}"
+	@echo "  - Review CHANGELOG.md and edit as needed"
+	@echo "  - Run 'make release-draft' to create a draft release for review"
+	@echo "  - Run 'make release' to publish the release"
+
+check-release-exists: check-gh ## Check if current version already has a GitHub release
+	@CURRENT_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	echo "${BLUE}Checking if v$$CURRENT_VERSION already exists on GitHub...${NC}"; \
+	if gh release view "v$$CURRENT_VERSION" >/dev/null 2>&1; then \
+		echo "${RED}Error: Release v$$CURRENT_VERSION already exists on GitHub${NC}"; \
+		echo "${YELLOW}If you need to update it, delete the existing release first:${NC}"; \
+		echo "  gh release delete v$$CURRENT_VERSION"; \
+		exit 1; \
+	else \
+		echo "${GREEN}✓ Version v$$CURRENT_VERSION not yet released${NC}"; \
+	fi
+
+create-github-release: check-gh ## Create GitHub release with release notes
+	@if [ -z "$(VERSION)" ]; then echo "${RED}Error: VERSION parameter required. Usage: make create-github-release VERSION=x.y.z${NC}"; exit 1; fi
+	@echo "${BLUE}Creating GitHub release for v$(VERSION)...${NC}"
+	@RELEASE_NOTES_FILE=".release-notes-$(VERSION).md"; \
+	RELEASE_TEMPLATE=".github/RELEASE_TEMPLATE.md"; \
+	if [ -f "$$RELEASE_TEMPLATE" ]; then \
+		echo "${BLUE}Using release template...${NC}"; \
+		sed "s/{version}/$(VERSION)/g; s/{current_tag}/v$(VERSION)/g" $$RELEASE_TEMPLATE > $$RELEASE_NOTES_FILE; \
+		CHANGELOG_NOTES=$$(uv run python scripts/extract_release_notes.py $(VERSION) 2>/dev/null || true); \
+		if [ -n "$$CHANGELOG_NOTES" ] && [ "$$CHANGELOG_NOTES" != "Release $(VERSION) - See changelog for details." ]; then \
+			echo "" >> $$RELEASE_NOTES_FILE; \
+			echo "## What's New in v$(VERSION)" >> $$RELEASE_NOTES_FILE; \
+			echo "" >> $$RELEASE_NOTES_FILE; \
+			echo "$$CHANGELOG_NOTES" >> $$RELEASE_NOTES_FILE; \
+		fi; \
+	else \
+		echo "${BLUE}No release template found, using changelog...${NC}"; \
+		CHANGELOG_NOTES=$$(uv run python scripts/extract_release_notes.py $(VERSION) 2>/dev/null || true); \
+		if [ -n "$$CHANGELOG_NOTES" ]; then \
+			echo "# Release v$(VERSION)" > $$RELEASE_NOTES_FILE; \
+			echo "" >> $$RELEASE_NOTES_FILE; \
+			echo "$$CHANGELOG_NOTES" >> $$RELEASE_NOTES_FILE; \
+		else \
+			echo "# Release v$(VERSION)" > $$RELEASE_NOTES_FILE; \
+			echo "" >> $$RELEASE_NOTES_FILE; \
+			echo "Auto-generated release notes for version $(VERSION)." >> $$RELEASE_NOTES_FILE; \
+			echo "" >> $$RELEASE_NOTES_FILE; \
+			echo "See the [full changelog](https://github.com/chetmancini/dateutils-python/blob/main/CHANGELOG.md) for details." >> $$RELEASE_NOTES_FILE; \
+		fi; \
+	fi; \
+	echo "${BLUE}Building package for release...${NC}"; \
+	$(MAKE) --no-print-directory build >/dev/null 2>&1; \
+	echo "${BLUE}Creating GitHub release...${NC}"; \
+	gh release create "v$(VERSION)" \
+		--title "Release v$(VERSION)" \
+		--notes-file $$RELEASE_NOTES_FILE \
+		--verify-tag \
+		--latest \
+		dist/* || { echo "${RED}Failed to create GitHub release${NC}"; rm -f $$RELEASE_NOTES_FILE; exit 1; }; \
+	rm -f $$RELEASE_NOTES_FILE
+	@echo "${GREEN}✓ GitHub release v$(VERSION) created with release notes${NC}"
 
 release-check: ## Check if ready for release (run all quality checks)
 	@echo "${BLUE}Checking release readiness...${NC}"
 	@$(MAKE) --no-print-directory clean
 	@$(MAKE) --no-print-directory check
 	@$(MAKE) --no-print-directory build-check
+	@$(MAKE) --no-print-directory check-gh
 	@echo "${GREEN}✓ Ready for release${NC}"
 
-release-patch: ## Create patch release (bump version, tag, and push)
-	@echo "${BLUE}Creating patch release...${NC}"
-	@$(MAKE) --no-print-directory release-check
-	@$(MAKE) --no-print-directory version-patch
-	@git push origin HEAD --follow-tags
-	@echo "${GREEN}✓ Patch release created and pushed${NC}"
+release: release-check check-release-exists ## Release the current version (must be versioned first)
+	@CURRENT_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	echo "${BLUE}Releasing v$$CURRENT_VERSION...${NC}"; \
+	if ! git tag -l | grep -q "^v$$CURRENT_VERSION$$"; then \
+		echo "${RED}Error: Tag v$$CURRENT_VERSION not found locally${NC}"; \
+		echo "${YELLOW}Make sure you've run 'make version-patch/minor/major' first${NC}"; \
+		exit 1; \
+	fi; \
+	echo "${BLUE}Pushing commits and tags to GitHub...${NC}"; \
+	git push origin HEAD --follow-tags; \
+	$(MAKE) --no-print-directory create-github-release VERSION=$$CURRENT_VERSION
+	@echo "${GREEN}✓ Release completed successfully${NC}"
+	@echo "${YELLOW}GitHub Actions will now handle PyPI publication${NC}"
 
-release-minor: ## Create minor release (bump version, tag, and push)
-	@echo "${BLUE}Creating minor release...${NC}"
-	@$(MAKE) --no-print-directory release-check
-	@$(MAKE) --no-print-directory version-minor
-	@git push origin HEAD --follow-tags
-	@echo "${GREEN}✓ Minor release created and pushed${NC}"
-
-release-major: ## Create major release (bump version, tag, and push)
-	@echo "${BLUE}Creating major release...${NC}"
-	@$(MAKE) --no-print-directory release-check
-	@$(MAKE) --no-print-directory version-major
-	@git push origin HEAD --follow-tags
-	@echo "${GREEN}✓ Major release created and pushed${NC}"
-
-publish-test: build-check ## Publish to TestPyPI
-	@echo "${BLUE}Publishing to TestPyPI...${NC}"
-	@uv publish --repository testpypi dist/*
-
-publish: build-check ## Publish to PyPI (production)
-	@echo "${RED}Publishing to PyPI (production)...${NC}"
-	@read -p "Are you sure you want to publish to PyPI? [y/N] " -n 1 -r; \
-	echo; \
-	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		uv publish dist/*; \
-		echo "${GREEN}✓ Published to PyPI${NC}"; \
+release-draft: release-check ## Create a draft release for the current version
+	@CURRENT_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	echo "${BLUE}Creating draft release for v$$CURRENT_VERSION...${NC}"; \
+	if ! git tag -l | grep -q "^v$$CURRENT_VERSION$$"; then \
+		echo "${RED}Error: Tag v$$CURRENT_VERSION not found locally${NC}"; \
+		echo "${YELLOW}Make sure you've run 'make version-patch/minor/major' first${NC}"; \
+		exit 1; \
+	fi; \
+	if gh release view "v$$CURRENT_VERSION" >/dev/null 2>&1; then \
+		echo "${YELLOW}Draft release v$$CURRENT_VERSION already exists, updating...${NC}"; \
+		gh release delete "v$$CURRENT_VERSION" --yes; \
+	fi; \
+	git push origin HEAD --follow-tags; \
+	RELEASE_NOTES_FILE=".draft-release-notes.md"; \
+	RELEASE_TEMPLATE=".github/RELEASE_TEMPLATE.md"; \
+	if [ -f "$$RELEASE_TEMPLATE" ]; then \
+		sed "s/{version}/$$CURRENT_VERSION/g; s/{current_tag}/v$$CURRENT_VERSION/g" $$RELEASE_TEMPLATE > $$RELEASE_NOTES_FILE; \
+		CHANGELOG_NOTES=$$(uv run python scripts/extract_release_notes.py $$CURRENT_VERSION 2>/dev/null || true); \
+		if [ -n "$$CHANGELOG_NOTES" ] && [ "$$CHANGELOG_NOTES" != "Release $$CURRENT_VERSION - See changelog for details." ]; then \
+			echo "" >> $$RELEASE_NOTES_FILE; \
+			echo "## What's New in v$$CURRENT_VERSION" >> $$RELEASE_NOTES_FILE; \
+			echo "" >> $$RELEASE_NOTES_FILE; \
+			echo "$$CHANGELOG_NOTES" >> $$RELEASE_NOTES_FILE; \
+		fi; \
 	else \
-		echo "${YELLOW}Publication cancelled${NC}"; \
-	fi
+		echo "# Draft Release v$$CURRENT_VERSION" > $$RELEASE_NOTES_FILE; \
+		echo "" >> $$RELEASE_NOTES_FILE; \
+		CHANGELOG_NOTES=$$(uv run python scripts/extract_release_notes.py $$CURRENT_VERSION 2>/dev/null || true); \
+		if [ -n "$$CHANGELOG_NOTES" ]; then \
+			echo "$$CHANGELOG_NOTES" >> $$RELEASE_NOTES_FILE; \
+		else \
+			echo "Draft release notes for version $$CURRENT_VERSION." >> $$RELEASE_NOTES_FILE; \
+		fi; \
+	fi; \
+	$(MAKE) --no-print-directory build >/dev/null 2>&1; \
+	gh release create "v$$CURRENT_VERSION" \
+		--title "Release v$$CURRENT_VERSION" \
+		--notes-file $$RELEASE_NOTES_FILE \
+		--draft \
+		dist/*; \
+	rm -f $$RELEASE_NOTES_FILE
+	@echo "${GREEN}✓ Draft release created. Review and publish when ready with:${NC}"
+	@CURRENT_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	echo "${BLUE}  gh release edit v$$CURRENT_VERSION --draft=false${NC}"
+	@echo "${BLUE}  OR: make release${NC}"
 
 # Utilities
 clean: ## Remove build artifacts and cache files
@@ -232,5 +332,25 @@ version: ## Show current version information
 	@echo "Python version: $(PYTHON_VERSION)"
 	@echo "UV version: $(UV_VERSION)"
 
+test-release-notes: ## Test release notes extraction for current version
+	@CURRENT_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	echo "${BLUE}Testing release notes extraction for v$$CURRENT_VERSION...${NC}"; \
+	if [ -f "CHANGELOG.md" ]; then \
+		echo "${YELLOW}Changelog sections found:${NC}"; \
+		grep "^## \[" CHANGELOG.md | head -5; \
+		echo ""; \
+		echo "${YELLOW}Release notes for v$$CURRENT_VERSION:${NC}"; \
+		uv run python scripts/extract_release_notes.py $$CURRENT_VERSION || echo "${RED}No release notes found for v$$CURRENT_VERSION${NC}"; \
+	else \
+		echo "${RED}CHANGELOG.md not found${NC}"; \
+	fi
+
+gh-status: check-gh ## Show GitHub CLI authentication status
+	@echo "${BLUE}GitHub CLI Status:${NC}"
+	@gh auth status
+	@echo ""
+	@echo "${BLUE}Current repository:${NC}"
+	@gh repo view --json name,owner,defaultBranchRef | uv run python -c "import sys, json; data=json.load(sys.stdin); print(f\"Repository: {data['owner']['login']}/{data['name']}\"); print(f\"Default branch: {data['defaultBranchRef']['name']}\")"
+
 # Safety check for dangerous operations
-.PHONY: init deps install pre-commit pre-commit-run lint lint-fix format format-check typecheck test test-fast coverage coverage-html watch-test check dev fix build build-check version-patch version-minor version-major release-check release-patch release-minor release-major publish-test publish clean requirements version help
+.PHONY: init deps install pre-commit pre-commit-run lint lint-fix format format-check typecheck test test-fast coverage coverage-html watch-test check dev fix build build-check update-changelog version-patch version-minor version-major create-github-release check-release-exists release-check release release-draft release-patch release-minor release-major publish-test publish clean requirements version help check-gh test-release-notes gh-status
