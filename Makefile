@@ -147,8 +147,8 @@ version-patch: ## Bump patch version (e.g., 1.0.0 → 1.0.1)
 	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
 	echo "${BLUE}Updating uv.lock file...${NC}"; \
 	uv lock; \
-	git add uv.lock; \
-	git add .; \
+	echo "${BLUE}Staging all changes including uv.lock...${NC}"; \
+	git add -A; \
 	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"
 	@echo "${GREEN}✓ Patch version bumped${NC}"
@@ -165,8 +165,8 @@ version-minor: ## Bump minor version (e.g., 1.0.0 → 1.1.0)
 	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
 	echo "${BLUE}Updating uv.lock file...${NC}"; \
 	uv lock; \
-	git add uv.lock; \
-	git add .; \
+	echo "${BLUE}Staging all changes including uv.lock...${NC}"; \
+	git add -A; \
 	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"
 	@echo "${GREEN}✓ Minor version bumped${NC}"
@@ -183,8 +183,8 @@ version-major: ## Bump major version (e.g., 1.0.0 → 2.0.0)
 	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
 	echo "${BLUE}Updating uv.lock file...${NC}"; \
 	uv lock; \
-	git add uv.lock; \
-	git add .; \
+	echo "${BLUE}Staging all changes including uv.lock...${NC}"; \
+	git add -A; \
 	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"
 	@echo "${GREEN}✓ Major version bumped${NC}"
