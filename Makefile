@@ -145,6 +145,8 @@ version-patch: ## Bump patch version (e.g., 1.0.0 → 1.0.1)
 	uv run bump2version --allow-dirty patch; \
 	NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
 	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
+	echo "${BLUE}Updating uv.lock file...${NC}"; \
+	uv lock; \
 	git add .; \
 	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"
@@ -160,6 +162,8 @@ version-minor: ## Bump minor version (e.g., 1.0.0 → 1.1.0)
 	uv run bump2version --allow-dirty minor; \
 	NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
 	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
+	echo "${BLUE}Updating uv.lock file...${NC}"; \
+	uv lock; \
 	git add .; \
 	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"
@@ -175,6 +179,8 @@ version-major: ## Bump major version (e.g., 1.0.0 → 2.0.0)
 	uv run bump2version --allow-dirty major; \
 	NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
 	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
+	echo "${BLUE}Updating uv.lock file...${NC}"; \
+	uv lock; \
 	git add .; \
 	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"
@@ -184,7 +190,9 @@ version-major: ## Bump major version (e.g., 1.0.0 → 2.0.0)
 	@echo "  - Run 'make release-draft' to create a draft release for review"
 	@echo "  - Run 'make release' to publish the release"
 
-check-release-exists: check-gh ## Check if current version already has a GitHub release
+check-release-exists: ## Check if current version already has a GitHub release
+	@command -v gh >/dev/null 2>&1 || { echo "${RED}Error: GitHub CLI (gh) not found. Install with: brew install gh${NC}"; exit 1; }
+	@gh auth status >/dev/null 2>&1 || { echo "${RED}Error: GitHub CLI not authenticated. Run: gh auth login${NC}"; exit 1; }
 	@CURRENT_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
 	echo "${BLUE}Checking if v$$CURRENT_VERSION already exists on GitHub...${NC}"; \
 	if gh release view "v$$CURRENT_VERSION" >/dev/null 2>&1; then \
@@ -196,7 +204,9 @@ check-release-exists: check-gh ## Check if current version already has a GitHub 
 		echo "${GREEN}✓ Version v$$CURRENT_VERSION not yet released${NC}"; \
 	fi
 
-create-github-release: check-gh ## Create GitHub release with release notes
+create-github-release: ## Create GitHub release with release notes
+	@command -v gh >/dev/null 2>&1 || { echo "${RED}Error: GitHub CLI (gh) not found. Install with: brew install gh${NC}"; exit 1; }
+	@gh auth status >/dev/null 2>&1 || { echo "${RED}Error: GitHub CLI not authenticated. Run: gh auth login${NC}"; exit 1; }
 	@if [ -z "$(VERSION)" ]; then echo "${RED}Error: VERSION parameter required. Usage: make create-github-release VERSION=x.y.z${NC}"; exit 1; fi
 	@echo "${BLUE}Creating GitHub release for v$(VERSION)...${NC}"
 	@RELEASE_NOTES_FILE=".release-notes-$(VERSION).md"; \
@@ -243,7 +253,8 @@ release-check: ## Check if ready for release (run all quality checks)
 	@$(MAKE) --no-print-directory clean
 	@$(MAKE) --no-print-directory check
 	@$(MAKE) --no-print-directory build-check
-	@$(MAKE) --no-print-directory check-gh
+	@command -v gh >/dev/null 2>&1 || { echo "${RED}Error: GitHub CLI (gh) not found. Install with: brew install gh${NC}"; exit 1; }
+	@gh auth status >/dev/null 2>&1 || { echo "${RED}Error: GitHub CLI not authenticated. Run: gh auth login${NC}"; exit 1; }
 	@echo "${GREEN}✓ Ready for release${NC}"
 
 release: release-check check-release-exists ## Release the current version (must be versioned first)
@@ -345,12 +356,13 @@ test-release-notes: ## Test release notes extraction for current version
 		echo "${RED}CHANGELOG.md not found${NC}"; \
 	fi
 
-gh-status: check-gh ## Show GitHub CLI authentication status
+gh-status: ## Show GitHub CLI authentication status
+	@command -v gh >/dev/null 2>&1 || { echo "${RED}Error: GitHub CLI (gh) not found. Install with: brew install gh${NC}"; exit 1; }
 	@echo "${BLUE}GitHub CLI Status:${NC}"
 	@gh auth status
 	@echo ""
 	@echo "${BLUE}Current repository:${NC}"
-	@gh repo view --json name,owner,defaultBranchRef | uv run python -c "import sys, json; data=json.load(sys.stdin); print(f\"Repository: {data['owner']['login']}/{data['name']}\"); print(f\"Default branch: {data['defaultBranchRef']['name']}\")"
+	@gh repo view --json name,owner,defaultBranchRef | uv run python -c "import sys, json; data=json.load(sys.stdin); print(f\"Repository: {data['owner']['login']}/{data['name']}\"); print(f\"Default branch: {data['defaultBranchRef']['name']}\")" || echo "${YELLOW}Could not retrieve repository information${NC}"
 
 # Safety check for dangerous operations
-.PHONY: init deps install pre-commit pre-commit-run lint lint-fix format format-check typecheck test test-fast coverage coverage-html watch-test check dev fix build build-check update-changelog version-patch version-minor version-major create-github-release check-release-exists release-check release release-draft release-patch release-minor release-major publish-test publish clean requirements version help check-gh test-release-notes gh-status
+.PHONY: init deps install pre-commit pre-commit-run lint lint-fix format format-check typecheck test test-fast coverage coverage-html watch-test check dev fix build build-check update-changelog version-patch version-minor version-major create-github-release check-release-exists release-check release release-draft clean requirements version help test-release-notes gh-status
