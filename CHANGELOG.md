@@ -2,38 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.2.2] - 2025-05-31
-
-### Added
--
-
-### Changed
--
-
-### Fixed
--
-
 ## [0.2.3] - 2025-05-31
 
-### Added
--
-
-### Changed
--
-
-### Fixed
--
-
-## [Unreleased]
-
-### Added
--
-
-### Changed
--
-
-### Fixed
--
+- Testing release process
 
 ## [0.2.1] - 2025-05-31
 
