@@ -13,6 +13,17 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 -
 
+## [0.2.3] - 2025-05-31
+
+### Added
+-
+
+### Changed
+-
+
+### Fixed
+-
+
 ## [Unreleased]
 
 ### Added
