@@ -143,10 +143,9 @@ update-changelog: ## Update CHANGELOG.md with new version info
 	@uv run python scripts/update_changelog.py $(VERSION)
 	@echo "${GREEN}✓ CHANGELOG.md updated${NC}"
 
-version-patch: ## Bump patch version and push tag (e.g., 1.0.0 → 1.0.1)
-	@echo "${BLUE}Bumping patch version...${NC}"
-	@OLD_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
-	uv run bump2version --allow-dirty patch; \
+bump-version = @echo "${BLUE}Bumping $(1) version...${NC}"; \
+	OLD_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	uv run bump2version --allow-dirty $(1); \
 	NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
 	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
 	uv lock; \
@@ -154,51 +153,23 @@ version-patch: ## Bump patch version and push tag (e.g., 1.0.0 → 1.0.1)
 	git add -A; \
 	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"; \
+	echo "${BLUE}Pushing changes to GitHub...${NC}"; \
+	git push origin HEAD; \
 	echo "${BLUE}Pushing tag to GitHub...${NC}"; \
-	git push origin HEAD --follow-tags
-	@echo "${GREEN}✓ Patch version bumped and pushed${NC}"
-	@NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	git push origin "v$$NEW_VERSION"; \
+	echo "${GREEN}✓ $(1) version bumped and pushed${NC}"; \
 	echo "${YELLOW}Next steps:${NC}"; \
 	echo "  - Go to GitHub and create a release for tag v$$NEW_VERSION"; \
 	echo "  - GitHub Actions will automatically build and publish to PyPI"
+
+version-patch: ## Bump patch version and push tag (e.g., 1.0.0 → 1.0.1)
+	$(call bump-version,patch)
 
 version-minor: ## Bump minor version and push tag (e.g., 1.0.0 → 1.1.0)
-	@echo "${BLUE}Bumping minor version...${NC}"
-	@OLD_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
-	uv run bump2version --allow-dirty minor; \
-	NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
-	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
-	uv lock; \
-	echo "${BLUE}Staging all changes...${NC}"; \
-	git add -A; \
-	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
-	git tag "v$$NEW_VERSION"; \
-	echo "${BLUE}Pushing tag to GitHub...${NC}"; \
-	git push origin HEAD --follow-tags
-	@echo "${GREEN}✓ Minor version bumped and pushed${NC}"
-	@NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
-	echo "${YELLOW}Next steps:${NC}"; \
-	echo "  - Go to GitHub and create a release for tag v$$NEW_VERSION"; \
-	echo "  - GitHub Actions will automatically build and publish to PyPI"
+	$(call bump-version,minor)
 
 version-major: ## Bump major version and push tag (e.g., 1.0.0 → 2.0.0)
-	@echo "${BLUE}Bumping major version...${NC}"
-	@OLD_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
-	uv run bump2version --allow-dirty major; \
-	NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
-	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
-	uv lock; \
-	echo "${BLUE}Staging all changes...${NC}"; \
-	git add -A; \
-	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
-	git tag "v$$NEW_VERSION"; \
-	echo "${BLUE}Pushing tag to GitHub...${NC}"; \
-	git push origin HEAD --follow-tags
-	@echo "${GREEN}✓ Major version bumped and pushed${NC}"
-	@NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
-	echo "${YELLOW}Next steps:${NC}"; \
-	echo "  - Go to GitHub and create a release for tag v$$NEW_VERSION"; \
-	echo "  - GitHub Actions will automatically build and publish to PyPI"
+	$(call bump-version,major)
 
 # Utilities
 clean: ## Remove build artifacts and cache files
