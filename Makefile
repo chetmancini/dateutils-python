@@ -164,8 +164,8 @@ bump-version = @echo "${BLUE}Bumping $(1) version...${NC}"; \
 	git push origin "v$$NEW_VERSION"; \
 	echo "${GREEN}✓ $(1) version bumped and pushed${NC}"; \
 	echo "${YELLOW}Next steps:${NC}"; \
-	echo "  - Go to GitHub and create a release for tag v$$NEW_VERSION"; \
-	echo "  - GitHub Actions will automatically build and publish to PyPI"
+	echo "  - GitHub Actions will build, test, publish to PyPI, and create a draft release"; \
+	echo "  - Publish the draft release: https://github.com/chetmancini/dateutils-python/releases/edit/v$$NEW_VERSION"
 
 version-patch: ## Bump patch version and push tag (e.g., 1.0.0 → 1.0.1)
 	$(call bump-version,patch)
