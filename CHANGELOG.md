@@ -29,6 +29,21 @@
 - Fix datetime handling bugs: httpdate, datetime_to_utc, pretty_date.
 - Upgrade urllib3 to 2.6.3 to fix security vulnerabilities (#3).
 
+## [0.4.1] - 2026-01-19
+
+### Added
+-
+
+### Changed
+- Make GitHub release a draft for manual review (#10).
+- Ci: bump actions/download-artifact from 4 to 7 (#4).
+- Ci: bump actions/upload-artifact from 4 to 6 (#6).
+- Ci: bump actions/checkout from 4 to 6 (#7).
+- Ci: bump astral-sh/setup-uv from 5 to 7 (#5).
+
+### Fixed
+-
+
 ## [Unreleased]
 
 ### Added
@@ -83,6 +98,21 @@ All notable changes to this project will be documented in this file.
 - Fix documentation issues and end_of_* microseconds consistency.
 - Fix datetime handling bugs: httpdate, datetime_to_utc, pretty_date.
 - Upgrade urllib3 to 2.6.3 to fix security vulnerabilities (#3).
+
+## [0.4.1] - 2026-01-19
+
+### Added
+-
+
+### Changed
+- Make GitHub release a draft for manual review (#10).
+- Ci: bump actions/download-artifact from 4 to 7 (#4).
+- Ci: bump actions/upload-artifact from 4 to 6 (#6).
+- Ci: bump actions/checkout from 4 to 6 (#7).
+- Ci: bump astral-sh/setup-uv from 5 to 7 (#5).
+
+### Fixed
+-
 
 ## [Unreleased]
 
@@ -139,6 +169,21 @@ All notable changes to this project will be documented in this file.
 - Fix datetime handling bugs: httpdate, datetime_to_utc, pretty_date.
 - Upgrade urllib3 to 2.6.3 to fix security vulnerabilities (#3).
 
+## [0.4.1] - 2026-01-19
+
+### Added
+-
+
+### Changed
+- Make GitHub release a draft for manual review (#10).
+- Ci: bump actions/download-artifact from 4 to 7 (#4).
+- Ci: bump actions/upload-artifact from 4 to 6 (#6).
+- Ci: bump actions/checkout from 4 to 6 (#7).
+- Ci: bump astral-sh/setup-uv from 5 to 7 (#5).
+
+### Fixed
+-
+
 ## [Unreleased]
 
 ### Added
@@ -190,6 +235,21 @@ All notable changes to this project will be documented in this file.
 - Fix documentation issues and end_of_* microseconds consistency.
 - Fix datetime handling bugs: httpdate, datetime_to_utc, pretty_date.
 - Upgrade urllib3 to 2.6.3 to fix security vulnerabilities (#3).
+
+## [0.4.1] - 2026-01-19
+
+### Added
+-
+
+### Changed
+- Make GitHub release a draft for manual review (#10).
+- Ci: bump actions/download-artifact from 4 to 7 (#4).
+- Ci: bump actions/upload-artifact from 4 to 6 (#6).
+- Ci: bump actions/checkout from 4 to 6 (#7).
+- Ci: bump astral-sh/setup-uv from 5 to 7 (#5).
+
+### Fixed
+-
 
 ## [Unreleased]
 
@@ -248,6 +308,21 @@ All notable changes to this project will be documented in this file.
 - Fix datetime handling bugs: httpdate, datetime_to_utc, pretty_date.
 - Upgrade urllib3 to 2.6.3 to fix security vulnerabilities (#3).
 
+## [0.4.1] - 2026-01-19
+
+### Added
+-
+
+### Changed
+- Make GitHub release a draft for manual review (#10).
+- Ci: bump actions/download-artifact from 4 to 7 (#4).
+- Ci: bump actions/upload-artifact from 4 to 6 (#6).
+- Ci: bump actions/checkout from 4 to 6 (#7).
+- Ci: bump astral-sh/setup-uv from 5 to 7 (#5).
+
+### Fixed
+-
+
 ## [Unreleased]
 
 ### Added
@@ -301,6 +376,21 @@ All notable changes to this project will be documented in this file.
 - Fix documentation issues and end_of_* microseconds consistency.
 - Fix datetime handling bugs: httpdate, datetime_to_utc, pretty_date.
 - Upgrade urllib3 to 2.6.3 to fix security vulnerabilities (#3).
+
+## [0.4.1] - 2026-01-19
+
+### Added
+-
+
+### Changed
+- Make GitHub release a draft for manual review (#10).
+- Ci: bump actions/download-artifact from 4 to 7 (#4).
+- Ci: bump actions/upload-artifact from 4 to 6 (#6).
+- Ci: bump actions/checkout from 4 to 6 (#7).
+- Ci: bump astral-sh/setup-uv from 5 to 7 (#5).
+
+### Fixed
+-
 
 ## [Unreleased]
 
