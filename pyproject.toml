@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dateutils-python"
-version = "0.3.0"
+version = "0.4.0"
 description = "A comprehensive Python library for date and time manipulation, parsing, formatting, and calculations. Provides intuitive interfaces for common date operations and timezone handling."
 readme = "README.md"
 authors = [

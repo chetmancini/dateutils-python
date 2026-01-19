@@ -14,6 +14,21 @@
 ### Fixed
 - Fix version bumping.
 
+## [0.4.0] - 2026-01-19
+
+### Added
+- Fix datetime_end_of_day microseconds and add MONTHS_IN_QUARTER constant.
+
+### Changed
+- Achieve 100% test coverage (#9).
+- Migrate from mypy to ty for type checking (#8).
+- Tooling improvements: dependabot, mypy alignment, and doctest.
+
+### Fixed
+- Fix documentation issues and end_of_* microseconds consistency.
+- Fix datetime handling bugs: httpdate, datetime_to_utc, pretty_date.
+- Upgrade urllib3 to 2.6.3 to fix security vulnerabilities (#3).
+
 ## [Unreleased]
 
 ### Added
@@ -53,6 +68,21 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Fix version bumping.
+
+## [0.4.0] - 2026-01-19
+
+### Added
+- Fix datetime_end_of_day microseconds and add MONTHS_IN_QUARTER constant.
+
+### Changed
+- Achieve 100% test coverage (#9).
+- Migrate from mypy to ty for type checking (#8).
+- Tooling improvements: dependabot, mypy alignment, and doctest.
+
+### Fixed
+- Fix documentation issues and end_of_* microseconds consistency.
+- Fix datetime handling bugs: httpdate, datetime_to_utc, pretty_date.
+- Upgrade urllib3 to 2.6.3 to fix security vulnerabilities (#3).
 
 ## [Unreleased]
 
@@ -94,6 +124,21 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Fix version bumping.
 
+## [0.4.0] - 2026-01-19
+
+### Added
+- Fix datetime_end_of_day microseconds and add MONTHS_IN_QUARTER constant.
+
+### Changed
+- Achieve 100% test coverage (#9).
+- Migrate from mypy to ty for type checking (#8).
+- Tooling improvements: dependabot, mypy alignment, and doctest.
+
+### Fixed
+- Fix documentation issues and end_of_* microseconds consistency.
+- Fix datetime handling bugs: httpdate, datetime_to_utc, pretty_date.
+- Upgrade urllib3 to 2.6.3 to fix security vulnerabilities (#3).
+
 ## [Unreleased]
 
 ### Added
@@ -130,6 +175,21 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Fix version bumping.
+
+## [0.4.0] - 2026-01-19
+
+### Added
+- Fix datetime_end_of_day microseconds and add MONTHS_IN_QUARTER constant.
+
+### Changed
+- Achieve 100% test coverage (#9).
+- Migrate from mypy to ty for type checking (#8).
+- Tooling improvements: dependabot, mypy alignment, and doctest.
+
+### Fixed
+- Fix documentation issues and end_of_* microseconds consistency.
+- Fix datetime handling bugs: httpdate, datetime_to_utc, pretty_date.
+- Upgrade urllib3 to 2.6.3 to fix security vulnerabilities (#3).
 
 ## [Unreleased]
 
@@ -173,6 +233,21 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Fix version bumping.
 
+## [0.4.0] - 2026-01-19
+
+### Added
+- Fix datetime_end_of_day microseconds and add MONTHS_IN_QUARTER constant.
+
+### Changed
+- Achieve 100% test coverage (#9).
+- Migrate from mypy to ty for type checking (#8).
+- Tooling improvements: dependabot, mypy alignment, and doctest.
+
+### Fixed
+- Fix documentation issues and end_of_* microseconds consistency.
+- Fix datetime handling bugs: httpdate, datetime_to_utc, pretty_date.
+- Upgrade urllib3 to 2.6.3 to fix security vulnerabilities (#3).
+
 ## [Unreleased]
 
 ### Added
@@ -211,6 +286,21 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Fix version bumping.
+
+## [0.4.0] - 2026-01-19
+
+### Added
+- Fix datetime_end_of_day microseconds and add MONTHS_IN_QUARTER constant.
+
+### Changed
+- Achieve 100% test coverage (#9).
+- Migrate from mypy to ty for type checking (#8).
+- Tooling improvements: dependabot, mypy alignment, and doctest.
+
+### Fixed
+- Fix documentation issues and end_of_* microseconds consistency.
+- Fix datetime handling bugs: httpdate, datetime_to_utc, pretty_date.
+- Upgrade urllib3 to 2.6.3 to fix security vulnerabilities (#3).
 
 ## [Unreleased]
 
