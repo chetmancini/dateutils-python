@@ -681,20 +681,20 @@ def workdays_between(start_date: date, end_date: date, holidays: list[date] | No
 
     Examples:
         >>> from datetime import date
-        >>> start = date(2024, 7, 1) # Monday
-        >>> end = date(2024, 7, 7)   # Sunday
-        >>> workdays_between(start, end)
-        5 # Mon, Tue, Wed, Thu, Fri
+        >>> start = date(2024, 7, 1)  # Monday
+        >>> end = date(2024, 7, 7)    # Sunday
+        >>> workdays_between(start, end)  # Mon, Tue, Wed, Thu, Fri
+        5
 
         >>> # Using built-in US fixed holidays for 2024
         >>> us_holidays = get_us_federal_holidays(2024)
-        >>> workdays_between(start, end, holidays=us_holidays) # July 4th is excluded
-        4 # Mon, Tue, Wed, Fri
+        >>> workdays_between(start, end, holidays=us_holidays)  # July 4th is excluded
+        4
 
         >>> start = date(2024, 12, 23)
         >>> end = date(2024, 12, 27)
-        >>> workdays_between(start, end, holidays=get_us_federal_holidays(2024)) # Excludes Dec 25
-        4 # Mon, Tue, Thu, Fri
+        >>> workdays_between(start, end, holidays=get_us_federal_holidays(2024))  # Excludes Dec 25
+        4
     """
     if start_date > end_date:
         raise ValueError(f"start_date ({start_date}) must be <= end_date ({end_date})")
@@ -734,23 +734,23 @@ def add_business_days(dt: date, num_days: int, holidays: list[date] | None = Non
 
     Examples:
         >>> from datetime import date
-        >>> start_date = date(2024, 7, 1) # Monday
+        >>> start_date = date(2024, 7, 1)  # Monday
         >>> add_business_days(start_date, 3)
-        datetime.date(2024, 7, 4) # Thu
+        datetime.date(2024, 7, 4)
 
         >>> # Skip July 4th holiday
         >>> us_holidays = get_us_federal_holidays(2024)
         >>> add_business_days(start_date, 3, holidays=us_holidays)
-        datetime.date(2024, 7, 5) # Fri
+        datetime.date(2024, 7, 5)
 
         >>> # Add negative days
-        >>> end_date = date(2024, 7, 8) # Monday
+        >>> end_date = date(2024, 7, 8)  # Monday
         >>> add_business_days(end_date, -2)
-        datetime.date(2024, 7, 4) # Thu
+        datetime.date(2024, 7, 4)
 
         >>> # Add negative days skipping holiday
         >>> add_business_days(end_date, -2, holidays=us_holidays)
-        datetime.date(2024, 7, 3) # Wed
+        datetime.date(2024, 7, 3)
     """
     if not -10000 <= num_days <= 10000:  # noqa: PLR2004
         raise ValueError(f"num_days must be between -10000 and 10000, got {num_days}")
@@ -788,14 +788,14 @@ def next_business_day(dt: date, holidays: list[date] | None = None) -> date:
     Examples:
         >>> from datetime import date
         >>> friday = date(2024, 7, 5)
-        >>> next_business_day(friday)
-        datetime.date(2024, 7, 8) # Monday
+        >>> next_business_day(friday)  # Monday
+        datetime.date(2024, 7, 8)
 
         >>> wednesday = date(2024, 7, 3)
         >>> # July 4th is a holiday
         >>> us_holidays = get_us_federal_holidays(2024)
-        >>> next_business_day(wednesday, holidays=us_holidays)
-        datetime.date(2024, 7, 5) # Friday
+        >>> next_business_day(wednesday, holidays=us_holidays)  # Friday
+        datetime.date(2024, 7, 5)
     """
     return add_business_days(dt, 1, holidays)
 
@@ -817,14 +817,14 @@ def previous_business_day(dt: date, holidays: list[date] | None = None) -> date:
     Examples:
         >>> from datetime import date
         >>> monday = date(2024, 7, 8)
-        >>> previous_business_day(monday)
-        datetime.date(2024, 7, 5) # Friday
+        >>> previous_business_day(monday)  # Friday
+        datetime.date(2024, 7, 5)
 
         >>> friday = date(2024, 7, 5)
         >>> # July 4th is a holiday
         >>> us_holidays = get_us_federal_holidays(2024)
-        >>> previous_business_day(friday, holidays=us_holidays)
-        datetime.date(2024, 7, 3) # Wednesday
+        >>> previous_business_day(friday, holidays=us_holidays)  # Wednesday
+        datetime.date(2024, 7, 3)
     """
     return add_business_days(dt, -1, holidays)
 

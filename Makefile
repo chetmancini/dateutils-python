@@ -99,6 +99,11 @@ watch-test: ## Run tests in watch mode (requires entr)
 	@echo "${BLUE}Watching for changes and running tests...${NC}"
 	@find . -name "*.py" | entr -c uv run pytest
 
+doctest: ## Run doctests to verify documentation examples
+	@echo "${BLUE}Running doctests...${NC}"
+	@uv run python -m doctest dateutils/dateutils.py -v
+	@echo "${GREEN}✓ Doctests passed${NC}"
+
 # Comprehensive Checks
 check: ## Run all checks (lint, format-check, typecheck, test)
 	@echo "${BLUE}Running comprehensive checks...${NC}"
@@ -198,4 +203,4 @@ version: ## Show current version information
 	@echo "UV version: $(UV_VERSION)"
 
 # Safety check for dangerous operations
-.PHONY: init deps install pre-commit pre-commit-run lint lint-fix format format-check typecheck test test-fast coverage coverage-html watch-test check dev fix build build-check update-changelog version-patch version-minor version-major clean requirements version help
+.PHONY: init deps install pre-commit pre-commit-run lint lint-fix format format-check typecheck test test-fast coverage coverage-html watch-test doctest check dev fix build build-check update-changelog version-patch version-minor version-major clean requirements version help
