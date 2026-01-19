@@ -241,14 +241,14 @@ def start_of_quarter(year: int, q: int) -> datetime:
 
 def end_of_quarter(year: int, q: int) -> datetime:
     """
-    Get the end of the quarter
+    Get the end of the quarter.
 
     Args:
         year: Year to get end of quarter for
         q: Quarter to get end of (1-4)
 
     Returns:
-        datetime: Datetime at 23:59:59
+        datetime: Datetime at 23:59:59.999999
 
     Raises:
         ValueError: If quarter is not between 1 and 4
@@ -259,19 +259,19 @@ def end_of_quarter(year: int, q: int) -> datetime:
     month = q * 3
     # Get the last day of that month
     days_in_month = calendar.monthrange(year, month)[1]
-    return datetime(year, month, days_in_month, 23, 59, 59)
+    return datetime(year, month, days_in_month, 23, 59, 59, 999999)
 
 
 def generate_quarters(until_year: int = 1970, until_q: int = 1) -> Generator[tuple[int, int], None, None]:
     """
-    Generate quarters from the current quarter until a specific year and quarter
+    Generate quarters from the current quarter until a specific year and quarter.
 
     Args:
         until_year: Year to generate quarters until
         until_q: Quarter to generate quarters until (1-4)
 
-    Returns:
-        Generator[tuple[int, int], None, None]: Quarters from current quarter to the specified year and quarter
+    Yields:
+        tuple[int, int]: Tuples of (quarter, year) from current quarter to the specified year and quarter
     """
     today = date.today()
     current_quarter = date_to_quarter(today)
@@ -306,23 +306,26 @@ def start_of_year(year: int) -> datetime:
 
 def end_of_year(year: int) -> datetime:
     """
-    Get the end of the year
+    Get the end of the year.
 
     Args:
         year: Year to get end of year for
 
     Returns:
-        datetime: Datetime at 23:59:59
+        datetime: Datetime at 23:59:59.999999
     """
-    return datetime(year, 12, 31, 23, 59, 59)
+    return datetime(year, 12, 31, 23, 59, 59, 999999)
 
 
 def generate_years(until: int = 1970) -> Generator[int, None, None]:
     """
-    Generate years from the current year until a specific year
+    Generate years from the current year until a specific year.
 
-    Returns:
-        Generator[int, None, None]: Years from current year to the specified year
+    Args:
+        until: Year to generate until (inclusive)
+
+    Yields:
+        int: Years from current year down to the specified year
     """
     current_year = date.today().year
     for years_ago in range(current_year + 1 - until):
@@ -373,33 +376,33 @@ def start_of_month(year: int, month: int) -> datetime:
 
 def end_of_month(year: int, month: int) -> datetime:
     """
-    Get the end of the month
+    Get the end of the month.
 
     Args:
         year: Year to get end of month for
         month: Month to get end of (1-12)
 
     Returns:
-        datetime: Datetime at 23:59:59
+        datetime: Datetime at 23:59:59.999999
 
     Raises:
         ValueError: If year or month is invalid
     """
     _validate_year_month(year, month)
     days_in_month = calendar.monthrange(year, month)[1]
-    return datetime(year, month, days_in_month, 23, 59, 59)
+    return datetime(year, month, days_in_month, 23, 59, 59, 999999)
 
 
 def generate_months(until_year: int = 1970, until_m: int = 1) -> Generator[tuple[int, int], None, None]:
     """
-    Generate months from the current month until a specific year and month
+    Generate months from the current month until a specific year and month.
 
     Args:
         until_year: Year to generate months until
         until_m: Month to generate months until (1-12)
 
-    Returns:
-        Generator[tuple[int, int], None, None]: Months from current month to the specified year and month
+    Yields:
+        tuple[int, int]: Tuples of (month, year) from current month to the specified year and month
 
     Raises:
         ValueError: If until_m is not between 1 and 12
@@ -441,14 +444,14 @@ def get_days_in_month(year: int, month: int) -> int:
 ##################
 def generate_weeks(count: int = 500, until_date: date | None = None) -> Generator[tuple[date, date], None, None]:
     """
-    Generate weeks from the current week until a specific date
+    Generate weeks from the current week until a specific date.
 
     Args:
-        count: Number of weeks to generate
-        until_date: Date to generate weeks until
+        count: Maximum number of weeks to generate
+        until_date: Date to generate weeks until (stops when week starts after this date)
 
-    Returns:
-        Generator[tuple[date, date], None, None]: Weeks from current week to the specified date
+    Yields:
+        tuple[date, date]: Tuples of (week_start, week_end) representing Monday to Sunday
     """
     this_dow = date.today().weekday()
     monday = date.today() - timedelta(days=this_dow)

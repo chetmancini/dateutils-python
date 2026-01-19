@@ -123,7 +123,7 @@ def test_start_of_year() -> None:
 
 
 def test_end_of_year() -> None:
-    assert datetime.datetime(2018, 12, 31, 23, 59, 59) == end_of_year(2018)
+    assert datetime.datetime(2018, 12, 31, 23, 59, 59, 999999) == end_of_year(2018)
 
 
 @freeze_time("2018-10-12")
@@ -228,22 +228,22 @@ def test_end_of_quarter() -> None:
     from dateutils.dateutils import end_of_quarter
 
     # Q1 should end on March 31
-    assert end_of_quarter(2024, 1) == datetime.datetime(2024, 3, 31, 23, 59, 59)
+    assert end_of_quarter(2024, 1) == datetime.datetime(2024, 3, 31, 23, 59, 59, 999999)
 
     # Q2 should end on June 30
-    assert end_of_quarter(2024, 2) == datetime.datetime(2024, 6, 30, 23, 59, 59)
+    assert end_of_quarter(2024, 2) == datetime.datetime(2024, 6, 30, 23, 59, 59, 999999)
 
     # Q3 should end on September 30
-    assert end_of_quarter(2024, 3) == datetime.datetime(2024, 9, 30, 23, 59, 59)
+    assert end_of_quarter(2024, 3) == datetime.datetime(2024, 9, 30, 23, 59, 59, 999999)
 
     # Q4 should end on December 31
-    assert end_of_quarter(2024, 4) == datetime.datetime(2024, 12, 31, 23, 59, 59)
+    assert end_of_quarter(2024, 4) == datetime.datetime(2024, 12, 31, 23, 59, 59, 999999)
 
     # Test non-leap year February (Q1 of 2023)
-    assert end_of_quarter(2023, 1) == datetime.datetime(2023, 3, 31, 23, 59, 59)
+    assert end_of_quarter(2023, 1) == datetime.datetime(2023, 3, 31, 23, 59, 59, 999999)
 
     # Test leap year February (Q1 of 2024)
-    assert end_of_quarter(2024, 1) == datetime.datetime(2024, 3, 31, 23, 59, 59)
+    assert end_of_quarter(2024, 1) == datetime.datetime(2024, 3, 31, 23, 59, 59, 999999)
 
 
 def test_start_of_month() -> None:
@@ -258,10 +258,10 @@ def test_end_of_month() -> None:
     """Test getting the end of a month."""
     from dateutils.dateutils import end_of_month
 
-    assert end_of_month(2024, 2) == datetime.datetime(2024, 2, 29, 23, 59, 59)  # Leap year
-    assert end_of_month(2023, 2) == datetime.datetime(2023, 2, 28, 23, 59, 59)  # Non-leap year
-    assert end_of_month(2024, 4) == datetime.datetime(2024, 4, 30, 23, 59, 59)
-    assert end_of_month(2024, 12) == datetime.datetime(2024, 12, 31, 23, 59, 59)
+    assert end_of_month(2024, 2) == datetime.datetime(2024, 2, 29, 23, 59, 59, 999999)  # Leap year
+    assert end_of_month(2023, 2) == datetime.datetime(2023, 2, 28, 23, 59, 59, 999999)  # Non-leap year
+    assert end_of_month(2024, 4) == datetime.datetime(2024, 4, 30, 23, 59, 59, 999999)
+    assert end_of_month(2024, 12) == datetime.datetime(2024, 12, 31, 23, 59, 59, 999999)
 
 
 def test_get_days_in_month() -> None:
@@ -1160,8 +1160,8 @@ def test_start_of_quarter_validation() -> None:
 def test_end_of_quarter_validation() -> None:
     """Test that end_of_quarter validates quarter input."""
     # Valid quarters should work
-    assert end_of_quarter(2024, 1) == datetime.datetime(2024, 3, 31, 23, 59, 59)
-    assert end_of_quarter(2024, 4) == datetime.datetime(2024, 12, 31, 23, 59, 59)
+    assert end_of_quarter(2024, 1) == datetime.datetime(2024, 3, 31, 23, 59, 59, 999999)
+    assert end_of_quarter(2024, 4) == datetime.datetime(2024, 12, 31, 23, 59, 59, 999999)
 
     # Invalid quarters should raise ValueError
     with pytest.raises(ValueError, match="Quarter must be between 1 and 4, got 0"):
@@ -1204,7 +1204,7 @@ def test_month_function_validation() -> None:
     """Test that month functions validate year and month inputs."""
     # Valid inputs should work
     assert start_of_month(2024, 6) == datetime.datetime(2024, 6, 1)
-    assert end_of_month(2024, 6) == datetime.datetime(2024, 6, 30, 23, 59, 59)
+    assert end_of_month(2024, 6) == datetime.datetime(2024, 6, 30, 23, 59, 59, 999999)
     assert get_days_in_month(2024, 6) == 30
 
     # Invalid month should raise ValueError
