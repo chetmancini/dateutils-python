@@ -89,7 +89,7 @@ make watch-test  # In a separate terminal
 This project uses automated tooling with pre-commit hooks:
 
 - **`ruff`** for formatting and linting
-- **`mypy`** for type checking
+- **`ty`** for type checking
 - **`pytest`** for testing
 
 Pre-commit hooks automatically run these checks on every commit. The `make fix` command automatically resolves most style issues. Ensure `make check` passes before submitting your PR.

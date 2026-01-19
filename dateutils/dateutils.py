@@ -859,7 +859,7 @@ def _ts_difference(timestamp: int | datetime | None = None, now_override: int | 
             timestamp = timestamp.replace(tzinfo=timezone.utc)
         return now - timestamp
     # Type system guarantees we never reach here (timestamp is int | datetime | None)
-    return timedelta(0)  # type: ignore[unreachable]  # pragma: no cover
+    return timedelta(0)  # pragma: no cover
 
 
 def pretty_date(timestamp: int | datetime | None = None, now_override: int | None = None) -> str:  # noqa: C901, PLR0911, PLR0912

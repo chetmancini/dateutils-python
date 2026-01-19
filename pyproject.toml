@@ -44,8 +44,7 @@ dev = [
     "pytest>=9.0.0",
     "ruff>=0.14.13",
     "pytest-cov>=7.0.0",
-    "mypy>=1.19.1",
-    "types-setuptools>=80.9.0.20250822",
+    "ty>=0.0.12",
     "build>=1.4.0",
     "pre-commit>=4.5.1",
     "bump2version>=1.0.1",
@@ -114,28 +113,29 @@ line-ending = "auto"
 packages = ["dateutils"]
 package-data = {"dateutils" = ["py.typed"]}
 
-[tool.mypy]
-python_version = "3.10"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
-strict_optional = true
+[tool.ty.environment]
+python-version = "3.10"
+
+[tool.ty.rules]
+# Strict type checking (equivalent to mypy strict settings)
+possibly-unresolved-reference = "error"
+invalid-argument-type = "error"
+missing-argument = "error"
+unsupported-operator = "error"
+division-by-zero = "error"
+unused-ignore-comment = "warn"
+redundant-cast = "warn"
+
+[tool.ty.src]
+include = ["dateutils", "tests"]
 exclude = [
-    '\.git',
-    '\.hg',
-    '\.mypy_cache',
-    '\.tox',
-    '\.venv',
-    '_build',
-    'buck-out',
-    'build',
-    'dist',
+    ".git",
+    ".hg",
+    ".ty_cache",
+    ".tox",
+    ".venv",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
 ]
