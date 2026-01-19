@@ -24,8 +24,8 @@ help: ## Show this help message
 	@echo ""
 	@echo "${YELLOW}Release Process:${NC}"
 	@echo "  1. Bump version with 'make version-patch/minor/major' (auto-pushes tag)"
-	@echo "  2. Create release from GitHub UI for the pushed tag"
-	@echo "  3. GitHub Actions will automatically build, test, and publish to PyPI"
+	@echo "  2. GitHub Actions will build, test, publish to PyPI, and create a draft release"
+	@echo "  3. Review and publish the draft release at: https://github.com/chetmancini/dateutils-python/releases"
 
 # Setup and Installation
 init: ## Install uv package manager if not present
