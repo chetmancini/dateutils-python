@@ -434,7 +434,7 @@ def get_days_in_month(year: int, month: int) -> int:
 ##################
 # Week operations
 ##################
-def generate_weeks(count: int = 500, until_date: Optional[date] = None) -> Generator[tuple[date, date], None, None]:
+def generate_weeks(count: int = 500, until_date: date | None = None) -> Generator[tuple[date, date], None, None]:
     """
     Generate weeks from the current week until a specific date
 
@@ -540,7 +540,7 @@ def is_weekend(dt: date) -> bool:
 
 
 @lru_cache(maxsize=32)
-def get_us_federal_holidays(year: int, holiday_types: Optional[tuple[str, ...]] = None) -> list[date]:
+def get_us_federal_holidays(year: int, holiday_types: tuple[str, ...] | None = None) -> list[date]:
     """
     Get a list of US federal holidays for a given year.
 
@@ -651,7 +651,7 @@ def get_us_federal_holidays(year: int, holiday_types: Optional[tuple[str, ...]] 
     return result
 
 
-def get_us_federal_holidays_list(year: int, holiday_types: Optional[list[str]] = None) -> list[date]:
+def get_us_federal_holidays_list(year: int, holiday_types: list[str] | None = None) -> list[date]:
     """
     Convenience wrapper for get_us_federal_holidays that accepts a list instead of tuple.
 
@@ -662,7 +662,7 @@ def get_us_federal_holidays_list(year: int, holiday_types: Optional[list[str]] =
     return get_us_federal_holidays(year, tuple(holiday_types))
 
 
-def workdays_between(start_date: date, end_date: date, holidays: Optional[list[date]] = None) -> int:
+def workdays_between(start_date: date, end_date: date, holidays: list[date] | None = None) -> int:
     """
     Count workdays (Monday-Friday) between two dates, inclusive.
 
@@ -715,7 +715,7 @@ def workdays_between(start_date: date, end_date: date, holidays: Optional[list[d
     return count
 
 
-def add_business_days(dt: date, num_days: int, holidays: Optional[list[date]] = None) -> date:
+def add_business_days(dt: date, num_days: int, holidays: list[date] | None = None) -> date:
     """
     Add business days to a date, skipping weekends and holidays.
 
@@ -772,7 +772,7 @@ def add_business_days(dt: date, num_days: int, holidays: Optional[list[date]] = 
     return current
 
 
-def next_business_day(dt: date, holidays: Optional[list[date]] = None) -> date:
+def next_business_day(dt: date, holidays: list[date] | None = None) -> date:
     """
     Find the next business day from a given date, skipping weekends and holidays.
 
@@ -801,7 +801,7 @@ def next_business_day(dt: date, holidays: Optional[list[date]] = None) -> date:
     return add_business_days(dt, 1, holidays)
 
 
-def previous_business_day(dt: date, holidays: Optional[list[date]] = None) -> date:
+def previous_business_day(dt: date, holidays: list[date] | None = None) -> date:
     """
     Find the previous business day from a given date, skipping weekends and holidays.
 
@@ -830,7 +830,7 @@ def previous_business_day(dt: date, holidays: Optional[list[date]] = None) -> da
     return add_business_days(dt, -1, holidays)
 
 
-def _ts_difference(timestamp: Optional[Union[int, datetime]] = None, now_override: Optional[int] = None) -> timedelta:
+def _ts_difference(timestamp: int | datetime | None = None, now_override: int | None = None) -> timedelta:
     """Helper function to calculate time difference for pretty_date."""
     if now_override is not None:
         now = datetime.fromtimestamp(now_override)
@@ -903,7 +903,7 @@ def httpdate(date_time: datetime) -> str:
 ##################
 # Parsing and formatting
 ##################
-def parse_date(date_str: str, formats: Optional[list[str]] = None) -> Optional[date]:
+def parse_date(date_str: str, formats: list[str] | None = None) -> date | None:
     """
     Parse a date string using multiple possible formats.
 
@@ -965,7 +965,7 @@ def parse_date(date_str: str, formats: Optional[list[str]] = None) -> Optional[d
     return None
 
 
-def parse_datetime(datetime_str: str, formats: Optional[list[str]] = None) -> Optional[datetime]:
+def parse_datetime(datetime_str: str, formats: list[str] | None = None) -> datetime | None:
     """
     Parse a datetime string using multiple possible formats
 
@@ -1002,7 +1002,7 @@ def parse_datetime(datetime_str: str, formats: Optional[list[str]] = None) -> Op
     return None
 
 
-def parse_iso8601(iso_str: str) -> Optional[datetime]:
+def parse_iso8601(iso_str: str) -> datetime | None:
     """
     Parse an ISO 8601 formatted date/time string
 
@@ -1061,7 +1061,7 @@ def parse_iso8601(iso_str: str) -> Optional[datetime]:
     return dt
 
 
-def format_date(dt: Union[date, datetime], format_str: str = "%Y-%m-%d") -> str:
+def format_date(dt: date | datetime, format_str: str = "%Y-%m-%d") -> str:
     """
     Format a date or datetime object using the specified format
 
@@ -1092,7 +1092,7 @@ def format_datetime(dt: datetime, format_str: str = "%Y-%m-%d %H:%M:%S") -> str:
     return dt.strftime(format_str)
 
 
-def to_iso8601(dt: Union[date, datetime]) -> str:
+def to_iso8601(dt: date | datetime) -> str:
     """
     Convert a date or datetime to ISO 8601 format
 
@@ -1281,7 +1281,7 @@ def format_timezone_offset(tz_name: str) -> str:
 ##################
 # Additional utility functions
 ##################
-def is_business_day(dt: date, holidays: Optional[list[date]] = None) -> bool:
+def is_business_day(dt: date, holidays: list[date] | None = None) -> bool:
     """
     Check if a date is a business day (not weekend or holiday).
 
@@ -1362,7 +1362,7 @@ def get_quarter_start_end(year: int, quarter: int) -> tuple[date, date]:
     return start, end
 
 
-def age_in_years(birth_date: date, as_of_date: Optional[date] = None) -> int:
+def age_in_years(birth_date: date, as_of_date: date | None = None) -> int:
     """
     Calculate age in years.
 
@@ -1390,7 +1390,7 @@ def age_in_years(birth_date: date, as_of_date: Optional[date] = None) -> int:
     return years
 
 
-def time_until_next_occurrence(target_time: datetime, from_time: Optional[datetime] = None) -> timedelta:
+def time_until_next_occurrence(target_time: datetime, from_time: datetime | None = None) -> timedelta:
     """
     Calculate time until the next occurrence of a target time.
 
