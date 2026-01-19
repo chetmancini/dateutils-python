@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0] - 2026-01-19
+
+### Added
+-
+
+### Changed
+- Repository improvements: exports, type hints, and CI enhancements (#2).
+- None instead of Optional[X]).
+- Update dependencies and Python version support (#1).
+- Claude.
+
+### Fixed
+- Fix version bumping.
+
 ## [Unreleased]
 
 ### Added
@@ -25,6 +39,20 @@
 All notable changes to this project will be documented in this file.
 
 ## [0.2.3] - 2025-05-31
+
+## [0.3.0] - 2026-01-19
+
+### Added
+-
+
+### Changed
+- Repository improvements: exports, type hints, and CI enhancements (#2).
+- None instead of Optional[X]).
+- Update dependencies and Python version support (#1).
+- Claude.
+
+### Fixed
+- Fix version bumping.
 
 ## [Unreleased]
 
@@ -52,6 +80,20 @@ All notable changes to this project will be documented in this file.
 
 ## [0.2.1] - 2025-05-31
 
+## [0.3.0] - 2026-01-19
+
+### Added
+-
+
+### Changed
+- Repository improvements: exports, type hints, and CI enhancements (#2).
+- None instead of Optional[X]).
+- Update dependencies and Python version support (#1).
+- Claude.
+
+### Fixed
+- Fix version bumping.
+
 ## [Unreleased]
 
 ### Added
@@ -75,6 +117,20 @@ All notable changes to this project will be documented in this file.
 -
 
 ### Added
+## [0.3.0] - 2026-01-19
+
+### Added
+-
+
+### Changed
+- Repository improvements: exports, type hints, and CI enhancements (#2).
+- None instead of Optional[X]).
+- Update dependencies and Python version support (#1).
+- Claude.
+
+### Fixed
+- Fix version bumping.
+
 ## [Unreleased]
 
 ### Added
@@ -103,6 +159,20 @@ All notable changes to this project will be documented in this file.
 - Project setup with `pyproject.toml`, `Makefile`, and development tools.
 
 ### Changed
+## [0.3.0] - 2026-01-19
+
+### Added
+-
+
+### Changed
+- Repository improvements: exports, type hints, and CI enhancements (#2).
+- None instead of Optional[X]).
+- Update dependencies and Python version support (#1).
+- Claude.
+
+### Fixed
+- Fix version bumping.
+
 ## [Unreleased]
 
 ### Added
@@ -128,6 +198,20 @@ All notable changes to this project will be documented in this file.
 -
 
 ### Fixed
+## [0.3.0] - 2026-01-19
+
+### Added
+-
+
+### Changed
+- Repository improvements: exports, type hints, and CI enhancements (#2).
+- None instead of Optional[X]).
+- Update dependencies and Python version support (#1).
+- Claude.
+
+### Fixed
+- Fix version bumping.
+
 ## [Unreleased]
 
 ### Added
