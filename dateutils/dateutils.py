@@ -850,7 +850,7 @@ def _ts_difference(timestamp: int | datetime | None = None, now_override: int | 
     elif isinstance(timestamp, int):
         try:
             ts_dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
-        except (ValueError, OSError):
+        except (ValueError, OSError, OverflowError):
             return timedelta(0)  # Return zero diff for invalid timestamps
         return now - ts_dt
     elif isinstance(timestamp, datetime):
@@ -859,7 +859,7 @@ def _ts_difference(timestamp: int | datetime | None = None, now_override: int | 
             timestamp = timestamp.replace(tzinfo=timezone.utc)
         return now - timestamp
     # Type system guarantees we never reach here (timestamp is int | datetime | None)
-    return timedelta(0)
+    return timedelta(0)  # pragma: no cover
 
 
 def pretty_date(timestamp: int | datetime | None = None, now_override: int | None = None) -> str:  # noqa: C901, PLR0911, PLR0912
@@ -936,9 +936,9 @@ def pretty_date(timestamp: int | datetime | None = None, now_override: int | Non
             return str(int(second_diff / SECONDS_IN_MINUTE)) + " minutes ago"
         if second_diff < 2 * SECONDS_IN_HOUR:
             return "an hour ago"
-        if second_diff < 24 * SECONDS_IN_HOUR:
-            return str(int(second_diff / SECONDS_IN_HOUR)) + " hours ago"
-    elif day_diff == 1:
+        # timedelta.seconds is always < 86400, so this is the final case for day_diff == 0
+        return str(int(second_diff / SECONDS_IN_HOUR)) + " hours ago"
+    if day_diff == 1:
         return "Yesterday"
     elif day_diff < DAYS_IN_WEEK:
         return str(day_diff) + " days ago"

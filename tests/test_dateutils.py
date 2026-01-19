@@ -152,6 +152,14 @@ def test_generate_quarters() -> None:
     ] == list(generate_quarters(until_year=2016, until_q=2))
 
 
+@freeze_time("2024-01-15")
+def test_generate_quarters_natural_loop_exit() -> None:
+    """Test generate_quarters when loop completes naturally without early return."""
+    # Start from Q1 2024, generate until Q1 2024 (same quarter) - should yield just one
+    quarters = list(generate_quarters(until_year=2024, until_q=1))
+    assert quarters == [(1, 2024)]
+
+
 @freeze_time("2018-9-12")
 def test_generate_months() -> None:
     assert [
@@ -172,12 +180,42 @@ def test_generate_months() -> None:
     ] == list(generate_months(until_year=2017, until_m=8))
 
 
+@freeze_time("2024-03-15")
+def test_generate_months_natural_loop_exit() -> None:
+    """Test generate_months when loop completes naturally without early return."""
+    # Start from March 2024, generate until January 2024
+    # This ensures we exhaust the outer loop (only year 2024) without early return
+    # because until_m=1 means we yield all months from 3 down to 1
+    months = list(generate_months(until_year=2024, until_m=1))
+    assert months == [(3, 2024), (2, 2024), (1, 2024)]
+
+
 @freeze_time("2018-9-12")
 def test_generate_weeks() -> None:
     assert [
         (datetime.date(2018, 9, 3), datetime.date(2018, 9, 10)),
         (datetime.date(2018, 8, 27), datetime.date(2018, 9, 3)),
     ] == list(generate_weeks(count=2))
+
+
+@freeze_time("2024-07-22")
+def test_generate_weeks_with_until_date() -> None:
+    """Test generate_weeks with until_date parameter."""
+    # Test when until_date causes early termination
+    until = datetime.date(2024, 7, 10)
+    weeks = list(generate_weeks(count=5, until_date=until))
+    # Should yield weeks where start > until_date, then stop
+    assert len(weeks) >= 1
+    # All yielded weeks should have start > until_date
+    for start, _end in weeks:
+        assert start > until
+
+    # Test edge case where until_date is in the future (no weeks should be yielded with early return)
+    future_until = datetime.date(2024, 8, 1)
+    future_weeks = list(generate_weeks(count=2, until_date=future_until))
+    # Since until_date is in the future, the condition start > until_date won't be true
+    # and we should return early (line 468)
+    assert len(future_weeks) == 0
 
 
 def test_date_to_quarter() -> None:
@@ -411,6 +449,101 @@ def test_pretty_date_future() -> None:
     # Test weeks in future
     weeks_future = datetime.datetime(2024, 4, 10, 12, 0, 0)
     assert pretty_date(weeks_future) == "in 2 weeks"
+
+
+def test_pretty_date_with_now_override_and_timestamp() -> None:
+    """Test pretty_date with now_override and integer timestamp."""
+    from dateutils.dateutils import pretty_date
+
+    # Test with now_override and integer timestamp
+    now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
+    # 30 seconds ago
+    past_ts = now_ts - 30
+    assert pretty_date(past_ts, now_override=now_ts) == "30 seconds ago"
+
+
+def test_pretty_date_with_none_timestamp() -> None:
+    """Test pretty_date with None timestamp."""
+    from dateutils.dateutils import pretty_date
+
+    # None timestamp should return "just now"
+    assert pretty_date(None) == "just now"
+
+
+def test_pretty_date_with_invalid_timestamp() -> None:
+    """Test pretty_date with invalid integer timestamp."""
+    from dateutils.dateutils import pretty_date
+
+    # Very large invalid timestamp should return "just now" (timedelta(0))
+    invalid_ts = 2**63
+    result = pretty_date(invalid_ts)
+    assert result == "just now"
+
+
+def test_pretty_date_naive_datetime() -> None:
+    """Test pretty_date with naive datetime (no tzinfo)."""
+    from dateutils.dateutils import pretty_date
+
+    # Test with naive datetime - should be treated as UTC
+    now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
+    naive_dt = datetime.datetime(2024, 3, 27, 11, 59, 30)  # Naive, 30 seconds before
+    result = pretty_date(naive_dt, now_override=now_ts)
+    assert result == "30 seconds ago"
+
+
+def test_pretty_date_future_extended() -> None:
+    """Test pretty_date for extended future date ranges."""
+    from dateutils.dateutils import pretty_date
+
+    now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
+
+    # Test "in X minutes" (line 910)
+    minutes_future = datetime.datetime(2024, 3, 27, 12, 15, 0, tzinfo=datetime.timezone.utc)
+    assert pretty_date(minutes_future, now_override=now_ts) == "in 15 minutes"
+
+    # Test "in an hour" (line 912)
+    one_hour_future = datetime.datetime(2024, 3, 27, 13, 30, 0, tzinfo=datetime.timezone.utc)
+    assert pretty_date(one_hour_future, now_override=now_ts) == "in an hour"
+
+    # Test "in X months" (line 920-921)
+    months_future = datetime.datetime(2024, 6, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    result = pretty_date(months_future, now_override=now_ts)
+    assert result == "in 3 months"
+
+    # Test "in X years" (line 922)
+    years_future = datetime.datetime(2026, 3, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    result = pretty_date(years_future, now_override=now_ts)
+    assert result == "in 2 years"
+
+
+def test_pretty_date_past_extended() -> None:
+    """Test pretty_date for extended past date ranges."""
+    from dateutils.dateutils import pretty_date
+
+    now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
+
+    # Test "X minutes ago" (line 936)
+    minutes_ago = datetime.datetime(2024, 3, 27, 11, 45, 0, tzinfo=datetime.timezone.utc)
+    assert pretty_date(minutes_ago, now_override=now_ts) == "15 minutes ago"
+
+    # Test "an hour ago" (line 938)
+    one_hour_ago = datetime.datetime(2024, 3, 27, 10, 30, 0, tzinfo=datetime.timezone.utc)
+    assert pretty_date(one_hour_ago, now_override=now_ts) == "an hour ago"
+
+    # Test "X weeks ago" (line 945-946)
+    weeks_ago = datetime.datetime(2024, 3, 13, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    result = pretty_date(weeks_ago, now_override=now_ts)
+    assert result == "2 weeks ago"
+
+    # Test "X months ago" (line 947-948)
+    months_ago = datetime.datetime(2023, 12, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    result = pretty_date(months_ago, now_override=now_ts)
+    assert result == "3 months ago"
+
+    # Test "X years ago" (line 949)
+    years_ago = datetime.datetime(2022, 3, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    result = pretty_date(years_ago, now_override=now_ts)
+    assert result == "2 years ago"
 
 
 def test_httpdate_with_utc_aware_datetime() -> None:
@@ -1435,6 +1568,20 @@ def test_age_in_years() -> None:
         age_in_years(future_birth, datetime.date(2024, 1, 1))
 
 
+@freeze_time("2024-07-22")
+def test_age_in_years_without_as_of_date() -> None:
+    """Test age_in_years without providing as_of_date (uses today)."""
+    # Birth date - will calculate age as of frozen date (2024-07-22)
+    birth_date = datetime.date(1990, 7, 22)
+    assert age_in_years(birth_date) == 34  # Exact birthday
+
+    birth_date_before = datetime.date(1990, 7, 23)
+    assert age_in_years(birth_date_before) == 33  # Birthday tomorrow
+
+    birth_date_after = datetime.date(1990, 7, 21)
+    assert age_in_years(birth_date_after) == 34  # Birthday was yesterday
+
+
 @freeze_time("2024-07-22 10:00:00")
 def test_time_until_next_occurrence() -> None:
     """Test the time_until_next_occurrence function."""
@@ -1447,6 +1594,32 @@ def test_time_until_next_occurrence() -> None:
     past_target = datetime.datetime(2024, 7, 22, 8, 0, 0)
     delta = time_until_next_occurrence(past_target)
     assert delta == datetime.timedelta(hours=22)  # Next day at 8:00
+
+
+def test_time_until_next_occurrence_timezone_branches() -> None:
+    """Test time_until_next_occurrence with various timezone combinations."""
+    # Test when from_time is None and target_time has tzinfo (line 1515-1517)
+    target_with_tz = datetime.datetime(2024, 7, 22, 14, 0, 0, tzinfo=datetime.timezone.utc)
+    # This path uses datetime.now(target_time.tzinfo) internally
+    delta = time_until_next_occurrence(target_with_tz)
+    assert isinstance(delta, datetime.timedelta)
+
+    # Test when from_time is None and target_time has no tzinfo (line 1515, 1519)
+    target_naive = datetime.datetime(2024, 7, 22, 14, 0, 0)
+    delta = time_until_next_occurrence(target_naive)
+    assert isinstance(delta, datetime.timedelta)
+
+    # Test when target_time has no tzinfo but from_time does (line 1522-1523)
+    target_naive = datetime.datetime(2024, 7, 22, 14, 0, 0)
+    from_time_with_tz = datetime.datetime(2024, 7, 22, 10, 0, 0, tzinfo=datetime.timezone.utc)
+    delta = time_until_next_occurrence(target_naive, from_time_with_tz)
+    assert delta == datetime.timedelta(hours=4)
+
+    # Test when target_time has tzinfo but from_time doesn't (line 1524-1525)
+    target_with_tz = datetime.datetime(2024, 7, 22, 14, 0, 0, tzinfo=datetime.timezone.utc)
+    from_time_naive = datetime.datetime(2024, 7, 22, 10, 0, 0)
+    delta = time_until_next_occurrence(target_with_tz, from_time_naive)
+    assert delta == datetime.timedelta(hours=4)
 
 
 def test_date_range_generator() -> None:
