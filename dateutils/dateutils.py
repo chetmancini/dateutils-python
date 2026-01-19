@@ -46,7 +46,6 @@ import re
 from collections.abc import Generator
 from datetime import date, datetime, timedelta, timezone
 from functools import lru_cache
-from typing import Optional, Union
 from zoneinfo import ZoneInfo, available_timezones
 
 ##################
@@ -833,28 +832,26 @@ def previous_business_day(dt: date, holidays: list[date] | None = None) -> date:
 def _ts_difference(timestamp: int | datetime | None = None, now_override: int | None = None) -> timedelta:
     """Helper function to calculate time difference for pretty_date."""
     if now_override is not None:
-        now = datetime.fromtimestamp(now_override)
+        now = datetime.fromtimestamp(now_override, tz=timezone.utc)
     else:
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
 
     if timestamp is None:
         return timedelta(0)
     elif isinstance(timestamp, int):
         try:
-            ts_dt = datetime.fromtimestamp(timestamp)
+            ts_dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
         except (ValueError, OSError):
             return timedelta(0)  # Return zero diff for invalid timestamps
         return now - ts_dt
     elif isinstance(timestamp, datetime):
-        # Handle timezone-aware datetimes
-        if timestamp.tzinfo is not None and now.tzinfo is None:
-            now = now.replace(tzinfo=timezone.utc)
-        elif timestamp.tzinfo is None and now.tzinfo is not None:
+        # Handle naive datetimes by assuming UTC
+        if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=timezone.utc)
         return now - timestamp
 
 
-def pretty_date(timestamp: Optional[Union[int, datetime]] = None, now_override: Optional[int] = None) -> str:  # NOQA
+def pretty_date(timestamp: int | datetime | None = None, now_override: int | None = None) -> str:  # noqa: C901, PLR0911
     """
     Adapted from
     http://stackoverflow.com/questions/1551382/
