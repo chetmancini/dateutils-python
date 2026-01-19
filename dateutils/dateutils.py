@@ -849,21 +849,74 @@ def _ts_difference(timestamp: int | datetime | None = None, now_override: int | 
         if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=timezone.utc)
         return now - timestamp
+    # Type system guarantees we never reach here (timestamp is int | datetime | None)
+    return timedelta(0)  # type: ignore[unreachable]
 
 
-def pretty_date(timestamp: int | datetime | None = None, now_override: int | None = None) -> str:  # noqa: C901, PLR0911
+def pretty_date(timestamp: int | datetime | None = None, now_override: int | None = None) -> str:  # noqa: C901, PLR0911, PLR0912
     """
-    Adapted from
-    http://stackoverflow.com/questions/1551382/
-    user-friendly-time-format-in-python
+    Format a timestamp as a human-readable relative time string.
+
+    Supports both past times ("2 hours ago", "Yesterday") and future times
+    ("in 2 hours", "Tomorrow").
+
+    Args:
+        timestamp: Unix timestamp (int) or datetime object to format.
+                   If None, returns "just now".
+        now_override: Optional Unix timestamp to use as "now" (for testing).
+
+    Returns:
+        str: Human-readable relative time string.
+
+    Examples:
+        >>> from datetime import datetime, timezone
+        >>> # Use now_override for deterministic testing
+        >>> now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
+        >>> pretty_date(datetime(2024, 3, 27, 11, 59, 30, tzinfo=timezone.utc), now_ts)
+        '30 seconds ago'
+        >>> pretty_date(datetime(2024, 3, 27, 10, 0, 0, tzinfo=timezone.utc), now_ts)
+        '2 hours ago'
+        >>> pretty_date(datetime(2024, 3, 27, 14, 0, 0, tzinfo=timezone.utc), now_ts)
+        'in 2 hours'
+        >>> pretty_date(datetime(2024, 3, 28, 12, 0, 0, tzinfo=timezone.utc), now_ts)
+        'Tomorrow'
     """
     diff = _ts_difference(timestamp, now_override)
-    second_diff = diff.seconds
-    day_diff = diff.days
+    total_seconds = diff.total_seconds()
 
-    if day_diff < 0:
-        return ""
-    elif day_diff == 0:
+    # Future dates (negative diff means timestamp is in the future)
+    if total_seconds < 0:
+        total_seconds = abs(total_seconds)
+        day_diff = int(total_seconds // SECONDS_IN_DAY)
+        second_diff = int(total_seconds % SECONDS_IN_DAY)
+
+        if day_diff == 0:
+            if second_diff < RECENT_SECONDS:
+                return "just now"
+            if second_diff < SECONDS_IN_MINUTE:
+                return "in " + str(second_diff) + " seconds"
+            if second_diff < 2 * SECONDS_IN_MINUTE:
+                return "in a minute"
+            if second_diff < SECONDS_IN_HOUR:
+                return "in " + str(int(second_diff / SECONDS_IN_MINUTE)) + " minutes"
+            if second_diff < 2 * SECONDS_IN_HOUR:
+                return "in an hour"
+            return "in " + str(int(second_diff / SECONDS_IN_HOUR)) + " hours"
+        elif day_diff == 1:
+            return "Tomorrow"
+        elif day_diff < DAYS_IN_WEEK:
+            return "in " + str(day_diff) + " days"
+        elif day_diff < DAYS_IN_MONTH_MAX:
+            return "in " + str(int(day_diff / DAYS_IN_WEEK)) + " weeks"
+        elif day_diff < DAYS_IN_YEAR:
+            return "in " + str(int(day_diff / DAYS_IN_MONTH_APPROX)) + " months"
+        return "in " + str(int(day_diff / DAYS_IN_YEAR)) + " years"
+
+    # Past dates
+    day_diff = diff.days
+    second_diff = diff.seconds
+
+    if day_diff == 0:
         if second_diff < RECENT_SECONDS:
             return "just now"
         if second_diff < SECONDS_IN_MINUTE:
@@ -879,7 +932,7 @@ def pretty_date(timestamp: int | datetime | None = None, now_override: int | Non
     elif day_diff == 1:
         return "Yesterday"
     elif day_diff < DAYS_IN_WEEK:
-        return str(int(day_diff)) + " days ago"
+        return str(day_diff) + " days ago"
     elif day_diff < DAYS_IN_MONTH_MAX:
         return str(int(day_diff / DAYS_IN_WEEK)) + " weeks ago"
     elif day_diff < DAYS_IN_YEAR:
@@ -890,10 +943,34 @@ def pretty_date(timestamp: int | datetime | None = None, now_override: int | Non
 def httpdate(date_time: datetime) -> str:
     """
     Convert a datetime object to an HTTP date string (RFC 7231 compliant).
-    Assumes the input datetime is in UTC if not timezone-aware.
+
+    The output is always in GMT/UTC as required by RFC 7231. Timezone-aware
+    datetimes are converted to UTC before formatting. Naive datetimes are
+    assumed to already be in UTC.
+
+    Args:
+        date_time: The datetime to format. If naive, assumed to be UTC.
+
+    Returns:
+        str: HTTP date string in format "Day, DD Mon YYYY HH:MM:SS GMT"
+
+    Examples:
+        >>> from datetime import datetime, timezone
+        >>> dt_utc = datetime(2024, 7, 22, 14, 30, 0, tzinfo=timezone.utc)
+        >>> httpdate(dt_utc)
+        'Mon, 22 Jul 2024 14:30:00 GMT'
+
+        >>> # Non-UTC timezone is converted to UTC
+        >>> from zoneinfo import ZoneInfo
+        >>> dt_ny = datetime(2024, 7, 22, 10, 30, 0, tzinfo=ZoneInfo("America/New_York"))
+        >>> httpdate(dt_ny)  # 10:30 EDT = 14:30 UTC
+        'Mon, 22 Jul 2024 14:30:00 GMT'
     """
     if date_time.tzinfo is None:
         date_time = date_time.replace(tzinfo=timezone.utc)
+    else:
+        # Convert to UTC for consistent GMT output
+        date_time = date_time.astimezone(timezone.utc)
     return date_time.strftime("%a, %d %b %Y %H:%M:%S GMT")
 
 
@@ -1213,17 +1290,39 @@ def convert_timezone(dt: datetime, to_tz: str) -> datetime:
 
 def datetime_to_utc(dt: datetime) -> datetime:
     """
-    Convert a datetime to UTC
+    Convert a datetime to UTC.
+
+    Note: Naive datetimes are assumed to be in UTC (consistent with epoch_s()).
+    If you need to convert a naive datetime that represents local time, first
+    attach the appropriate timezone using datetime.replace(tzinfo=...) or
+    datetime.astimezone().
 
     Args:
-        dt: The datetime to convert (if naive, assumes local timezone)
+        dt: The datetime to convert. If naive, assumed to be UTC.
 
     Returns:
-        The datetime in UTC
+        datetime: The datetime in UTC timezone.
+
+    Examples:
+        >>> from datetime import datetime, timezone
+        >>> from zoneinfo import ZoneInfo
+        >>> # Timezone-aware datetime is converted
+        >>> ny_dt = datetime(2024, 7, 22, 10, 0, 0, tzinfo=ZoneInfo("America/New_York"))
+        >>> utc_dt = datetime_to_utc(ny_dt)
+        >>> utc_dt.hour  # 10 EDT = 14 UTC
+        14
+
+        >>> # Naive datetime is assumed UTC
+        >>> naive_dt = datetime(2024, 7, 22, 12, 0, 0)
+        >>> result = datetime_to_utc(naive_dt)
+        >>> result.hour
+        12
+        >>> result.tzinfo == timezone.utc
+        True
     """
     if dt.tzinfo is None:
-        # Assume system local timezone
-        dt = dt.astimezone()
+        # Assume UTC for naive datetimes (consistent with epoch_s)
+        return dt.replace(tzinfo=timezone.utc)
 
     return dt.astimezone(timezone.utc)
 

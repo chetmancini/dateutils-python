@@ -379,6 +379,40 @@ def test_pretty_date() -> None:
     assert pretty_date(days_ago) == "4 days ago"
 
 
+@freeze_time("2024-03-27 12:00:00")
+def test_pretty_date_future() -> None:
+    """Test pretty date formatting for future dates."""
+    from dateutils.dateutils import pretty_date
+
+    # Test "just now" for very near future
+    almost_now = datetime.datetime(2024, 3, 27, 12, 0, 5)
+    assert pretty_date(almost_now) == "just now"
+
+    # Test seconds in future
+    seconds_future = datetime.datetime(2024, 3, 27, 12, 0, 30)
+    assert pretty_date(seconds_future) == "in 30 seconds"
+
+    # Test minutes in future
+    minute_future = datetime.datetime(2024, 3, 27, 12, 1, 0)
+    assert pretty_date(minute_future) == "in a minute"
+
+    # Test hours in future
+    hours_future = datetime.datetime(2024, 3, 27, 14, 0, 0)
+    assert pretty_date(hours_future) == "in 2 hours"
+
+    # Test tomorrow
+    tomorrow = datetime.datetime(2024, 3, 28, 12, 0, 0)
+    assert pretty_date(tomorrow) == "Tomorrow"
+
+    # Test days in future
+    days_future = datetime.datetime(2024, 3, 31, 12, 0, 0)
+    assert pretty_date(days_future) == "in 4 days"
+
+    # Test weeks in future
+    weeks_future = datetime.datetime(2024, 4, 10, 12, 0, 0)
+    assert pretty_date(weeks_future) == "in 2 weeks"
+
+
 def test_httpdate_with_utc_aware_datetime() -> None:
     """Test httpdate with a UTC-aware datetime."""
     dt_utc = datetime.datetime(2015, 4, 14, 19, 16, 44, tzinfo=datetime.timezone.utc)
@@ -396,9 +430,8 @@ def test_httpdate_with_naive_datetime() -> None:
 def test_httpdate_with_non_utc_timezone() -> None:
     """Test httpdate with a non-UTC timezone converted to UTC."""
     dt_ny = datetime.datetime(2015, 4, 14, 15, 16, 44, tzinfo=ZoneInfo("America/New_York"))
-    dt_ny.astimezone(datetime.timezone.utc)
-    result = httpdate(dt_ny)  # Function should handle timezone conversion if designed to
-    assert result == "Tue, 14 Apr 2015 15:16:44 GMT"  # 15:16:44 EDT = 19:16:44 UTC
+    result = httpdate(dt_ny)  # Function converts to UTC before formatting
+    assert result == "Tue, 14 Apr 2015 19:16:44 GMT"  # 15:16:44 EDT = 19:16:44 UTC
 
 
 def test_httpdate_edge_case_leap_year() -> None:
@@ -509,11 +542,11 @@ def test_datetime_to_utc() -> None:
     assert utc_dt.tzinfo == datetime.timezone.utc
     assert utc_dt.hour == 12  # 8 EDT = 12 UTC
 
-    # Test with naive datetime (should assume local timezone)
-    # This is harder to test as it depends on system timezone
+    # Test with naive datetime (assumes UTC, consistent with epoch_s)
     naive_dt = datetime.datetime(2024, 3, 27, 12, 0, 0)
     result = datetime_to_utc(naive_dt)
     assert result.tzinfo == datetime.timezone.utc
+    assert result.hour == 12  # Naive datetime assumed to be UTC, so hour unchanged
 
 
 def test_get_timezone_offset() -> None:
