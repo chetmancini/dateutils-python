@@ -1,14 +1,21 @@
-name: Main
+name: CI
 
 on:
   push:
     branches:
       - master
+  pull_request:
+    branches:
+      - master
 
 jobs:
-  uv-example:
-    name: python
+  test:
+    name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@v4
@@ -19,17 +26,20 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
       - name: Install the project
         run: uv sync --all-extras --dev
 
       - name: Run lint
         run: make lint
 
-      - name: Run tests
-        run: make test
+      - name: Run format check
+        run: make format-check
 
       - name: Run typecheck
         run: make typecheck
 
-      - name: Run coverage
-        run: make coverage
+      - name: Run tests
+        run: make test
