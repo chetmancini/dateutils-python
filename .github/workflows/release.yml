@@ -71,7 +71,7 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release (Draft)
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: >-
@@ -79,8 +79,8 @@ jobs:
           '${{ github.ref_name }}'
           --repo '${{ github.repository }}'
           --title 'Release ${{ steps.version.outputs.VERSION }}'
-          --notes 'Release ${{ steps.version.outputs.VERSION }}'
           --generate-notes
+          --draft
           dist/*
 
   pypi-publish:
