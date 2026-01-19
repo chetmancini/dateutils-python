@@ -6,14 +6,13 @@ repos:
         args: [--fix]
       - id: ruff-format
 
-  # MyPy for type checking
+  # MyPy for type checking (aligned with make typecheck)
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.19.1
     hooks:
       - id: mypy
         additional_dependencies: [types-setuptools, pytest, freezegun]
-        files: ^dateutils/.*\.py$
-        args: [--ignore-missing-imports]
+        files: ^(dateutils|tests)/.*\.py$
 
   # Built-in pre-commit hooks for common issues
   - repo: https://github.com/pre-commit/pre-commit-hooks

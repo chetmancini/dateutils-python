@@ -25,7 +25,6 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
     "Typing :: Typed",
     "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
 ]
 keywords = ["date", "time", "datetime", "utilities", "timezone", "parsing", "formatting"]
 requires-python = ">=3.10"
