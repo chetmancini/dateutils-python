@@ -24,8 +24,8 @@ help: ## Show this help message
 	@echo ""
 	@echo "${YELLOW}Release Process:${NC}"
 	@echo "  1. Bump version with 'make version-patch/minor/major' (auto-pushes tag)"
-	@echo "  2. GitHub Actions will build, test, publish to PyPI, and create a draft release"
-	@echo "  3. Review and publish the draft release at: https://github.com/chetmancini/dateutils-python/releases"
+	@echo "  2. GitHub Actions will build, test, and create a draft release"
+	@echo "  3. Publish the release to trigger PyPI publish: https://github.com/chetmancini/dateutils-python/releases"
 
 # Setup and Installation
 init: ## Install uv package manager if not present
@@ -164,8 +164,8 @@ bump-version = @echo "${BLUE}Bumping $(1) version...${NC}"; \
 	git push origin "v$$NEW_VERSION"; \
 	echo "${GREEN}✓ $(1) version bumped and pushed${NC}"; \
 	echo "${YELLOW}Next steps:${NC}"; \
-	echo "  - GitHub Actions will build, test, publish to PyPI, and create a draft release"; \
-	echo "  - Publish the draft release: https://github.com/chetmancini/dateutils-python/releases/edit/v$$NEW_VERSION"
+	echo "  - GitHub Actions will build, test, and create a draft release"; \
+	echo "  - Publish the release to trigger PyPI publish: https://github.com/chetmancini/dateutils-python/releases/edit/v$$NEW_VERSION"
 
 version-patch: ## Bump patch version and push tag (e.g., 1.0.0 → 1.0.1)
 	$(call bump-version,patch)
