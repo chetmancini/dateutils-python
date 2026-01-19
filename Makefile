@@ -71,9 +71,9 @@ format-check: ## Check if code is properly formatted
 	@echo "${BLUE}Checking code formatting...${NC}"
 	@uv run ruff format --check .
 
-typecheck: ## Run static type checking with mypy
+typecheck: ## Run static type checking with ty
 	@echo "${BLUE}Running type checks...${NC}"
-	@uv run mypy dateutils tests
+	@uv run ty check dateutils tests
 
 # Testing
 test: ## Run tests
@@ -187,7 +187,7 @@ clean: ## Remove build artifacts and cache files
 	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	@find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
-	@find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name ".ty_cache" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
 	@echo "${GREEN}✓ Cleaned build artifacts${NC}"
 

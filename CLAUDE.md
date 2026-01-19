@@ -20,7 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `make lint-fix` - Run ruff linting and fix auto-fixable issues
 - `make format` - Format code using ruff
 - `make format-check` - Check if code is properly formatted
-- `make typecheck` - Run mypy static type checking
+- `make typecheck` - Run ty static type checking
 - `make check` - Run all checks (lint, format-check, typecheck, test)
 - `make fix` - Fix common issues (format + lint-fix)
 
@@ -64,7 +64,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Development Workflow
 - Uses `uv` for fast dependency management
 - `ruff` for linting and formatting (configured for 120 character line length)
-- `mypy` for strict static type checking
+- `ty` for fast static type checking (Astral's Rust-based type checker)
 - `pytest` with `freezegun` for time-sensitive testing
 - Pre-commit hooks for code quality enforcement
 - Comprehensive Makefile for all development tasks
