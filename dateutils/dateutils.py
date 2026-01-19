@@ -60,6 +60,7 @@ DAYS_IN_MONTH_APPROX = 30
 DAYS_IN_MONTH_MAX = 31
 DAYS_IN_WEEK = 7
 QUARTERS_IN_YEAR = 4
+MONTHS_IN_QUARTER = 3
 MONTHS_IN_YEAR = 12
 WEEKDAYS_IN_WEEK = 5
 
@@ -179,9 +180,14 @@ def datetime_end_of_day(day: date) -> datetime:
         day: Date to get end of day for
 
     Returns:
-        datetime: Datetime at 23:59:59
+        datetime: Datetime at 23:59:59.999999
+
+    Examples:
+        >>> from datetime import date
+        >>> datetime_end_of_day(date(2024, 7, 22))
+        datetime.datetime(2024, 7, 22, 23, 59, 59, 999999)
     """
-    return datetime_start_of_day(day) + timedelta(days=1) - timedelta(seconds=1)
+    return datetime_start_of_day(day) + timedelta(days=1) - timedelta(microseconds=1)
 
 
 ##################

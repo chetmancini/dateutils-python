@@ -115,7 +115,7 @@ def test_datetime_start_of_day() -> None:
 
 def test_datetime_end_of_day() -> None:
     day = datetime.datetime(2016, 11, 23, 5, 4, 3).date()
-    assert datetime_end_of_day(day) == datetime.datetime(2016, 11, 23, 23, 59, 59)
+    assert datetime_end_of_day(day) == datetime.datetime(2016, 11, 23, 23, 59, 59, 999999)
 
 
 def test_start_of_year() -> None:
