@@ -2,38 +2,42 @@
 
 ## Supported Versions
 
-We currently support the following versions with security updates:
+We release patches for security vulnerabilities in the following versions:
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
+| 0.4.x   | Yes                |
+| < 0.4   | No                 |
 
-## Security Best Practices
+## Reporting a Vulnerability
 
-When using dateutils-python, please follow these security best practices:
+If you discover a security vulnerability in dateutils-python, please report it responsibly.
 
-1. **Always use the latest version** of the package
-2. **Validate all input** before passing it to dateutils functions
-3. **Handle timezone information carefully** to prevent timezone-related vulnerabilities
-4. **Be cautious with date parsing** from untrusted sources
-5. **Use appropriate error handling** for all date operations
+**Please do not report security vulnerabilities through public GitHub issues.**
 
-## Security Updates
+Instead, please send an email to **chetmancini@gmail.com** with:
 
-Security updates will be released as patch versions (e.g., 0.1.0 -> 0.1.1). We recommend:
+- A description of the vulnerability
+- Steps to reproduce the issue
+- Potential impact of the vulnerability
+- Any suggested fixes (if available)
 
-- Regularly updating to the latest version
-- Subscribing to GitHub security alerts for this repository
-- Following our release notes for security-related changes
+You should receive a response within 48 hours. If the issue is confirmed, we will release a patch as soon as possible depending on complexity.
 
-## Dependencies
+## Security Considerations
 
-`dateutils-python` has minimal external dependencies to reduce the attack surface. We:
+### Dependencies
 
-- Regularly audit our dependencies
-- Use dependency pinning for reproducible builds
-- Monitor for security vulnerabilities in dependencies
+This library has **zero external dependencies** beyond Python's standard library. This minimizes supply chain attack surface and reduces the need to track third-party security advisories.
 
-## License
+### Input Validation
 
-This security policy is licensed under the MIT License - see the LICENSE file for details.
+All public functions validate their inputs and raise appropriate exceptions for invalid data. However, as with any date/time library:
+
+- Be cautious when parsing dates from untrusted user input
+- Consider additional validation for your specific use case
+- Timestamps outside reasonable ranges (e.g., year 1-9999) may behave unexpectedly
+
+### Timezone Data
+
+Timezone information comes from Python's `zoneinfo` module, which uses the system's IANA timezone database. Keep your system's timezone data updated for accurate conversions.

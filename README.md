@@ -1,5 +1,12 @@
 # DateUtils Python
 
+[![PyPI version](https://badge.fury.io/py/dateutils-python.svg)](https://pypi.org/project/dateutils-python/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/dateutils-python.svg)](https://pypi.org/project/dateutils-python/)
+[![Python versions](https://img.shields.io/pypi/pyversions/dateutils-python.svg)](https://pypi.org/project/dateutils-python/)
+[![CI](https://github.com/chetmancini/dateutils-python/actions/workflows/main.yml/badge.svg)](https://github.com/chetmancini/dateutils-python/actions/workflows/main.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Typed](https://img.shields.io/badge/typed-100%25-blue.svg)](https://github.com/chetmancini/dateutils-python)
+
 A comprehensive collection of date and time utilities for Python applications.
 
 ## Features
@@ -14,6 +21,37 @@ A comprehensive collection of date and time utilities for Python applications.
 - **Additional Utilities**: Age calculation, weekend detection, week numbers, and more
 - **Memory Efficiency**: Generator-based functions for large date ranges
 - **Input Validation**: Comprehensive validation with helpful error messages
+
+## Why dateutils-python?
+
+There are several excellent date/time libraries in the Python ecosystem. Here's how dateutils-python compares:
+
+| Feature | dateutils-python | python-dateutil | arrow | pendulum |
+|---------|-----------------|-----------------|-------|----------|
+| **Zero dependencies** | Yes | Yes | No (1 dep) | No (3 deps) |
+| **Business day calculations** | Built-in | No | No | No |
+| **US Federal holidays** | Built-in | No | No | No |
+| **Fully typed** | Yes | Partial | Partial | Yes |
+| **Human-readable output** | Yes | No | Yes | Yes |
+| **Timezone handling** | Yes | Yes | Yes | Yes |
+| **Date parsing** | Multi-format | Powerful/fuzzy | ISO-focused | ISO-focused |
+| **Relative date parsing** | No | Yes ("next Friday") | Yes | Yes |
+| **Maintained** | Active | Active | Active | Active |
+
+### Choose dateutils-python if you want:
+
+- **Zero dependency overhead** - Uses only Python's standard library. No transitive dependencies to audit, no version conflicts, no supply chain concerns.
+- **Business day logic out of the box** - Calculate workdays, skip holidays, find next/previous business day without additional libraries.
+- **US Federal holidays included** - No need to maintain your own holiday list or pull in another package.
+- **Full type coverage** - Every function is fully typed for IDE autocompletion and static analysis.
+- **Lightweight and focused** - Does common date operations well without trying to be everything.
+
+### Consider alternatives if you need:
+
+- **Fuzzy date parsing** ("next tuesday", "in 2 weeks") - Use `python-dateutil`
+- **Immutable date objects with method chaining** - Use `pendulum`
+- **Drop-in datetime replacement** - Use `arrow` or `pendulum`
+- **Extensive internationalization** - Use `pendulum` or `babel`
 
 ## Installation
 
