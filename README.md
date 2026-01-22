@@ -4,6 +4,7 @@
 [![PyPI downloads](https://img.shields.io/pypi/dm/dateutils-python.svg)](https://pypi.org/project/dateutils-python/)
 [![Python versions](https://img.shields.io/pypi/pyversions/dateutils-python.svg)](https://pypi.org/project/dateutils-python/)
 [![CI](https://github.com/chetmancini/dateutils-python/actions/workflows/main.yml/badge.svg)](https://github.com/chetmancini/dateutils-python/actions/workflows/main.yml)
+[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/chetmancini/dateutils-python)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Typed](https://img.shields.io/badge/typed-100%25-blue.svg)](https://github.com/chetmancini/dateutils-python)
 
