@@ -276,12 +276,14 @@ def test_generate_weeks_custom_start_backward_monday() -> None:
     start = datetime.date(2024, 1, 20)
     until = datetime.date(2023, 12, 31)
     weeks = list(
-        generate_weeks(count=4, start_date=start, until_date=until, start_on_monday=True)
+        generate_weeks(count=5, start_date=start, until_date=until, start_on_monday=True)
     )
+    # Should include week containing until_date (Dec 25-31 contains Dec 31)
     assert weeks == [
         (datetime.date(2024, 1, 15), datetime.date(2024, 1, 21)),
         (datetime.date(2024, 1, 8), datetime.date(2024, 1, 14)),
         (datetime.date(2024, 1, 1), datetime.date(2024, 1, 7)),
+        (datetime.date(2023, 12, 25), datetime.date(2023, 12, 31)),
     ]
 
 
