@@ -65,6 +65,17 @@
 - CM: fix mutable results of federal holidays, each caller gets unique data.
 - Fix release instructions to link directly to draft release.
 
+## [0.5.1] - 2026-01-23
+
+### Added
+- Add Python 3.14 support to CI and package classifiers (#18).
+
+### Changed
+- Format.
+
+### Fixed
+- Fix generate_weeks.
+
 ## [Unreleased]
 
 ### Added
@@ -155,6 +166,17 @@ All notable changes to this project will be documented in this file.
 - Fix validation on until_q in generate-quarters.
 - CM: fix mutable results of federal holidays, each caller gets unique data.
 - Fix release instructions to link directly to draft release.
+
+## [0.5.1] - 2026-01-23
+
+### Added
+- Add Python 3.14 support to CI and package classifiers (#18).
+
+### Changed
+- Format.
+
+### Fixed
+- Fix generate_weeks.
 
 ## [Unreleased]
 
@@ -247,6 +269,17 @@ All notable changes to this project will be documented in this file.
 - CM: fix mutable results of federal holidays, each caller gets unique data.
 - Fix release instructions to link directly to draft release.
 
+## [0.5.1] - 2026-01-23
+
+### Added
+- Add Python 3.14 support to CI and package classifiers (#18).
+
+### Changed
+- Format.
+
+### Fixed
+- Fix generate_weeks.
+
 ## [Unreleased]
 
 ### Added
@@ -334,6 +367,17 @@ All notable changes to this project will be documented in this file.
 - Fix validation on until_q in generate-quarters.
 - CM: fix mutable results of federal holidays, each caller gets unique data.
 - Fix release instructions to link directly to draft release.
+
+## [0.5.1] - 2026-01-23
+
+### Added
+- Add Python 3.14 support to CI and package classifiers (#18).
+
+### Changed
+- Format.
+
+### Fixed
+- Fix generate_weeks.
 
 ## [Unreleased]
 
@@ -428,6 +472,17 @@ All notable changes to this project will be documented in this file.
 - CM: fix mutable results of federal holidays, each caller gets unique data.
 - Fix release instructions to link directly to draft release.
 
+## [0.5.1] - 2026-01-23
+
+### Added
+- Add Python 3.14 support to CI and package classifiers (#18).
+
+### Changed
+- Format.
+
+### Fixed
+- Fix generate_weeks.
+
 ## [Unreleased]
 
 ### Added
@@ -517,6 +572,17 @@ All notable changes to this project will be documented in this file.
 - Fix validation on until_q in generate-quarters.
 - CM: fix mutable results of federal holidays, each caller gets unique data.
 - Fix release instructions to link directly to draft release.
+
+## [0.5.1] - 2026-01-23
+
+### Added
+- Add Python 3.14 support to CI and package classifiers (#18).
+
+### Changed
+- Format.
+
+### Fixed
+- Fix generate_weeks.
 
 ## [Unreleased]
 
