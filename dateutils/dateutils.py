@@ -547,7 +547,6 @@ def is_weekend(dt: date) -> bool:
     return dt.weekday() >= calendar.SATURDAY  # 5 = Saturday, 6 = Sunday
 
 
-@lru_cache(maxsize=32)
 def get_us_federal_holidays(year: int, holiday_types: tuple[str, ...] | None = None) -> list[date]:
     """
     Get a list of US federal holidays for a given year.
@@ -598,7 +597,16 @@ def get_us_federal_holidays(year: int, holiday_types: tuple[str, ...] | None = N
         True
         >>> date(2024, 1, 15) in fixed_holidays  # MLK Day (floating)
         False
+    Note:
+        The returned list is a copy of the cached holiday data, so modifying it
+        will not affect future calls or pollute the cache.
     """
+    return list(_get_us_federal_holidays_cached(year, holiday_types))
+
+
+@lru_cache(maxsize=32)
+def _get_us_federal_holidays_cached(year: int, holiday_types: tuple[str, ...] | None = None) -> tuple[date, ...]:
+    """Internal helper that stores immutable tuples for caching purposes."""
     # Define all possible holiday types
     all_holiday_types: dict[str, date] = {
         # Fixed holidays
@@ -648,7 +656,7 @@ def get_us_federal_holidays(year: int, holiday_types: tuple[str, ...] | None = N
 
     # If holiday_types is None, return all holidays
     if holiday_types is None:
-        return list(all_holiday_types.values())
+        return tuple(all_holiday_types.values())
 
     # Otherwise, return only the specified holiday types
     result = []
@@ -656,7 +664,7 @@ def get_us_federal_holidays(year: int, holiday_types: tuple[str, ...] | None = N
         if holiday_type in all_holiday_types:
             result.append(all_holiday_types[holiday_type])
 
-    return result
+    return tuple(result)
 
 
 def get_us_federal_holidays_list(year: int, holiday_types: list[str] | None = None) -> list[date]:

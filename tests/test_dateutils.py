@@ -1182,6 +1182,16 @@ def test_get_us_federal_holidays_filter_invalid_type() -> None:
     assert datetime.date(2024, 12, 25) in holidays
 
 
+def test_get_us_federal_holidays_returns_copy() -> None:
+    """Mutating the returned list should not corrupt the cached data."""
+    holidays = get_us_federal_holidays(2024)
+    assert len(holidays) == 11
+    holidays.pop()
+
+    # Subsequent call should still return the full set
+    assert len(get_us_federal_holidays(2024)) == 11
+
+
 ##################
 # Property-based tests
 ##################
