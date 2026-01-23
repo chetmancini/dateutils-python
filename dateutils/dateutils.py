@@ -272,7 +272,13 @@ def generate_quarters(until_year: int = 1970, until_q: int = 1) -> Generator[tup
 
     Yields:
         tuple[int, int]: Tuples of (quarter, year) from current quarter to the specified year and quarter
+
+    Raises:
+        ValueError: If until_q is not between 1 and 4
     """
+    if not 1 <= until_q <= QUARTERS_IN_YEAR:
+        raise ValueError(f"until_q must be between 1 and 4, got {until_q}")
+
     today = date.today()
     current_quarter = date_to_quarter(today)
     current_year = today.year

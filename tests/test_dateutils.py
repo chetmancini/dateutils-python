@@ -160,6 +160,15 @@ def test_generate_quarters_natural_loop_exit() -> None:
     assert quarters == [(1, 2024)]
 
 
+def test_generate_quarters_invalid_until_q() -> None:
+    """Invalid until_q values should raise ValueError."""
+    with pytest.raises(ValueError, match="until_q must be between 1 and 4, got 0"):
+        list(generate_quarters(until_year=2024, until_q=0))
+
+    with pytest.raises(ValueError, match="until_q must be between 1 and 4, got 5"):
+        list(generate_quarters(until_year=2024, until_q=5))
+
+
 @freeze_time("2018-9-12")
 def test_generate_months() -> None:
     assert [
