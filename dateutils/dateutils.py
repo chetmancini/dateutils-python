@@ -45,6 +45,7 @@ import calendar
 import re
 from collections.abc import Generator
 from datetime import date, datetime, timedelta, timezone
+from email.utils import format_datetime as _format_http_datetime
 from functools import lru_cache
 from zoneinfo import ZoneInfo, available_timezones
 
@@ -969,7 +970,8 @@ def httpdate(date_time: datetime) -> str:
 
     The output is always in GMT/UTC as required by RFC 7231. Timezone-aware
     datetimes are converted to UTC before formatting. Naive datetimes are
-    assumed to already be in UTC.
+    assumed to already be in UTC. The formatting uses `email.utils.format_datetime`
+    to avoid locale-dependent weekday/month names.
 
     Args:
         date_time: The datetime to format. If naive, assumed to be UTC.
@@ -994,7 +996,7 @@ def httpdate(date_time: datetime) -> str:
     else:
         # Convert to UTC for consistent GMT output
         date_time = date_time.astimezone(timezone.utc)
-    return date_time.strftime("%a, %d %b %Y %H:%M:%S GMT")
+    return _format_http_datetime(date_time, usegmt=True)
 
 
 ##################

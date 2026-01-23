@@ -1,4 +1,5 @@
 import datetime
+import locale
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pytest
@@ -586,7 +587,29 @@ def test_httpdate_edge_case_leap_year() -> None:
 def test_httpdate_invalid_input() -> None:
     """Test httpdate with invalid input raises an appropriate exception."""
     with pytest.raises(AttributeError):
-        httpdate("not a datetime")  # type: ignore # Should fail due to lack of strftime
+        httpdate("not a datetime")  # type: ignore # Should fail due to missing datetime attrs
+
+
+def test_httpdate_locale_independence() -> None:
+    """httpdate should not be affected by the process locale."""
+    dt = datetime.datetime(2024, 7, 22, 14, 30, 0, tzinfo=datetime.timezone.utc)
+
+    original_locale = locale.setlocale(locale.LC_TIME)
+    try:
+        switched = False
+        for candidate in ("fr_FR.UTF-8", "de_DE.UTF-8", "es_ES.UTF-8"):
+            try:
+                locale.setlocale(locale.LC_TIME, candidate)
+                switched = True
+                break
+            except locale.Error:
+                continue
+        if not switched:
+            pytest.skip("No non-English locale available for testing")
+
+        assert httpdate(dt) == "Mon, 22 Jul 2024 14:30:00 GMT"
+    finally:
+        locale.setlocale(locale.LC_TIME, original_locale)
 
 
 ##################
