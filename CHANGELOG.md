@@ -44,6 +44,27 @@
 ### Fixed
 -
 
+## [0.5.0] - 2026-01-23
+
+### Added
+- Docs: add coverage badge to README (#17).
+- Add Claude Code GitHub Workflow (#11).
+
+### Changed
+- Generate now goes forward or back.
+- Chore: update all transitive dependencies (#16).
+- Bump requests from 2.32.3 to 2.32.4 (#13).
+- Bump filelock from 3.18.0 to 3.20.3 (#14).
+- Ci: bump actions/checkout from 4 to 6 (#12).
+- Improve README with badges and comparison section.
+- Split release workflow to publish PyPI only on release publish.
+
+### Fixed
+- Fix httpdate localization.
+- Fix validation on until_q in generate-quarters.
+- CM: fix mutable results of federal holidays, each caller gets unique data.
+- Fix release instructions to link directly to draft release.
+
 ## [Unreleased]
 
 ### Added
@@ -113,6 +134,27 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 -
+
+## [0.5.0] - 2026-01-23
+
+### Added
+- Docs: add coverage badge to README (#17).
+- Add Claude Code GitHub Workflow (#11).
+
+### Changed
+- Generate now goes forward or back.
+- Chore: update all transitive dependencies (#16).
+- Bump requests from 2.32.3 to 2.32.4 (#13).
+- Bump filelock from 3.18.0 to 3.20.3 (#14).
+- Ci: bump actions/checkout from 4 to 6 (#12).
+- Improve README with badges and comparison section.
+- Split release workflow to publish PyPI only on release publish.
+
+### Fixed
+- Fix httpdate localization.
+- Fix validation on until_q in generate-quarters.
+- CM: fix mutable results of federal holidays, each caller gets unique data.
+- Fix release instructions to link directly to draft release.
 
 ## [Unreleased]
 
@@ -184,6 +226,27 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 -
 
+## [0.5.0] - 2026-01-23
+
+### Added
+- Docs: add coverage badge to README (#17).
+- Add Claude Code GitHub Workflow (#11).
+
+### Changed
+- Generate now goes forward or back.
+- Chore: update all transitive dependencies (#16).
+- Bump requests from 2.32.3 to 2.32.4 (#13).
+- Bump filelock from 3.18.0 to 3.20.3 (#14).
+- Ci: bump actions/checkout from 4 to 6 (#12).
+- Improve README with badges and comparison section.
+- Split release workflow to publish PyPI only on release publish.
+
+### Fixed
+- Fix httpdate localization.
+- Fix validation on until_q in generate-quarters.
+- CM: fix mutable results of federal holidays, each caller gets unique data.
+- Fix release instructions to link directly to draft release.
+
 ## [Unreleased]
 
 ### Added
@@ -250,6 +313,27 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 -
+
+## [0.5.0] - 2026-01-23
+
+### Added
+- Docs: add coverage badge to README (#17).
+- Add Claude Code GitHub Workflow (#11).
+
+### Changed
+- Generate now goes forward or back.
+- Chore: update all transitive dependencies (#16).
+- Bump requests from 2.32.3 to 2.32.4 (#13).
+- Bump filelock from 3.18.0 to 3.20.3 (#14).
+- Ci: bump actions/checkout from 4 to 6 (#12).
+- Improve README with badges and comparison section.
+- Split release workflow to publish PyPI only on release publish.
+
+### Fixed
+- Fix httpdate localization.
+- Fix validation on until_q in generate-quarters.
+- CM: fix mutable results of federal holidays, each caller gets unique data.
+- Fix release instructions to link directly to draft release.
 
 ## [Unreleased]
 
@@ -323,6 +407,27 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 -
 
+## [0.5.0] - 2026-01-23
+
+### Added
+- Docs: add coverage badge to README (#17).
+- Add Claude Code GitHub Workflow (#11).
+
+### Changed
+- Generate now goes forward or back.
+- Chore: update all transitive dependencies (#16).
+- Bump requests from 2.32.3 to 2.32.4 (#13).
+- Bump filelock from 3.18.0 to 3.20.3 (#14).
+- Ci: bump actions/checkout from 4 to 6 (#12).
+- Improve README with badges and comparison section.
+- Split release workflow to publish PyPI only on release publish.
+
+### Fixed
+- Fix httpdate localization.
+- Fix validation on until_q in generate-quarters.
+- CM: fix mutable results of federal holidays, each caller gets unique data.
+- Fix release instructions to link directly to draft release.
+
 ## [Unreleased]
 
 ### Added
@@ -391,6 +496,27 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 -
+
+## [0.5.0] - 2026-01-23
+
+### Added
+- Docs: add coverage badge to README (#17).
+- Add Claude Code GitHub Workflow (#11).
+
+### Changed
+- Generate now goes forward or back.
+- Chore: update all transitive dependencies (#16).
+- Bump requests from 2.32.3 to 2.32.4 (#13).
+- Bump filelock from 3.18.0 to 3.20.3 (#14).
+- Ci: bump actions/checkout from 4 to 6 (#12).
+- Improve README with badges and comparison section.
+- Split release workflow to publish PyPI only on release publish.
+
+### Fixed
+- Fix httpdate localization.
+- Fix validation on until_q in generate-quarters.
+- CM: fix mutable results of federal holidays, each caller gets unique data.
+- Fix release instructions to link directly to draft release.
 
 ## [Unreleased]
 
