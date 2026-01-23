@@ -132,6 +132,10 @@ def test_generate_years() -> None:
     assert [2018, 2017, 2016, 2015, 2014] == list(generate_years(until=2014))
 
 
+def test_generate_years_forward() -> None:
+    assert [2020, 2021, 2022] == list(generate_years(until=2022, start_year=2020))
+
+
 def test_is_leap_year() -> None:
     assert is_leap_year(2020)
     assert not is_leap_year(2021)
@@ -159,6 +163,11 @@ def test_generate_quarters_natural_loop_exit() -> None:
     # Start from Q1 2024, generate until Q1 2024 (same quarter) - should yield just one
     quarters = list(generate_quarters(until_year=2024, until_q=1))
     assert quarters == [(1, 2024)]
+
+
+def test_generate_quarters_forward_custom_start() -> None:
+    quarters = list(generate_quarters(until_year=2025, until_q=2, start_year=2024, start_quarter=3))
+    assert quarters == [(3, 2024), (4, 2024), (1, 2025), (2, 2025)]
 
 
 def test_generate_quarters_invalid_until_q() -> None:
@@ -200,32 +209,80 @@ def test_generate_months_natural_loop_exit() -> None:
     assert months == [(3, 2024), (2, 2024), (1, 2024)]
 
 
+def test_generate_months_forward_custom_start() -> None:
+    start = datetime.date(2023, 11, 15)
+    months = list(generate_months(until_year=2024, until_m=2, start_date=start))
+    assert months == [
+        (11, 2023),
+        (12, 2023),
+        (1, 2024),
+        (2, 2024),
+    ]
+
+
 @freeze_time("2018-9-12")
 def test_generate_weeks() -> None:
-    assert [
-        (datetime.date(2018, 9, 3), datetime.date(2018, 9, 10)),
-        (datetime.date(2018, 8, 27), datetime.date(2018, 9, 3)),
-    ] == list(generate_weeks(count=2))
+    weeks = list(generate_weeks(count=2))
+    assert weeks == [
+        (datetime.date(2018, 9, 9), datetime.date(2018, 9, 15)),
+        (datetime.date(2018, 9, 2), datetime.date(2018, 9, 8)),
+    ]
+
+
+@freeze_time("2018-9-12")
+def test_generate_weeks_start_on_monday() -> None:
+    weeks = list(generate_weeks(count=2, start_on_monday=True))
+    assert weeks == [
+        (datetime.date(2018, 9, 10), datetime.date(2018, 9, 16)),
+        (datetime.date(2018, 9, 3), datetime.date(2018, 9, 9)),
+    ]
 
 
 @freeze_time("2024-07-22")
 def test_generate_weeks_with_until_date() -> None:
     """Test generate_weeks with until_date parameter."""
-    # Test when until_date causes early termination
     until = datetime.date(2024, 7, 10)
     weeks = list(generate_weeks(count=5, until_date=until))
-    # Should yield weeks where start > until_date, then stop
-    assert len(weeks) >= 1
-    # All yielded weeks should have start > until_date
-    for start, _end in weeks:
-        assert start > until
+    assert weeks == [
+        (datetime.date(2024, 7, 21), datetime.date(2024, 7, 27)),
+        (datetime.date(2024, 7, 14), datetime.date(2024, 7, 20)),
+        (datetime.date(2024, 7, 7), datetime.date(2024, 7, 13)),
+    ]
 
-    # Test edge case where until_date is in the future (no weeks should be yielded with early return)
-    future_until = datetime.date(2024, 8, 1)
-    future_weeks = list(generate_weeks(count=2, until_date=future_until))
-    # Since until_date is in the future, the condition start > until_date won't be true
-    # and we should return early (line 468)
-    assert len(future_weeks) == 0
+    # When until_date is in the future we walk forward
+    future_until = datetime.date(2024, 8, 10)
+    future_weeks = list(generate_weeks(count=5, until_date=future_until))
+    assert future_weeks == [
+        (datetime.date(2024, 7, 21), datetime.date(2024, 7, 27)),
+        (datetime.date(2024, 7, 28), datetime.date(2024, 8, 3)),
+        (datetime.date(2024, 8, 4), datetime.date(2024, 8, 10)),
+    ]
+
+
+def test_generate_weeks_custom_start_forward() -> None:
+    """Custom start_date moving forward toward until_date."""
+    start = datetime.date(2024, 1, 3)  # Wednesday
+    until = datetime.date(2024, 1, 20)
+    weeks = list(generate_weeks(count=4, start_date=start, until_date=until))
+    assert weeks == [
+        (datetime.date(2023, 12, 31), datetime.date(2024, 1, 6)),
+        (datetime.date(2024, 1, 7), datetime.date(2024, 1, 13)),
+        (datetime.date(2024, 1, 14), datetime.date(2024, 1, 20)),
+    ]
+
+
+def test_generate_weeks_custom_start_backward_monday() -> None:
+    """Custom start_date moving backward with Monday-based weeks."""
+    start = datetime.date(2024, 1, 20)
+    until = datetime.date(2023, 12, 31)
+    weeks = list(
+        generate_weeks(count=4, start_date=start, until_date=until, start_on_monday=True)
+    )
+    assert weeks == [
+        (datetime.date(2024, 1, 15), datetime.date(2024, 1, 21)),
+        (datetime.date(2024, 1, 8), datetime.date(2024, 1, 14)),
+        (datetime.date(2024, 1, 1), datetime.date(2024, 1, 7)),
+    ]
 
 
 def test_date_to_quarter() -> None:

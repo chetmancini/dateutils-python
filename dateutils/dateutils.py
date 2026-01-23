@@ -263,34 +263,61 @@ def end_of_quarter(year: int, q: int) -> datetime:
     return datetime(year, month, days_in_month, 23, 59, 59, 999999)
 
 
-def generate_quarters(until_year: int = 1970, until_q: int = 1) -> Generator[tuple[int, int], None, None]:
+def generate_quarters(
+    until_year: int = 1970,
+    until_q: int = 1,
+    *,
+    start_year: int | None = None,
+    start_quarter: int | None = None,
+) -> Generator[tuple[int, int], None, None]:
     """
-    Generate quarters from the current quarter until a specific year and quarter.
+    Generate quarters between a starting quarter and a target quarter (inclusive).
 
     Args:
-        until_year: Year to generate quarters until
-        until_q: Quarter to generate quarters until (1-4)
+        until_year: Target year.
+        until_q: Target quarter (1-4).
+        start_year: Starting year. Defaults to current year.
+        start_quarter: Starting quarter (1-4). Defaults to the current quarter.
 
     Yields:
-        tuple[int, int]: Tuples of (quarter, year) from current quarter to the specified year and quarter
+        tuple[int, int]: Tuples of (quarter, year) walking toward the target.
 
     Raises:
-        ValueError: If until_q is not between 1 and 4
+        ValueError: If start or until quarters are not between 1 and 4
     """
     if not 1 <= until_q <= QUARTERS_IN_YEAR:
         raise ValueError(f"until_q must be between 1 and 4, got {until_q}")
 
     today = date.today()
-    current_quarter = date_to_quarter(today)
-    current_year = today.year
-    for year in generate_years(until=until_year):
-        for q in range(4, 0, -1):
-            if year == current_year and q > current_quarter:
-                continue
-            if year == until_year and until_q > q:
-                return
-            else:
-                yield q, year
+    start_y = start_year or today.year
+    start_q = start_quarter or date_to_quarter(today)
+
+    if not 1 <= start_q <= QUARTERS_IN_YEAR:
+        raise ValueError(f"start_quarter must be between 1 and 4, got {start_q}")
+
+    start_idx = start_y * QUARTERS_IN_YEAR + (start_q - 1)
+    target_idx = until_year * QUARTERS_IN_YEAR + (until_q - 1)
+
+    def _idx_to_tuple(idx: int) -> tuple[int, int]:
+        year = idx // QUARTERS_IN_YEAR
+        quarter = idx % QUARTERS_IN_YEAR + 1
+        return quarter, year
+
+    direction = 0
+    if target_idx > start_idx:
+        direction = 1
+    elif target_idx < start_idx:
+        direction = -1
+
+    idx = start_idx
+    yield _idx_to_tuple(idx)
+    if idx == target_idx:
+        return
+
+    step = 1 if direction > 0 else -1
+    while idx != target_idx:
+        idx += step
+        yield _idx_to_tuple(idx)
 
 
 ##################
@@ -324,19 +351,27 @@ def end_of_year(year: int) -> datetime:
     return datetime(year, 12, 31, 23, 59, 59, 999999)
 
 
-def generate_years(until: int = 1970) -> Generator[int, None, None]:
+def generate_years(until: int = 1970, *, start_year: int | None = None) -> Generator[int, None, None]:
     """
-    Generate years from the current year until a specific year.
+    Generate years between a start year and a target year (inclusive).
 
     Args:
-        until: Year to generate until (inclusive)
+        until: Target year to walk toward (inclusive).
+        start_year: Year to start from. Defaults to the current year.
 
     Yields:
-        int: Years from current year down to the specified year
+        int: Years from the start toward the target, moving forward or backward.
     """
-    current_year = date.today().year
-    for years_ago in range(current_year + 1 - until):
-        yield current_year - years_ago
+    start = start_year or date.today().year
+    current = start
+    yield current
+    if current == until:
+        return
+
+    step = 1 if until > start else -1
+    while current != until:
+        current += step
+        yield current
 
 
 def is_leap_year(year: int) -> bool:
@@ -400,16 +435,22 @@ def end_of_month(year: int, month: int) -> datetime:
     return datetime(year, month, days_in_month, 23, 59, 59, 999999)
 
 
-def generate_months(until_year: int = 1970, until_m: int = 1) -> Generator[tuple[int, int], None, None]:
+def generate_months(
+    until_year: int = 1970,
+    until_m: int = 1,
+    *,
+    start_date: date | None = None,
+) -> Generator[tuple[int, int], None, None]:
     """
-    Generate months from the current month until a specific year and month.
+    Generate months between a start date's month and a target month (inclusive).
 
     Args:
-        until_year: Year to generate months until
-        until_m: Month to generate months until (1-12)
+        until_year: Target year.
+        until_m: Target month (1-12).
+        start_date: Date providing the starting month/year. Defaults to today.
 
     Yields:
-        tuple[int, int]: Tuples of (month, year) from current month to the specified year and month
+        tuple[int, int]: Tuples of (month, year) from start toward the target.
 
     Raises:
         ValueError: If until_m is not between 1 and 12
@@ -417,15 +458,29 @@ def generate_months(until_year: int = 1970, until_m: int = 1) -> Generator[tuple
     if not 1 <= until_m <= MONTHS_IN_YEAR:
         raise ValueError(f"until_m must be between 1 and 12, got {until_m}")
 
-    today = date.today()
-    for year in generate_years(until=until_year):
-        for month in range(12, 0, -1):
-            if year == today.year and month > today.month:
-                continue
-            if year == until_year and until_m > month:
-                return
-            else:
-                yield month, year
+    anchor = start_date or date.today()
+    current_idx = anchor.year * 12 + (anchor.month - 1)
+    target_idx = until_year * 12 + (until_m - 1)
+
+    def _idx_to_tuple(idx: int) -> tuple[int, int]:
+        year = idx // 12
+        month = idx % 12 + 1
+        return month, year
+
+    direction = 0
+    if target_idx > current_idx:
+        direction = 1
+    elif target_idx < current_idx:
+        direction = -1
+
+    yield _idx_to_tuple(current_idx)
+    if current_idx == target_idx:
+        return
+
+    step = 1 if direction > 0 else -1
+    while current_idx != target_idx:
+        current_idx += step
+        yield _idx_to_tuple(current_idx)
 
 
 def get_days_in_month(year: int, month: int) -> int:
@@ -449,30 +504,62 @@ def get_days_in_month(year: int, month: int) -> int:
 ##################
 # Week operations
 ##################
-def generate_weeks(count: int = 500, until_date: date | None = None) -> Generator[tuple[date, date], None, None]:
+def generate_weeks(
+    count: int = 500,
+    until_date: date | None = None,
+    *,
+    start_on_monday: bool = False,
+    start_date: date | None = None,
+) -> Generator[tuple[date, date], None, None]:
     """
-    Generate weeks from the current week until a specific date.
+    Generate weeks starting from a reference week and walking toward a target date.
 
     Args:
-        count: Maximum number of weeks to generate
-        until_date: Date to generate weeks until (stops when week starts after this date)
+        count: Maximum number of weeks to generate.
+        until_date: Target date that determines which direction to walk.
+            If the target is before the `start_date`, weeks are generated backwards.
+            If the target is after `start_date`, weeks are generated forwards.
+            When `until_date` is None, weeks are generated backwards.
+            Generation always stops once the week containing `until_date` has been yielded.
+        start_on_monday: If True, weeks run Monday→Sunday. Otherwise they run
+            Sunday→Saturday (the default).
+        start_date: Date whose week should be treated as the starting point.
+            Defaults to today.
 
     Yields:
-        tuple[date, date]: Tuples of (week_start, week_end) representing Monday to Sunday
+        tuple[date, date]: Tuples of (week_start, week_end) representing the
+        inclusive week range.
     """
-    this_dow = date.today().weekday()
-    monday = date.today() - timedelta(days=this_dow)
-    end = monday
-    for _i in range(count):
-        start = end - timedelta(days=7)
-        ret = (start, end)
-        end = start
-        if until_date and start > until_date:
-            yield ret
-        elif not until_date:
-            yield ret
-        else:
-            return
+
+    def _week_start(today: date) -> date:
+        desired_start = calendar.MONDAY if start_on_monday else calendar.SUNDAY
+        days_since_start = (today.weekday() - desired_start) % 7
+        return today - timedelta(days=days_since_start)
+
+    anchor = start_date or date.today()
+    week_start = _week_start(anchor)
+
+    if until_date is None:
+        direction = -1
+    elif until_date > anchor:
+        direction = 1
+    elif until_date < anchor:
+        direction = -1
+    else:
+        direction = 0
+
+    for _ in range(count):
+        week_end = week_start + timedelta(days=6)
+        if until_date is not None:
+            if direction > 0 and week_start > until_date:
+                break
+            if direction < 0 and week_end < until_date:
+                break
+        yield week_start, week_end
+        if direction == 0:
+            break
+        step = -7 if direction < 0 else 7
+        week_start += timedelta(days=step)
 
 
 ##################
