@@ -285,6 +285,39 @@ def test_generate_weeks_custom_start_backward_monday() -> None:
     ]
 
 
+def test_generate_weeks_start_equals_until() -> None:
+    """Test generate_weeks when start_date equals until_date.
+
+    When both dates are the same, direction=0 and exactly one week should be yielded.
+    """
+    same_date = datetime.date(2024, 7, 17)  # Wednesday
+
+    # Sunday-based weeks (default)
+    weeks = list(generate_weeks(count=10, start_date=same_date, until_date=same_date))
+    assert len(weeks) == 1
+    # July 17, 2024 (Wed) falls in week Sun Jul 14 - Sat Jul 20
+    assert weeks == [(datetime.date(2024, 7, 14), datetime.date(2024, 7, 20))]
+
+    # Monday-based weeks
+    weeks_monday = list(generate_weeks(count=10, start_date=same_date, until_date=same_date, start_on_monday=True))
+    assert len(weeks_monday) == 1
+    # July 17, 2024 (Wed) falls in week Mon Jul 15 - Sun Jul 21
+    assert weeks_monday == [(datetime.date(2024, 7, 15), datetime.date(2024, 7, 21))]
+
+    # Test with a weekend date
+    saturday = datetime.date(2024, 7, 20)
+    weeks_sat = list(generate_weeks(count=10, start_date=saturday, until_date=saturday))
+    assert len(weeks_sat) == 1
+    # Saturday Jul 20 falls in week Sun Jul 14 - Sat Jul 20
+    assert weeks_sat == [(datetime.date(2024, 7, 14), datetime.date(2024, 7, 20))]
+
+    # Test with Sunday (week boundary)
+    sunday = datetime.date(2024, 7, 14)
+    weeks_sun = list(generate_weeks(count=10, start_date=sunday, until_date=sunday))
+    assert len(weeks_sun) == 1
+    assert weeks_sun == [(datetime.date(2024, 7, 14), datetime.date(2024, 7, 20))]
+
+
 def test_date_to_quarter() -> None:
     def to_date(m: int, d: int) -> datetime.datetime:
         return datetime.datetime(2018, m, d)
@@ -854,6 +887,81 @@ def test_dst_transitions() -> None:
         # it's still 1:30 AM in New York, not 2:30 EDT yet
         assert ny_time.hour == 1
         assert ny_time.minute == 30
+
+
+def test_dst_midnight_boundary() -> None:
+    """Test timezone functions with DST boundaries at or near midnight.
+
+    This tests edge cases where date boundaries and DST transitions interact.
+    """
+    from dateutils.dateutils import convert_timezone, now_in_timezone, today_in_timezone
+
+    # === Spring forward: March 10, 2024, 2:00 AM -> 3:00 AM in US Eastern ===
+
+    # Test today_in_timezone right at midnight UTC during spring forward
+    # At 2024-03-10 05:00:00 UTC = 2024-03-10 00:00:00 EST (midnight, before transition)
+    with freeze_time("2024-03-10 05:00:00", tz_offset=0):
+        ny_date = today_in_timezone("America/New_York")
+        assert ny_date == datetime.date(2024, 3, 10)
+
+    # At 2024-03-10 07:00:00 UTC = 2024-03-10 03:00:00 EDT (after transition)
+    with freeze_time("2024-03-10 07:00:00", tz_offset=0):
+        ny_date = today_in_timezone("America/New_York")
+        assert ny_date == datetime.date(2024, 3, 10)
+        ny_time = now_in_timezone("America/New_York")
+        assert ny_time.hour == 3  # 7 UTC - 4 (EDT) = 3
+
+    # Test convert_timezone across midnight during DST transition
+    # 11:30 PM EST on March 9 -> should be 11:30 PM same day
+    pre_midnight_utc = datetime.datetime(2024, 3, 10, 4, 30, 0, tzinfo=datetime.timezone.utc)
+    pre_midnight_ny = convert_timezone(pre_midnight_utc, "America/New_York")
+    assert pre_midnight_ny.hour == 23
+    assert pre_midnight_ny.day == 9  # Still March 9 in NY
+
+    # === Fall back: November 3, 2024, 2:00 AM -> 1:00 AM in US Eastern ===
+
+    # During fall back, 1:00 AM occurs twice. Test the "repeated hour" scenario.
+    # At 2024-11-03 05:30:00 UTC = 2024-11-03 01:30:00 EDT (first 1:30 AM)
+    with freeze_time("2024-11-03 05:30:00", tz_offset=0):
+        ny_time = now_in_timezone("America/New_York")
+        assert ny_time.hour == 1
+        assert ny_time.minute == 30
+
+    # At 2024-11-03 06:30:00 UTC = 2024-11-03 01:30:00 EST (second 1:30 AM)
+    with freeze_time("2024-11-03 06:30:00", tz_offset=0):
+        ny_time = now_in_timezone("America/New_York")
+        assert ny_time.hour == 1
+        assert ny_time.minute == 30
+
+    # Test that date doesn't change incorrectly during fall back midnight
+    # At 2024-11-03 04:00:00 UTC = 2024-11-03 00:00:00 EDT (midnight, before fall back)
+    with freeze_time("2024-11-03 04:00:00", tz_offset=0):
+        ny_date = today_in_timezone("America/New_York")
+        assert ny_date == datetime.date(2024, 11, 3)
+
+    # At 2024-11-03 08:00:00 UTC = 2024-11-03 03:00:00 EST (after fall back)
+    with freeze_time("2024-11-03 08:00:00", tz_offset=0):
+        ny_date = today_in_timezone("America/New_York")
+        assert ny_date == datetime.date(2024, 11, 3)
+
+
+def test_convert_timezone_dst_nonexistent_time() -> None:
+    """Test convert_timezone behavior with times in the DST 'gap'.
+
+    During spring forward (2:00 AM -> 3:00 AM), times like 2:30 AM don't exist.
+    Python's ZoneInfo handles this by "folding" forward.
+    """
+    from dateutils.dateutils import convert_timezone
+
+    # Create a UTC time that would be 2:30 AM EST (which doesn't exist on March 10, 2024)
+    # 2:30 AM EST would be 7:30 UTC, but 7:30 UTC on March 10 is actually 3:30 AM EDT
+    utc_time = datetime.datetime(2024, 3, 10, 7, 30, 0, tzinfo=datetime.timezone.utc)
+    ny_time = convert_timezone(utc_time, "America/New_York")
+
+    # 7:30 UTC = 3:30 EDT (since DST has occurred)
+    assert ny_time.hour == 3
+    assert ny_time.minute == 30
+    assert ny_time.tzname() == "EDT"
 
 
 ##################
@@ -1569,10 +1677,23 @@ def test_is_business_day() -> None:
     sunday = datetime.date(2024, 7, 28)
     assert is_business_day(sunday) is False
 
-    # Business day with holiday
+    # Business day with holiday (list)
     july_4th = datetime.date(2024, 7, 4)  # Thursday
     assert is_business_day(july_4th) is True  # Without holidays
-    assert is_business_day(july_4th, holidays=[july_4th]) is False  # With holiday
+    assert is_business_day(july_4th, holidays=[july_4th]) is False  # With holiday as list
+
+    # Business day with holiday (set) - O(1) lookup
+    holiday_set = {july_4th, datetime.date(2024, 12, 25)}
+    assert is_business_day(july_4th, holidays=holiday_set) is False
+    assert is_business_day(datetime.date(2024, 7, 5), holidays=holiday_set) is True  # Friday, not a holiday
+
+    # Business day with holiday (tuple)
+    holiday_tuple = (july_4th, datetime.date(2024, 12, 25))
+    assert is_business_day(july_4th, holidays=holiday_tuple) is False
+
+    # Business day with holiday (frozenset)
+    holiday_frozenset = frozenset({july_4th, datetime.date(2024, 12, 25)})
+    assert is_business_day(july_4th, holidays=holiday_frozenset) is False
 
 
 def test_days_until_weekend() -> None:
@@ -1679,6 +1800,57 @@ def test_age_in_years_without_as_of_date() -> None:
 
     birth_date_after = datetime.date(1990, 7, 21)
     assert age_in_years(birth_date_after) == 34  # Birthday was yesterday
+
+
+def test_age_in_years_leap_year_birthday() -> None:
+    """Test age_in_years for someone born on Feb 29 (leap day).
+
+    This tests the edge case where a birthday only exists in leap years.
+    The implementation treats Feb 28 as the effective birthday in non-leap years,
+    meaning on Feb 28 of a non-leap year, the person has already had their birthday.
+    """
+    # Born on Feb 29, 2000 (leap year)
+    leap_birthday = datetime.date(2000, 2, 29)
+
+    # === In a leap year (2024) ===
+    # Day before birthday (Feb 28)
+    assert age_in_years(leap_birthday, datetime.date(2024, 2, 28)) == 23
+
+    # Exact birthday (Feb 29)
+    assert age_in_years(leap_birthday, datetime.date(2024, 2, 29)) == 24
+
+    # Day after birthday (Mar 1)
+    assert age_in_years(leap_birthday, datetime.date(2024, 3, 1)) == 24
+
+    # === In a non-leap year (2023) ===
+    # Feb 27 - day before the effective birthday (Feb 28)
+    assert age_in_years(leap_birthday, datetime.date(2023, 2, 27)) == 22
+
+    # Feb 28 - the effective birthday in non-leap year (birthday has occurred)
+    assert age_in_years(leap_birthday, datetime.date(2023, 2, 28)) == 23
+
+    # Mar 1 - day after effective birthday
+    assert age_in_years(leap_birthday, datetime.date(2023, 3, 1)) == 23
+
+    # === Edge case: born on Feb 29, checking on Feb 29 of same year ===
+    assert age_in_years(leap_birthday, datetime.date(2000, 2, 29)) == 0
+
+    # === Edge case: one year later in non-leap year (2001) ===
+    # Feb 27, 2001: birthday (treated as Feb 28) hasn't occurred yet
+    assert age_in_years(leap_birthday, datetime.date(2001, 2, 27)) == 0
+
+    # Feb 28, 2001: birthday (treated as Feb 28) has occurred
+    assert age_in_years(leap_birthday, datetime.date(2001, 2, 28)) == 1
+
+    # Mar 1, 2001: after birthday
+    assert age_in_years(leap_birthday, datetime.date(2001, 3, 1)) == 1
+
+    # === Verify leap vs non-leap year boundary behavior ===
+    # Someone born Feb 29, 2000 turning 4 years old
+    # In leap year 2004: birthday is Feb 29
+    assert age_in_years(leap_birthday, datetime.date(2004, 2, 28)) == 3  # Day before
+    assert age_in_years(leap_birthday, datetime.date(2004, 2, 29)) == 4  # Birthday
+    assert age_in_years(leap_birthday, datetime.date(2004, 3, 1)) == 4  # Day after
 
 
 @freeze_time("2024-07-22 10:00:00")
