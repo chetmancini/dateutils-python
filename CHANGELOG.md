@@ -76,6 +76,18 @@
 ### Fixed
 - Fix generate_weeks.
 
+## [0.5.2] - 2026-01-25
+
+### Added
+- Improve code quality: accept Iterable for holidays, add edge case tests, fix import path (#21).
+
+### Changed
+-
+
+### Fixed
+- Fix age_in_years leap year birthday edge case (#20).
+- Improve code quality: simplify is_leap_year, refactor parse_iso8601 regex, and fix exception handling (#19).
+
 ## [Unreleased]
 
 ### Added
@@ -177,6 +189,18 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Fix generate_weeks.
+
+## [0.5.2] - 2026-01-25
+
+### Added
+- Improve code quality: accept Iterable for holidays, add edge case tests, fix import path (#21).
+
+### Changed
+-
+
+### Fixed
+- Fix age_in_years leap year birthday edge case (#20).
+- Improve code quality: simplify is_leap_year, refactor parse_iso8601 regex, and fix exception handling (#19).
 
 ## [Unreleased]
 
@@ -280,6 +304,18 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Fix generate_weeks.
 
+## [0.5.2] - 2026-01-25
+
+### Added
+- Improve code quality: accept Iterable for holidays, add edge case tests, fix import path (#21).
+
+### Changed
+-
+
+### Fixed
+- Fix age_in_years leap year birthday edge case (#20).
+- Improve code quality: simplify is_leap_year, refactor parse_iso8601 regex, and fix exception handling (#19).
+
 ## [Unreleased]
 
 ### Added
@@ -378,6 +414,18 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Fix generate_weeks.
+
+## [0.5.2] - 2026-01-25
+
+### Added
+- Improve code quality: accept Iterable for holidays, add edge case tests, fix import path (#21).
+
+### Changed
+-
+
+### Fixed
+- Fix age_in_years leap year birthday edge case (#20).
+- Improve code quality: simplify is_leap_year, refactor parse_iso8601 regex, and fix exception handling (#19).
 
 ## [Unreleased]
 
@@ -483,6 +531,18 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Fix generate_weeks.
 
+## [0.5.2] - 2026-01-25
+
+### Added
+- Improve code quality: accept Iterable for holidays, add edge case tests, fix import path (#21).
+
+### Changed
+-
+
+### Fixed
+- Fix age_in_years leap year birthday edge case (#20).
+- Improve code quality: simplify is_leap_year, refactor parse_iso8601 regex, and fix exception handling (#19).
+
 ## [Unreleased]
 
 ### Added
@@ -583,6 +643,18 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Fix generate_weeks.
+
+## [0.5.2] - 2026-01-25
+
+### Added
+- Improve code quality: accept Iterable for holidays, add edge case tests, fix import path (#21).
+
+### Changed
+-
+
+### Fixed
+- Fix age_in_years leap year birthday edge case (#20).
+- Improve code quality: simplify is_leap_year, refactor parse_iso8601 regex, and fix exception handling (#19).
 
 ## [Unreleased]
 
