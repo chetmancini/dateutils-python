@@ -795,17 +795,22 @@ def get_us_federal_holidays_list(year: int, holiday_types: list[str] | None = No
     return get_us_federal_holidays(year, tuple(holiday_types))
 
 
-def workdays_between(start_date: date, end_date: date, holidays: list[date] | None = None) -> int:
+def workdays_between(start_date: date, end_date: date, holidays: Iterable[date] | None = None) -> int:
     """
     Count workdays (Monday-Friday) between two dates, inclusive.
 
     Optionally excludes specified holidays. For basic US fixed holidays, you
     can generate them using `get_us_federal_holidays()`.
 
+    This function uses an O(1) algorithm for calculating weekdays, making it
+    efficient even for very large date ranges. Holiday exclusion is O(h) where
+    h is the number of holidays in the range.
+
     Args:
         start_date: The start date (inclusive).
         end_date: The end date (inclusive).
-        holidays: Optional list of holiday dates to exclude.
+        holidays: Optional collection of holiday dates to exclude (list, set, tuple, etc.).
+            Using a set provides O(1) lookup performance for large holiday lists.
 
     Returns:
         int: Number of workdays between the start and end dates.
@@ -829,26 +834,45 @@ def workdays_between(start_date: date, end_date: date, holidays: list[date] | No
         >>> end = date(2024, 12, 27)
         >>> workdays_between(start, end, holidays=get_us_federal_holidays(2024))  # Excludes Dec 25
         4
+
+        >>> # Efficient for large ranges
+        >>> start = date(2000, 1, 1)
+        >>> end = date(2024, 12, 31)
+        >>> workdays_between(start, end)  # ~25 years, computed in O(1)
+        6522
     """
     if start_date > end_date:
         raise ValueError(f"start_date ({start_date}) must be <= end_date ({end_date})")
 
-    if holidays is None:
-        holidays = []
+    # Calculate total days (inclusive)
+    total_days = (end_date - start_date).days + 1
 
-    holidays_set = set(holidays)
-    count = 0
-    current = start_date
+    # Calculate workdays using O(1) formula
+    # Full weeks contribute 5 workdays each
+    full_weeks = total_days // DAYS_IN_WEEK
+    remaining_days = total_days % DAYS_IN_WEEK
 
-    while current <= end_date:
-        if current.weekday() < calendar.SATURDAY and current not in holidays_set:  # Weekday and not a holiday
-            count += 1
-        current += timedelta(days=1)
+    # Count weekdays in the remaining partial week
+    # Start from start_date's weekday and count how many of the remaining days are weekdays
+    start_weekday = start_date.weekday()  # 0=Monday, 6=Sunday
+    partial_weekdays = 0
+    for i in range(remaining_days):
+        day_of_week = (start_weekday + i) % DAYS_IN_WEEK
+        if day_of_week < WEEKDAYS_IN_WEEK:  # Monday-Friday (0-4)
+            partial_weekdays += 1
 
-    return count
+    workdays = full_weeks * WEEKDAYS_IN_WEEK + partial_weekdays
+
+    # Subtract holidays that fall on weekdays within the range
+    if holidays is not None:
+        for holiday in holidays:
+            if start_date <= holiday <= end_date and holiday.weekday() < WEEKDAYS_IN_WEEK:
+                workdays -= 1
+
+    return workdays
 
 
-def add_business_days(dt: date, num_days: int, holidays: list[date] | None = None) -> date:
+def add_business_days(dt: date, num_days: int, holidays: Iterable[date] | None = None) -> date:
     """
     Add business days to a date, skipping weekends and holidays.
 
@@ -858,7 +882,8 @@ def add_business_days(dt: date, num_days: int, holidays: list[date] | None = Non
     Args:
         dt: The starting date.
         num_days: Number of business days to add (can be negative).
-        holidays: Optional list of holiday dates to skip.
+        holidays: Optional collection of holiday dates to skip (list, set, tuple, etc.).
+            Using a set provides O(1) lookup performance for large holiday lists.
 
     Returns:
         A new date with the business days added.
@@ -889,10 +914,7 @@ def add_business_days(dt: date, num_days: int, holidays: list[date] | None = Non
     if not -10000 <= num_days <= 10000:  # noqa: PLR2004
         raise ValueError(f"num_days must be between -10000 and 10000, got {num_days}")
 
-    if holidays is None:
-        holidays = []
-
-    holidays_set = set(holidays)
+    holidays_set: set[date] = set(holidays) if holidays is not None else set()
     current = dt
     added = 0
     days_to_add = 1 if num_days >= 0 else -1
@@ -905,7 +927,7 @@ def add_business_days(dt: date, num_days: int, holidays: list[date] | None = Non
     return current
 
 
-def next_business_day(dt: date, holidays: list[date] | None = None) -> date:
+def next_business_day(dt: date, holidays: Iterable[date] | None = None) -> date:
     """
     Find the next business day from a given date, skipping weekends and holidays.
 
@@ -914,7 +936,8 @@ def next_business_day(dt: date, holidays: list[date] | None = None) -> date:
 
     Args:
         dt: The starting date.
-        holidays: Optional list of holiday dates to skip.
+        holidays: Optional collection of holiday dates to skip (list, set, tuple, etc.).
+            Using a set provides O(1) lookup performance for large holiday lists.
 
     Returns:
         The next business day.
@@ -934,7 +957,7 @@ def next_business_day(dt: date, holidays: list[date] | None = None) -> date:
     return add_business_days(dt, 1, holidays)
 
 
-def previous_business_day(dt: date, holidays: list[date] | None = None) -> date:
+def previous_business_day(dt: date, holidays: Iterable[date] | None = None) -> date:
     """
     Find the previous business day from a given date, skipping weekends and holidays.
 
@@ -943,7 +966,8 @@ def previous_business_day(dt: date, holidays: list[date] | None = None) -> date:
 
     Args:
         dt: The starting date.
-        holidays: Optional list of holiday dates to skip.
+        holidays: Optional collection of holiday dates to skip (list, set, tuple, etc.).
+            Using a set provides O(1) lookup performance for large holiday lists.
 
     Returns:
         The previous business day.
@@ -992,28 +1016,60 @@ def pretty_date(timestamp: int | datetime | None = None, now_override: int | Non
     Format a timestamp as a human-readable relative time string.
 
     Supports both past times ("2 hours ago", "Yesterday") and future times
-    ("in 2 hours", "Tomorrow").
+    ("in 2 hours", "Tomorrow"). The output is designed to be user-friendly
+    and uses natural language approximations.
 
     Args:
-        timestamp: Unix timestamp (int) or datetime object to format.
-                   If None, returns "just now".
-        now_override: Optional Unix timestamp to use as "now" (for testing).
+        timestamp: The time to format. Accepts three types:
+            - int: Unix timestamp (seconds since epoch). Interpreted as UTC.
+            - datetime: A datetime object. If naive (no tzinfo), assumed to be UTC.
+              If timezone-aware, converted to UTC for comparison.
+            - None: Returns "just now".
+        now_override: Optional Unix timestamp to use as the reference "now" time.
+            Primarily useful for testing to ensure deterministic output.
 
     Returns:
-        str: Human-readable relative time string.
+        str: Human-readable relative time string. Possible formats include:
+            - "just now" (within 10 seconds)
+            - "X seconds ago" / "in X seconds"
+            - "a minute ago" / "in a minute"
+            - "X minutes ago" / "in X minutes"
+            - "an hour ago" / "in an hour"
+            - "X hours ago" / "in X hours"
+            - "Yesterday" / "Tomorrow"
+            - "X days ago" / "in X days"
+            - "X weeks ago" / "in X weeks"
+            - "X months ago" / "in X months"
+            - "X years ago" / "in X years"
 
     Examples:
         >>> from datetime import datetime, timezone
         >>> # Use now_override for deterministic testing
         >>> now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
+
+        >>> # Using a datetime object (timezone-aware)
         >>> pretty_date(datetime(2024, 3, 27, 11, 59, 30, tzinfo=timezone.utc), now_ts)
         '30 seconds ago'
         >>> pretty_date(datetime(2024, 3, 27, 10, 0, 0, tzinfo=timezone.utc), now_ts)
         '2 hours ago'
+
+        >>> # Future dates
         >>> pretty_date(datetime(2024, 3, 27, 14, 0, 0, tzinfo=timezone.utc), now_ts)
         'in 2 hours'
         >>> pretty_date(datetime(2024, 3, 28, 12, 0, 0, tzinfo=timezone.utc), now_ts)
         'Tomorrow'
+
+        >>> # Using a Unix timestamp (int)
+        >>> pretty_date(1711540770, now_ts)  # 30 seconds before now_ts
+        '30 seconds ago'
+
+        >>> # Using None returns "just now"
+        >>> pretty_date(None, now_ts)
+        'just now'
+
+    Note:
+        The function uses approximate values for months (30 days) and years (365 days)
+        when calculating relative time for longer periods.
     """
     diff = _ts_difference(timestamp, now_override)
     total_seconds = diff.total_seconds()
@@ -1639,20 +1695,52 @@ def age_in_years(birth_date: date, as_of_date: date | None = None) -> int:
 
 def time_until_next_occurrence(target_time: datetime, from_time: datetime | None = None) -> timedelta:
     """
-    Calculate time until the next occurrence of a target time.
+    Calculate the time remaining until the next daily occurrence of a specific time-of-day.
+
+    This function extracts the time-of-day (hour, minute, second, microsecond) from
+    `target_time` and calculates how long until that time occurs next, relative to
+    `from_time`. The date portion of `target_time` is ignored - only the time-of-day
+    matters.
+
+    This is useful for scheduling scenarios like "how long until 3:00 PM?" or
+    "time remaining until the daily backup at 02:00".
 
     Args:
-        target_time: The target time (timezone-aware or naive)
-        from_time: Time to calculate from (defaults to now in target_time's timezone)
+        target_time: A datetime whose time-of-day (HH:MM:SS) represents the target.
+            The date portion is ignored. Can be timezone-aware or naive.
+        from_time: The reference datetime to calculate from. Defaults to the current
+            time in `target_time`'s timezone (or local time if `target_time` is naive).
 
     Returns:
-        timedelta: Time until next occurrence
+        timedelta: Duration until the next occurrence of the target time-of-day.
+            Always positive (0 < result <= 24 hours).
+
+    Timezone Handling:
+        - If both datetimes have the same timezone handling (both aware or both naive),
+          they are compared directly.
+        - If only one has timezone info, the naive datetime is treated as being in
+          the same timezone as the aware datetime (using `replace`, not `astimezone`).
+          This means no conversion is performed - the naive time is assumed to already
+          represent that timezone.
 
     Examples:
-        >>> from datetime import datetime, timezone
-        >>> target = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-        >>> # Will calculate time until next 12:00 UTC
-        >>> delta = time_until_next_occurrence(target)
+        >>> from datetime import datetime, timezone, timedelta
+
+        >>> # How long until 3:00 PM UTC from 2:30 PM UTC?
+        >>> target = datetime(2024, 1, 1, 15, 0, 0, tzinfo=timezone.utc)  # 3:00 PM
+        >>> from_dt = datetime(2024, 1, 1, 14, 30, 0, tzinfo=timezone.utc)  # 2:30 PM
+        >>> time_until_next_occurrence(target, from_dt)
+        datetime.timedelta(seconds=1800)  # 30 minutes
+
+        >>> # If the target time has already passed today, returns time until tomorrow
+        >>> from_dt = datetime(2024, 1, 1, 16, 0, 0, tzinfo=timezone.utc)  # 4:00 PM
+        >>> delta = time_until_next_occurrence(target, from_dt)  # Next 3:00 PM is tomorrow
+        >>> delta.total_seconds()
+        82800.0  # 23 hours
+
+        >>> # Useful for scheduling: "How long until the daily 2 AM job runs?"
+        >>> job_time = datetime(2024, 1, 1, 2, 0, 0, tzinfo=timezone.utc)
+        >>> delta = time_until_next_occurrence(job_time)  # Uses current time as reference
     """
     if from_time is None:
         if target_time.tzinfo is not None:
