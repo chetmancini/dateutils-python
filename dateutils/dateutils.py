@@ -27,7 +27,7 @@ Example using the `holidays` library:
 # pip install holidays
 import holidays
 from datetime import date
-from dateutils.dateutils import workdays_between
+from dateutils import workdays_between
 
 # Get UK holidays for 2024
 uk_holidays_2024 = holidays.country_holidays('GB', subdiv='England', years=2024)
@@ -43,7 +43,7 @@ print(workdays)
 
 import calendar
 import re
-from collections.abc import Generator
+from collections.abc import Generator, Iterable
 from datetime import date, datetime, timedelta, timezone
 from email.utils import format_datetime as _format_http_datetime
 from functools import lru_cache
@@ -1504,20 +1504,34 @@ def format_timezone_offset(tz_name: str) -> str:
 ##################
 # Additional utility functions
 ##################
-def is_business_day(dt: date, holidays: list[date] | None = None) -> bool:
+def is_business_day(dt: date, holidays: Iterable[date] | None = None) -> bool:
     """
     Check if a date is a business day (not weekend or holiday).
 
     Args:
         dt: Date to check
-        holidays: Optional list of holiday dates
+        holidays: Optional collection of holiday dates (list, set, tuple, etc.).
+            Using a set provides O(1) lookup performance for large holiday lists.
 
     Returns:
         bool: True if the date is a business day, False otherwise
+
+    Examples:
+        >>> from datetime import date
+        >>> is_business_day(date(2024, 7, 22))  # Monday
+        True
+        >>> is_business_day(date(2024, 7, 27))  # Saturday
+        False
+        >>> # Using a set for efficient lookup
+        >>> holiday_set = {date(2024, 7, 4), date(2024, 12, 25)}
+        >>> is_business_day(date(2024, 7, 4), holidays=holiday_set)
+        False
     """
+    if dt.weekday() >= calendar.SATURDAY:
+        return False
     if holidays is None:
-        holidays = []
-    return dt.weekday() < calendar.SATURDAY and dt not in holidays
+        return True
+    return dt not in holidays
 
 
 def days_until_weekend(dt: date) -> int:
