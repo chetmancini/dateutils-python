@@ -88,6 +88,17 @@
 - Fix age_in_years leap year birthday edge case (#20).
 - Improve code quality: simplify is_leap_year, refactor parse_iso8601 regex, and fix exception handling (#19).
 
+## [0.5.3] - 2026-01-25
+
+### Added
+-
+
+### Changed
+- Improve code quality: optimize workdays_between, unify holidays parameter, expand exports, and enhance docs (#22).
+
+### Fixed
+-
+
 ## [Unreleased]
 
 ### Added
@@ -201,6 +212,17 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Fix age_in_years leap year birthday edge case (#20).
 - Improve code quality: simplify is_leap_year, refactor parse_iso8601 regex, and fix exception handling (#19).
+
+## [0.5.3] - 2026-01-25
+
+### Added
+-
+
+### Changed
+- Improve code quality: optimize workdays_between, unify holidays parameter, expand exports, and enhance docs (#22).
+
+### Fixed
+-
 
 ## [Unreleased]
 
@@ -316,6 +338,17 @@ All notable changes to this project will be documented in this file.
 - Fix age_in_years leap year birthday edge case (#20).
 - Improve code quality: simplify is_leap_year, refactor parse_iso8601 regex, and fix exception handling (#19).
 
+## [0.5.3] - 2026-01-25
+
+### Added
+-
+
+### Changed
+- Improve code quality: optimize workdays_between, unify holidays parameter, expand exports, and enhance docs (#22).
+
+### Fixed
+-
+
 ## [Unreleased]
 
 ### Added
@@ -426,6 +459,17 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Fix age_in_years leap year birthday edge case (#20).
 - Improve code quality: simplify is_leap_year, refactor parse_iso8601 regex, and fix exception handling (#19).
+
+## [0.5.3] - 2026-01-25
+
+### Added
+-
+
+### Changed
+- Improve code quality: optimize workdays_between, unify holidays parameter, expand exports, and enhance docs (#22).
+
+### Fixed
+-
 
 ## [Unreleased]
 
@@ -543,6 +587,17 @@ All notable changes to this project will be documented in this file.
 - Fix age_in_years leap year birthday edge case (#20).
 - Improve code quality: simplify is_leap_year, refactor parse_iso8601 regex, and fix exception handling (#19).
 
+## [0.5.3] - 2026-01-25
+
+### Added
+-
+
+### Changed
+- Improve code quality: optimize workdays_between, unify holidays parameter, expand exports, and enhance docs (#22).
+
+### Fixed
+-
+
 ## [Unreleased]
 
 ### Added
@@ -655,6 +710,17 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Fix age_in_years leap year birthday edge case (#20).
 - Improve code quality: simplify is_leap_year, refactor parse_iso8601 regex, and fix exception handling (#19).
+
+## [0.5.3] - 2026-01-25
+
+### Added
+-
+
+### Changed
+- Improve code quality: optimize workdays_between, unify holidays parameter, expand exports, and enhance docs (#22).
+
+### Fixed
+-
 
 ## [Unreleased]
 
