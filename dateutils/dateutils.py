@@ -65,6 +65,11 @@ MONTHS_IN_QUARTER = 3
 MONTHS_IN_YEAR = 12
 WEEKDAYS_IN_WEEK = 5
 
+# Internal constants for leap year birthday handling
+_FEBRUARY = 2
+_LEAP_DAY = 29
+_FEB_28 = 28
+
 # Compiled regex for ISO 8601 parsing (verbose mode for readability)
 _ISO8601_PATTERN = re.compile(
     r"""
@@ -172,7 +177,10 @@ def epoch_s(dt: datetime) -> int:
         >>> epoch_s(dt_est) # Converted to UTC
         1698321600
     """
-    return calendar.timegm(dt.utctimetuple())
+    if dt.tzinfo is None:
+        # Assume naive datetime is in UTC (documented behavior)
+        dt = dt.replace(tzinfo=timezone.utc)
+    return int(dt.timestamp())
 
 
 def datetime_start_of_day(day: date) -> datetime:
@@ -1581,6 +1589,9 @@ def age_in_years(birth_date: date, as_of_date: date | None = None) -> int:
     """
     Calculate age in years.
 
+    For leap year birthdays (Feb 29), the birthday is considered to fall on
+    Feb 28 in non-leap years.
+
     Args:
         birth_date: Date of birth
         as_of_date: Date to calculate age as of (defaults to today)
@@ -1598,8 +1609,15 @@ def age_in_years(birth_date: date, as_of_date: date | None = None) -> int:
         raise ValueError("Birth date cannot be in the future")
 
     years = as_of_date.year - birth_date.year
+
+    # Handle leap year birthday edge case
+    birth_month, birth_day = birth_date.month, birth_date.day
+    if birth_month == _FEBRUARY and birth_day == _LEAP_DAY and not calendar.isleap(as_of_date.year):
+        # In non-leap years, treat Feb 29 birthday as Feb 28
+        birth_day = _FEB_28
+
     # Adjust if birthday hasn't occurred yet this year
-    if (as_of_date.month, as_of_date.day) < (birth_date.month, birth_date.day):
+    if (as_of_date.month, as_of_date.day) < (birth_month, birth_day):
         years -= 1
 
     return years
