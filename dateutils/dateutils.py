@@ -47,7 +47,7 @@ from collections.abc import Generator
 from datetime import date, datetime, timedelta, timezone
 from email.utils import format_datetime as _format_http_datetime
 from functools import lru_cache
-from zoneinfo import ZoneInfo, available_timezones
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 ##################
 # Constants
@@ -64,6 +64,21 @@ QUARTERS_IN_YEAR = 4
 MONTHS_IN_QUARTER = 3
 MONTHS_IN_YEAR = 12
 WEEKDAYS_IN_WEEK = 5
+
+# Compiled regex for ISO 8601 parsing (verbose mode for readability)
+_ISO8601_PATTERN = re.compile(
+    r"""
+    ^
+    (\d{4}-\d{2}-\d{2})           # Date part: YYYY-MM-DD (required)
+    (?:
+        T(\d{2}:\d{2}:\d{2})      # Time part: THH:MM:SS (optional)
+    )?
+    (\.\d+)?                       # Fractional seconds: .123456 (optional)
+    (Z | [+-]\d{2}:?\d{2})?        # Timezone: Z or ±HH:MM or ±HHMM (optional)
+    $
+    """,
+    re.VERBOSE,
+)
 
 
 ##################
@@ -384,7 +399,7 @@ def is_leap_year(year: int) -> bool:
     Returns:
         bool: True if the year is a leap year, False otherwise
     """
-    return (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
+    return calendar.isleap(year)
 
 
 ##################
@@ -1204,14 +1219,7 @@ def parse_iso8601(iso_str: str) -> datetime | None:
     Returns:
         A datetime object, or None if parsing failed
     """
-    iso_regex = (
-        r"^(\d{4}-\d{2}-\d{2})"  # Date part (required)
-        r"(?:T(\d{2}:\d{2}:\d{2}))?"  # Time part (optional)
-        r"(\.\d+)?"  # Milliseconds (optional)
-        r"(Z|[+-]\d{2}:?\d{2})?$"  # Timezone (optional)
-    )
-
-    match = re.match(iso_regex, iso_str)
+    match = _ISO8601_PATTERN.match(iso_str)
     if not match:
         return None
 
@@ -1328,8 +1336,7 @@ def now_in_timezone(tz_name: str) -> datetime:
     try:
         tz = ZoneInfo(tz_name)
         return datetime.now(tz)
-    except Exception as e:
-        # Re-raise with more context
+    except ZoneInfoNotFoundError as e:
         raise ValueError(
             f"Invalid timezone name '{tz_name}'. Use get_available_timezones() to see valid options."
         ) from e
@@ -1396,7 +1403,7 @@ def convert_timezone(dt: datetime, to_tz: str) -> datetime:
     try:
         target_tz = ZoneInfo(to_tz)
         return dt.astimezone(target_tz)
-    except Exception as e:
+    except ZoneInfoNotFoundError as e:
         raise ValueError(f"Invalid timezone name '{to_tz}'. Use get_available_timezones() to see valid options.") from e
 
 
@@ -1456,7 +1463,7 @@ def get_timezone_offset(tz_name: str) -> timedelta:
         tz = ZoneInfo(tz_name)
         now = datetime.now(tz)
         return now.utcoffset() or timedelta(0)
-    except Exception as e:
+    except ZoneInfoNotFoundError as e:
         raise ValueError(
             f"Invalid timezone name '{tz_name}'. Use get_available_timezones() to see valid options."
         ) from e
