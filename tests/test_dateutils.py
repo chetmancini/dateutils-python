@@ -136,6 +136,11 @@ def test_generate_years_forward() -> None:
     assert [2020, 2021, 2022] == list(generate_years(until=2022, start_year=2020))
 
 
+def test_generate_years_same_year() -> None:
+    """Test generate_years when start_year equals until (same year)."""
+    assert [2024] == list(generate_years(until=2024, start_year=2024))
+
+
 def test_is_leap_year() -> None:
     assert is_leap_year(2020)
     assert not is_leap_year(2021)
@@ -179,6 +184,18 @@ def test_generate_quarters_invalid_until_q() -> None:
         list(generate_quarters(until_year=2024, until_q=5))
 
 
+def test_generate_quarters_invalid_start_quarter() -> None:
+    """Invalid start_quarter values should raise ValueError.
+
+    Note: start_quarter=0 is falsy so it uses the default. We test with -1 and 5.
+    """
+    with pytest.raises(ValueError, match="start_quarter must be between 1 and 4, got -1"):
+        list(generate_quarters(until_year=2024, until_q=1, start_year=2024, start_quarter=-1))
+
+    with pytest.raises(ValueError, match="start_quarter must be between 1 and 4, got 5"):
+        list(generate_quarters(until_year=2024, until_q=1, start_year=2024, start_quarter=5))
+
+
 @freeze_time("2018-9-12")
 def test_generate_months() -> None:
     assert [
@@ -207,6 +224,13 @@ def test_generate_months_natural_loop_exit() -> None:
     # because until_m=1 means we yield all months from 3 down to 1
     months = list(generate_months(until_year=2024, until_m=1))
     assert months == [(3, 2024), (2, 2024), (1, 2024)]
+
+
+def test_generate_months_same_month() -> None:
+    """Test generate_months when start month equals target month."""
+    start = datetime.date(2024, 6, 15)
+    months = list(generate_months(until_year=2024, until_m=6, start_date=start))
+    assert months == [(6, 2024)]
 
 
 def test_generate_months_forward_custom_start() -> None:
@@ -996,6 +1020,38 @@ def test_parse_date() -> None:
     assert parse_date("2024-13-45") is None  # Invalid month and day
 
 
+def test_parse_date_dayfirst() -> None:
+    """Test parse_date with dayfirst parameter for ambiguous dates."""
+    # Unambiguous dates work the same either way
+    assert parse_date("2024-07-22") == datetime.date(2024, 7, 22)
+    assert parse_date("2024-07-22", dayfirst=True) == datetime.date(2024, 7, 22)
+
+    # Ambiguous date: 03/04/2024 could be March 4th or April 3rd
+    # Default (dayfirst=False): US style, month first -> March 4th
+    assert parse_date("03/04/2024") == datetime.date(2024, 3, 4)
+    assert parse_date("03/04/2024", dayfirst=False) == datetime.date(2024, 3, 4)
+
+    # dayfirst=True: European style, day first -> April 3rd
+    assert parse_date("03/04/2024", dayfirst=True) == datetime.date(2024, 4, 3)
+
+    # Same with dashes
+    assert parse_date("03-04-2024") == datetime.date(2024, 3, 4)  # US default
+    assert parse_date("03-04-2024", dayfirst=True) == datetime.date(2024, 4, 3)  # European
+
+    # Unambiguous because day > 12 (must be day, not month)
+    assert parse_date("22/07/2024") == datetime.date(2024, 7, 22)  # Works with US default
+    assert parse_date("22/07/2024", dayfirst=True) == datetime.date(2024, 7, 22)
+
+    # Text formats are unambiguous
+    assert parse_date("July 22, 2024") == datetime.date(2024, 7, 22)
+    assert parse_date("22 Jul 2024") == datetime.date(2024, 7, 22)
+    assert parse_date("July 22, 2024", dayfirst=True) == datetime.date(2024, 7, 22)
+
+    # Custom formats ignore dayfirst
+    assert parse_date("2024|07|22", formats=["%Y|%m|%d"]) == datetime.date(2024, 7, 22)
+    assert parse_date("2024|07|22", formats=["%Y|%m|%d"], dayfirst=True) == datetime.date(2024, 7, 22)
+
+
 def test_parse_datetime() -> None:
     """Test parsing datetime strings in various formats."""
     # Test ISO format with space separator
@@ -1198,6 +1254,42 @@ def test_workdays_between_with_holidays() -> None:
     # Test with holiday on the single day
     holiday_day = datetime.date(2024, 3, 29)  # Friday (Good Friday)
     assert workdays_between(holiday_day, holiday_day, holidays) == 0  # Holiday doesn't count
+
+
+def test_workdays_between_duplicate_holidays() -> None:
+    """Test that duplicate holidays are handled correctly (not double-counted)."""
+    start = datetime.date(2024, 3, 25)  # Monday
+    end = datetime.date(2024, 3, 29)  # Friday
+
+    # Without holidays: 5 workdays
+    assert workdays_between(start, end) == 5
+
+    # With one holiday on Wednesday
+    wednesday = datetime.date(2024, 3, 27)
+    assert workdays_between(start, end, holidays=[wednesday]) == 4
+
+    # With duplicate holidays - should still be 4, not 3
+    assert workdays_between(start, end, holidays=[wednesday, wednesday]) == 4
+    assert workdays_between(start, end, holidays=[wednesday, wednesday, wednesday]) == 4
+
+    # With multiple different holidays, some duplicated
+    thursday = datetime.date(2024, 3, 28)
+    holidays_with_dupes = [wednesday, thursday, wednesday, thursday, wednesday]
+    assert workdays_between(start, end, holidays=holidays_with_dupes) == 3  # 5 - 2 unique holidays
+
+
+def test_workdays_between_with_generator() -> None:
+    """Test that workdays_between works with generator-based holiday inputs."""
+    start = datetime.date(2024, 3, 25)  # Monday
+    end = datetime.date(2024, 3, 29)  # Friday
+
+    # Create a generator that yields holidays
+    def holiday_generator():
+        yield datetime.date(2024, 3, 27)  # Wednesday
+        yield datetime.date(2024, 3, 28)  # Thursday
+
+    # Should work with generator
+    assert workdays_between(start, end, holidays=holiday_generator()) == 3
 
 
 def test_add_business_days_with_holidays() -> None:
@@ -1694,6 +1786,14 @@ def test_is_business_day() -> None:
     # Business day with holiday (frozenset)
     holiday_frozenset = frozenset({july_4th, datetime.date(2024, 12, 25)})
     assert is_business_day(july_4th, holidays=holiday_frozenset) is False
+
+    # Business day with holiday (generator)
+    def holiday_gen():
+        yield july_4th
+        yield datetime.date(2024, 12, 25)
+
+    assert is_business_day(july_4th, holidays=holiday_gen()) is False
+    assert is_business_day(datetime.date(2024, 7, 5), holidays=holiday_gen()) is True
 
 
 def test_days_until_weekend() -> None:

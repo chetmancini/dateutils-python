@@ -804,13 +804,14 @@ def workdays_between(start_date: date, end_date: date, holidays: Iterable[date] 
 
     This function uses an O(1) algorithm for calculating weekdays, making it
     efficient even for very large date ranges. Holiday exclusion is O(h) where
-    h is the number of holidays in the range.
+    h is the number of unique holidays in the range.
 
     Args:
         start_date: The start date (inclusive).
         end_date: The end date (inclusive).
-        holidays: Optional collection of holiday dates to exclude (list, set, tuple, etc.).
-            Using a set provides O(1) lookup performance for large holiday lists.
+        holidays: Optional collection of holiday dates to exclude (list, set, tuple,
+            generator, etc.). Duplicates are automatically handled. Generators will
+            be consumed.
 
     Returns:
         int: Number of workdays between the start and end dates.
@@ -864,8 +865,10 @@ def workdays_between(start_date: date, end_date: date, holidays: Iterable[date] 
     workdays = full_weeks * WEEKDAYS_IN_WEEK + partial_weekdays
 
     # Subtract holidays that fall on weekdays within the range
+    # Convert to set to handle duplicates and consume generators safely
     if holidays is not None:
-        for holiday in holidays:
+        holidays_set = set(holidays)
+        for holiday in holidays_set:
             if start_date <= holiday <= end_date and holiday.weekday() < WEEKDAYS_IN_WEEK:
                 workdays -= 1
 
@@ -1168,16 +1171,27 @@ def httpdate(date_time: datetime) -> str:
 ##################
 # Parsing and formatting
 ##################
-def parse_date(date_str: str, formats: list[str] | None = None) -> date | None:
+def parse_date(
+    date_str: str,
+    formats: list[str] | None = None,
+    *,
+    dayfirst: bool = False,
+) -> date | None:
     """
     Parse a date string using multiple possible formats.
 
     Tries a list of common formats if `formats` is not provided.
-    See the function code for the default list.
+    For ambiguous dates like "03/04/2024", the `dayfirst` parameter controls
+    interpretation: False (default) treats it as March 4th (US style),
+    True treats it as April 3rd (European style).
 
     Args:
         date_str: The date string to parse.
         formats: Optional list of format strings (e.g., "%Y/%m/%d") to try.
+            If provided, `dayfirst` is ignored.
+        dayfirst: If True, ambiguous dates are parsed as day/month/year (European).
+            If False (default), ambiguous dates are parsed as month/day/year (US).
+            Only applies when `formats` is None.
 
     Returns:
         A date object if parsing was successful, None otherwise.
@@ -1187,8 +1201,18 @@ def parse_date(date_str: str, formats: list[str] | None = None) -> date | None:
         >>> parse_date("2024-07-22")
         datetime.date(2024, 7, 22)
 
-        >>> parse_date("07/22/2024")
+        >>> parse_date("07/22/2024")  # US format (default)
         datetime.date(2024, 7, 22)
+
+        >>> parse_date("22/07/2024", dayfirst=True)  # European format
+        datetime.date(2024, 7, 22)
+
+        >>> # Ambiguous date: 03/04/2024
+        >>> parse_date("03/04/2024")  # Default: March 4th
+        datetime.date(2024, 3, 4)
+
+        >>> parse_date("03/04/2024", dayfirst=True)  # European: April 3rd
+        datetime.date(2024, 4, 3)
 
         >>> parse_date("22 Jul 2024")
         datetime.date(2024, 7, 22)
@@ -1207,19 +1231,36 @@ def parse_date(date_str: str, formats: list[str] | None = None) -> date | None:
 
     """
     if formats is None:
-        formats = [
-            "%Y-%m-%d",  # 2023-01-31
-            "%d/%m/%Y",  # 31/01/2023
-            "%m/%d/%Y",  # 01/31/2023
-            "%d-%m-%Y",  # 31-01-2023
-            "%m-%d-%Y",  # 01-31-2023
-            "%d.%m.%Y",  # 31.01.2023
-            "%Y/%m/%d",  # 2023/01/31
-            "%B %d, %Y",  # January 31, 2023
-            "%d %B %Y",  # 31 January 2023
-            "%b %d, %Y",  # Jan 31, 2023
-            "%d %b %Y",  # 31 Jan 2023
-        ]
+        if dayfirst:
+            # European/international style: day before month
+            formats = [
+                "%Y-%m-%d",  # 2023-01-31 (ISO - unambiguous)
+                "%d/%m/%Y",  # 31/01/2023
+                "%m/%d/%Y",  # 01/31/2023 (fallback for US)
+                "%d-%m-%Y",  # 31-01-2023
+                "%m-%d-%Y",  # 01-31-2023 (fallback for US)
+                "%d.%m.%Y",  # 31.01.2023
+                "%Y/%m/%d",  # 2023/01/31
+                "%B %d, %Y",  # January 31, 2023
+                "%d %B %Y",  # 31 January 2023
+                "%b %d, %Y",  # Jan 31, 2023
+                "%d %b %Y",  # 31 Jan 2023
+            ]
+        else:
+            # US style (default): month before day
+            formats = [
+                "%Y-%m-%d",  # 2023-01-31 (ISO - unambiguous)
+                "%m/%d/%Y",  # 01/31/2023
+                "%d/%m/%Y",  # 31/01/2023 (fallback for European)
+                "%m-%d-%Y",  # 01-31-2023
+                "%d-%m-%Y",  # 31-01-2023 (fallback for European)
+                "%d.%m.%Y",  # 31.01.2023
+                "%Y/%m/%d",  # 2023/01/31
+                "%B %d, %Y",  # January 31, 2023
+                "%d %B %Y",  # 31 January 2023
+                "%b %d, %Y",  # Jan 31, 2023
+                "%d %b %Y",  # 31 Jan 2023
+            ]
 
     for fmt in formats:
         try:
@@ -1566,8 +1607,8 @@ def is_business_day(dt: date, holidays: Iterable[date] | None = None) -> bool:
 
     Args:
         dt: Date to check
-        holidays: Optional collection of holiday dates (list, set, tuple, etc.).
-            Using a set provides O(1) lookup performance for large holiday lists.
+        holidays: Optional collection of holiday dates (list, set, tuple, generator, etc.).
+            Generators will be consumed. Internally converted to a set for O(1) lookup.
 
     Returns:
         bool: True if the date is a business day, False otherwise
@@ -1587,7 +1628,9 @@ def is_business_day(dt: date, holidays: Iterable[date] | None = None) -> bool:
         return False
     if holidays is None:
         return True
-    return dt not in holidays
+    # Convert to set to handle generators and ensure O(1) lookup
+    holidays_set = set(holidays) if not isinstance(holidays, (set, frozenset)) else holidays
+    return dt not in holidays_set
 
 
 def days_until_weekend(dt: date) -> int:
