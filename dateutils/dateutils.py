@@ -717,6 +717,16 @@ def get_us_federal_holidays(year: int, holiday_types: tuple[str, ...] | None = N
     Note:
         The returned list is a copy of the cached holiday data, so modifying it
         will not affect future calls or pollute the cache.
+
+    Implementation Note:
+        Holiday calculations are cached (LRU cache with maxsize=32) for performance.
+        This cache holds up to 32 year/holiday_type combinations. For applications
+        that query many different years, older entries may be evicted. To clear the
+        cache manually: ``_get_us_federal_holidays_cached.cache_clear()``
+
+    Thread Safety:
+        The LRU cache is thread-safe. Concurrent calls with the same parameters
+        safely share cached results.
     """
     return list(_get_us_federal_holidays_cached(year, holiday_types))
 
@@ -810,8 +820,15 @@ def workdays_between(start_date: date, end_date: date, holidays: Iterable[date] 
         start_date: The start date (inclusive).
         end_date: The end date (inclusive).
         holidays: Optional collection of holiday dates to exclude (list, set, tuple,
-            generator, etc.). Duplicates are automatically handled. Generators will
-            be consumed.
+            generator, etc.). Duplicates are automatically handled.
+
+    Warning:
+        **Generators are consumed on first use.** If you need to call this function
+        multiple times with the same holidays, convert to a list first::
+
+            holidays = list(my_holiday_generator())
+            workdays_between(start1, end1, holidays)  # Works
+            workdays_between(start2, end2, holidays)  # Also works
 
     Returns:
         int: Number of workdays between the start and end dates.
@@ -887,6 +904,7 @@ def add_business_days(dt: date, num_days: int, holidays: Iterable[date] | None =
         num_days: Number of business days to add (can be negative).
         holidays: Optional collection of holiday dates to skip (list, set, tuple, etc.).
             Using a set provides O(1) lookup performance for large holiday lists.
+            **Note:** Generators are consumed on first use.
 
     Returns:
         A new date with the business days added.
@@ -1071,8 +1089,14 @@ def pretty_date(timestamp: int | datetime | None = None, now_override: int | Non
         'just now'
 
     Note:
-        The function uses approximate values for months (30 days) and years (365 days)
-        when calculating relative time for longer periods.
+        The function uses **approximate values** for longer periods:
+
+        - 1 month = 30 days (actual months vary 28-31 days)
+        - 1 year = 365 days (ignores leap years)
+
+        This means "2 months ago" represents exactly 60 days ago, regardless of
+        which calendar months were involved. This is intentional for human-readable
+        output where precision is less important than readability.
     """
     diff = _ts_difference(timestamp, now_override)
     total_seconds = diff.total_seconds()
@@ -1194,7 +1218,9 @@ def parse_date(
             Only applies when `formats` is None.
 
     Returns:
-        A date object if parsing was successful, None otherwise.
+        A date object if parsing was successful, None otherwise. Returns None
+        for both unparseable strings and invalid calendar dates (e.g., Feb 29
+        in a non-leap year, April 31, etc.).
 
     Examples:
         >>> from datetime import date
@@ -1310,13 +1336,18 @@ def parse_datetime(datetime_str: str, formats: list[str] | None = None) -> datet
 
 def parse_iso8601(iso_str: str) -> datetime | None:
     """
-    Parse an ISO 8601 formatted date/time string
+    Parse an ISO 8601 formatted date/time string.
 
     This handles various ISO 8601 formats including:
     - Date only: 2023-01-31
     - Date and time: 2023-01-31T14:30:45
     - With milliseconds: 2023-01-31T14:30:45.123
     - With timezone: 2023-01-31T14:30:45+02:00
+
+    Note:
+        Fractional seconds are limited to microsecond precision (6 digits).
+        Any digits beyond 6 are silently truncated. For example,
+        ".123456789" (nanoseconds) becomes ".123456" (microseconds).
 
     Args:
         iso_str: The ISO 8601 string to parse
@@ -1339,6 +1370,11 @@ def parse_iso8601(iso_str: str) -> datetime | None:
     dt_format = "%Y-%m-%dT%H:%M:%S"
 
     if ms_part:
+        # Truncate to microsecond precision (6 digits max after the decimal point)
+        # Python's %f only supports up to 6 digits; anything beyond is silently truncated by strptime
+        max_fractional_len = 7  # ".XXXXXX" (1 dot + 6 digits)
+        if len(ms_part) > max_fractional_len:
+            ms_part = ms_part[:max_fractional_len]
         dt_str += ms_part
         dt_format += ".%f"
 
@@ -1480,6 +1516,16 @@ def convert_timezone(dt: datetime, to_tz: str) -> datetime:
         ValueError: If the input datetime `dt` is naive (tzinfo is None) or if
                    the timezone name is invalid.
 
+    Note on DST Transitions:
+        During DST fall-back (e.g., Nov 3, 2024 at 2:00 AM in US Eastern),
+        local times like 1:30 AM occur twice. Python's ZoneInfo uses the
+        `fold` attribute to disambiguate: fold=0 (default) is the first
+        occurrence (DST side), fold=1 is the second (standard time side).
+
+        During DST spring-forward (e.g., Mar 10, 2024 at 2:00 AM in US Eastern),
+        times like 2:30 AM do not exist. ZoneInfo normalizes these forward
+        to the valid time (e.g., 2:30 AM becomes 3:30 AM EDT).
+
     Examples:
         >>> from datetime import datetime, timezone, timedelta
         >>> utc_time = datetime(2024, 7, 22, 14, 30, 0, tzinfo=timezone.utc)
@@ -1520,6 +1566,15 @@ def datetime_to_utc(dt: datetime) -> datetime:
     If you need to convert a naive datetime that represents local time, first
     attach the appropriate timezone using datetime.replace(tzinfo=...) or
     datetime.astimezone().
+
+    DST Ambiguity:
+        During DST fall-back transitions (e.g., Nov 3, 2024 in US Eastern),
+        times like 1:30 AM occur twice. When converting such ambiguous times:
+        - fold=0 (default): First 1:30 AM (EDT, UTC-4) → 5:30 AM UTC
+        - fold=1: Second 1:30 AM (EST, UTC-5) → 6:30 AM UTC
+
+        To explicitly specify which occurrence, set the `fold` attribute:
+        ``dt.replace(fold=1)`` for the second occurrence.
 
     Args:
         dt: The datetime to convert. If naive, assumed to be UTC.
@@ -1576,7 +1631,7 @@ def get_timezone_offset(tz_name: str) -> timedelta:
 
 def format_timezone_offset(tz_name: str) -> str:
     """
-    Get the current offset from UTC for a timezone as a formatted string
+    Get the current offset from UTC for a timezone as a formatted string.
 
     Args:
         tz_name: Timezone name
@@ -1586,6 +1641,16 @@ def format_timezone_offset(tz_name: str) -> str:
 
     Raises:
         ValueError: If timezone name is invalid
+
+    Note:
+        Returns the offset at the **current moment**. For DST zones, this varies
+        throughout the year. For example, "America/New_York" returns "-05:00" in
+        winter (EST) and "-04:00" in summer (EDT).
+
+        To get the offset at a specific time, use::
+
+            dt = datetime(2024, 7, 15, tzinfo=ZoneInfo(tz_name))
+            offset = dt.utcoffset()
     """
     offset = get_timezone_offset(tz_name)
 
