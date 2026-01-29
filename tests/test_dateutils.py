@@ -828,6 +828,31 @@ def test_datetime_to_utc() -> None:
     assert result.hour == 12  # Naive datetime assumed to be UTC, so hour unchanged
 
 
+def test_datetime_to_utc_dst_ambiguous_times() -> None:
+    """Test and document datetime_to_utc behavior with DST ambiguous times.
+
+    During DST fall-back (Nov 3, 2024 at 2:00 AM → 1:00 AM in US Eastern),
+    times like 1:30 AM occur twice. The `fold` attribute determines which:
+    - fold=0 (default): First 1:30 AM (EDT, UTC-4) → 5:30 AM UTC
+    - fold=1: Second 1:30 AM (EST, UTC-5) → 6:30 AM UTC
+    """
+    # First 1:30 AM (fold=0 is default, EDT side of transition)
+    first_130am = datetime.datetime(2024, 11, 3, 1, 30, 0, tzinfo=ZoneInfo("America/New_York"))
+    first_130am_utc = datetime_to_utc(first_130am)
+    assert first_130am_utc.hour == 5  # 1:30 AM EDT = 5:30 AM UTC
+    assert first_130am_utc.minute == 30
+
+    # Second 1:30 AM (fold=1, EST side of transition)
+    second_130am = datetime.datetime(2024, 11, 3, 1, 30, 0, tzinfo=ZoneInfo("America/New_York")).replace(fold=1)
+    second_130am_utc = datetime_to_utc(second_130am)
+    assert second_130am_utc.hour == 6  # 1:30 AM EST = 6:30 AM UTC
+    assert second_130am_utc.minute == 30
+
+    # The two occurrences are 1 hour apart in UTC
+    time_diff = (second_130am_utc - first_130am_utc).total_seconds()
+    assert time_diff == 3600  # 1 hour difference
+
+
 def test_get_timezone_offset() -> None:
     """Test getting the offset from UTC for a timezone."""
     # Test fixed offset for UTC
@@ -859,6 +884,32 @@ def test_format_timezone_offset() -> None:
 
     # Test for timezone with half-hour offset (India is UTC+5:30)
     assert format_timezone_offset("Asia/Kolkata") == "+05:30"
+
+    # Test for timezone with 45-minute offset (Nepal is UTC+5:45)
+    assert format_timezone_offset("Asia/Kathmandu") == "+05:45"
+
+
+def test_format_timezone_offset_dst_variance() -> None:
+    """Test that format_timezone_offset returns the offset at the current moment.
+
+    For DST zones, the offset varies throughout the year. This test documents
+    and verifies this behavior using freezegun.
+    """
+    # Winter time (EST, UTC-5)
+    with freeze_time("2024-01-15 12:00:00", tz_offset=0):
+        winter_offset = format_timezone_offset("America/New_York")
+        assert winter_offset == "-05:00"
+
+    # Summer time (EDT, UTC-4)
+    with freeze_time("2024-07-15 12:00:00", tz_offset=0):
+        summer_offset = format_timezone_offset("America/New_York")
+        assert summer_offset == "-04:00"
+
+    # Verify UTC is always +00:00 regardless of time
+    with freeze_time("2024-01-15 12:00:00", tz_offset=0):
+        assert format_timezone_offset("UTC") == "+00:00"
+    with freeze_time("2024-07-15 12:00:00", tz_offset=0):
+        assert format_timezone_offset("UTC") == "+00:00"
 
 
 def test_dst_transitions() -> None:
@@ -1052,6 +1103,40 @@ def test_parse_date_dayfirst() -> None:
     assert parse_date("2024|07|22", formats=["%Y|%m|%d"], dayfirst=True) == datetime.date(2024, 7, 22)
 
 
+def test_parse_date_invalid_calendar_dates() -> None:
+    """Test that invalid but recognizable calendar dates return None.
+
+    These are dates that match the expected format but don't exist in the
+    Gregorian calendar. The function returns None for these, which is
+    indistinguishable from completely unparseable strings.
+    """
+    # Feb 29 in non-leap year
+    assert parse_date("2023-02-29") is None  # 2023 is not a leap year
+    assert parse_date("Feb 29, 2023") is None
+
+    # Feb 30 never exists
+    assert parse_date("2024-02-30") is None
+    assert parse_date("February 30, 2024") is None
+
+    # April, June, September, November have 30 days (not 31)
+    assert parse_date("2024-04-31") is None  # April has 30 days
+    assert parse_date("2024-06-31") is None  # June has 30 days
+    assert parse_date("2024-09-31") is None  # September has 30 days
+    assert parse_date("2024-11-31") is None  # November has 30 days
+
+    # Invalid month
+    assert parse_date("2024-13-01") is None
+    assert parse_date("2024-00-15") is None
+
+    # Invalid day
+    assert parse_date("2024-01-32") is None
+    assert parse_date("2024-01-00") is None
+
+    # Valid leap year Feb 29 should work
+    assert parse_date("2024-02-29") == datetime.date(2024, 2, 29)  # 2024 is a leap year
+    assert parse_date("Feb 29, 2024") == datetime.date(2024, 2, 29)
+
+
 def test_parse_datetime() -> None:
     """Test parsing datetime strings in various formats."""
     # Test ISO format with space separator
@@ -1142,6 +1227,30 @@ def test_parse_iso8601() -> None:
     assert parse_iso8601("not iso8601") is None
     assert parse_iso8601("2024/03/27") is None  # Wrong date separator
     assert parse_iso8601("2024-03-27 14:30:45") is None  # Space instead of T
+
+
+def test_parse_iso8601_nanosecond_truncation() -> None:
+    """Test that nanosecond precision is truncated to microseconds."""
+    # Nanosecond precision (9 digits) should be truncated to microseconds (6 digits)
+    result = parse_iso8601("2024-03-27T14:30:45.123456789")
+    assert result is not None
+    assert result.microsecond == 123456  # Truncated from .123456789
+
+    # 7 digits should be truncated
+    result = parse_iso8601("2024-03-27T14:30:45.1234567")
+    assert result is not None
+    assert result.microsecond == 123456
+
+    # Exactly 6 digits should work as-is
+    result = parse_iso8601("2024-03-27T14:30:45.999999")
+    assert result is not None
+    assert result.microsecond == 999999
+
+    # With timezone and nanoseconds
+    result = parse_iso8601("2024-03-27T14:30:45.123456789Z")
+    assert result is not None
+    assert result.microsecond == 123456
+    assert result.tzinfo == datetime.timezone.utc
 
 
 def test_format_date() -> None:
@@ -1330,6 +1439,50 @@ def test_add_business_days_with_holidays() -> None:
 
     # Edge case: adding a large number of days
     assert add_business_days(start, 10, holidays) == datetime.date(2024, 4, 10)  # Wednesday, 2 weeks later
+
+
+def test_add_business_days_negative_cross_year_with_holidays() -> None:
+    """Test subtracting business days across year boundary with holidays.
+
+    This tests an edge case where negative business days span multiple years
+    and holidays from both years need to be considered.
+    """
+    # Start on Jan 3, 2025 (Friday)
+    start = datetime.date(2025, 1, 3)
+
+    # Define holidays spanning both years
+    holidays_2024 = [datetime.date(2024, 12, 25)]  # Christmas 2024 (Thursday)
+    holidays_2025 = [datetime.date(2025, 1, 1)]  # New Year's Day 2025 (Wednesday)
+    combined_holidays = holidays_2024 + holidays_2025
+
+    # Without holidays: subtract 5 business days from Friday Jan 3, 2025
+    # Working backwards: Jan 2 (Thu), Jan 1 (Wed), Dec 31 (Tue), Dec 30 (Mon), Dec 27 (Fri)
+    # Skips Dec 28-29 (weekend)
+    assert add_business_days(start, -5) == datetime.date(2024, 12, 27)
+
+    # With holidays: subtract 5 business days, skipping Jan 1 and Dec 25
+    # Working backwards from Jan 3:
+    # 1: Jan 2 (Thu) - count
+    # 2: Jan 1 (Wed) - HOLIDAY skip, Dec 31 (Tue) - count
+    # 3: Dec 30 (Mon) - count
+    # 4: Dec 29-28 WEEKEND skip, Dec 27 (Fri) - count
+    # 5: Dec 26 (Thu) - count (Dec 25 is holiday but we already passed it)
+    assert add_business_days(start, -5, holidays=combined_holidays) == datetime.date(2024, 12, 26)
+
+    # Test with more business days to cross the Christmas holiday
+    # From Jan 6, 2025 (Monday), subtract 8 business days with holidays
+    start2 = datetime.date(2025, 1, 6)
+    # Working backwards:
+    # -1: Jan 3 (Fri)
+    # -2: Jan 2 (Thu)
+    # -3: Dec 31 (Tue) - skipped Jan 1 holiday
+    # -4: Dec 30 (Mon)
+    # -5: Dec 27 (Fri) - skipped Dec 28-29 weekend
+    # -6: Dec 26 (Thu)
+    # -7: Dec 24 (Tue) - skipped Dec 25 holiday
+    # -8: Dec 23 (Mon)
+    result = add_business_days(start2, -8, holidays=combined_holidays)
+    assert result == datetime.date(2024, 12, 23)
 
 
 def test_next_business_day() -> None:
@@ -1847,6 +2000,39 @@ def test_get_week_number() -> None:
     # December 31, 2024 is in week 1 of 2025 (ISO week date)
     dec_31 = datetime.date(2024, 12, 31)
     assert get_week_number(dec_31) == 1
+
+
+def test_get_week_number_jan1_in_previous_year_week() -> None:
+    """Test ISO week numbers when January 1 belongs to the previous year's week.
+
+    ISO 8601 defines week 1 as the week with the year's first Thursday.
+    This means January 1 can belong to week 52 or 53 of the previous year
+    if it falls on a Friday, Saturday, or Sunday.
+    """
+    # Jan 1, 2016 is Friday - belongs to week 53 of 2015
+    jan1_2016 = datetime.date(2016, 1, 1)
+    assert get_week_number(jan1_2016) == 53
+    assert jan1_2016.isocalendar() == (2015, 53, 5)  # (year, week, day)
+
+    # Jan 1, 2021 is Friday - belongs to week 53 of 2020
+    jan1_2021 = datetime.date(2021, 1, 1)
+    assert get_week_number(jan1_2021) == 53
+    assert jan1_2021.isocalendar() == (2020, 53, 5)
+
+    # Jan 1, 2022 is Saturday - belongs to week 52 of 2021
+    jan1_2022 = datetime.date(2022, 1, 1)
+    assert get_week_number(jan1_2022) == 52
+    assert jan1_2022.isocalendar() == (2021, 52, 6)
+
+    # Jan 1, 2023 is Sunday - belongs to week 52 of 2022
+    jan1_2023 = datetime.date(2023, 1, 1)
+    assert get_week_number(jan1_2023) == 52
+    assert jan1_2023.isocalendar() == (2022, 52, 7)
+
+    # Jan 1, 2024 is Monday - belongs to week 1 of 2024 (normal case)
+    jan1_2024 = datetime.date(2024, 1, 1)
+    assert get_week_number(jan1_2024) == 1
+    assert jan1_2024.isocalendar() == (2024, 1, 1)
 
 
 def test_get_quarter_start_end() -> None:
