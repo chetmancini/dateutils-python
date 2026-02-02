@@ -1532,6 +1532,7 @@ def test_get_us_federal_holidays_all_2024() -> None:
     holidays_2024 = get_us_federal_holidays(2024)
     # Expected count: 5 fixed + 6 floating = 11
     assert len(holidays_2024) == 11
+    assert holidays_2024 == sorted(holidays_2024)
 
     # Check fixed holidays
     assert datetime.date(2024, 1, 1) in holidays_2024  # New Year's Day
