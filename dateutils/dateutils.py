@@ -961,11 +961,16 @@ def _add_business_days_no_holidays(dt: date, num_days: int) -> date:
     """Fast path for add_business_days when there are no holidays."""
     if num_days == 0:
         return dt
-
     direction = 1 if num_days > 0 else -1
     remaining = abs(num_days)
-    weekday = dt.weekday()
+    dt, weekday = _normalize_business_day_start(dt, direction)
+    days = _business_days_to_calendar_days(weekday, remaining, direction)
+    return dt + timedelta(days=days * direction)
 
+
+def _normalize_business_day_start(dt: date, direction: int) -> tuple[date, int]:
+    """Normalize weekend start dates for business-day arithmetic."""
+    weekday = dt.weekday()
     if direction > 0:
         if weekday == calendar.SATURDAY:
             dt -= timedelta(days=1)
@@ -973,15 +978,7 @@ def _add_business_days_no_holidays(dt: date, num_days: int) -> date:
         elif weekday == calendar.SUNDAY:
             dt -= timedelta(days=2)
             weekday = calendar.FRIDAY
-
-        weeks, extra = divmod(remaining, WEEKDAYS_IN_WEEK)
-        days = weeks * DAYS_IN_WEEK
-        if extra:
-            if weekday + extra >= WEEKDAYS_IN_WEEK:
-                days += extra + 2
-            else:
-                days += extra
-        return dt + timedelta(days=days)
+        return dt, weekday
 
     if weekday == calendar.SATURDAY:
         dt += timedelta(days=2)
@@ -989,15 +986,19 @@ def _add_business_days_no_holidays(dt: date, num_days: int) -> date:
     elif weekday == calendar.SUNDAY:
         dt += timedelta(days=1)
         weekday = calendar.MONDAY
+    return dt, weekday
 
+
+def _business_days_to_calendar_days(weekday: int, remaining: int, direction: int) -> int:
+    """Convert a business-day count into calendar days, excluding holidays."""
     weeks, extra = divmod(remaining, WEEKDAYS_IN_WEEK)
     days = weeks * DAYS_IN_WEEK
     if extra:
-        if weekday - extra < 0:
-            days += extra + 2
+        if direction > 0:
+            days += extra + 2 if weekday + extra >= WEEKDAYS_IN_WEEK else extra
         else:
-            days += extra
-    return dt - timedelta(days=days)
+            days += extra + 2 if weekday - extra < 0 else extra
+    return days
 
 
 def next_business_day(dt: date, holidays: Iterable[date] | None = None) -> date:
