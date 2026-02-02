@@ -99,6 +99,18 @@
 ### Fixed
 -
 
+## [0.5.4] - 2026-02-02
+
+### Added
+- Improve edge case handling, add tests, and enhance documentation (#24).
+- Improve holiday handling, add locale support to parse_date, achieve 100% coverage (#23).
+
+### Changed
+- Sort holidays and speed business days (#25).
+
+### Fixed
+-
+
 ## [Unreleased]
 
 ### Added
@@ -220,6 +232,18 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Improve code quality: optimize workdays_between, unify holidays parameter, expand exports, and enhance docs (#22).
+
+### Fixed
+-
+
+## [0.5.4] - 2026-02-02
+
+### Added
+- Improve edge case handling, add tests, and enhance documentation (#24).
+- Improve holiday handling, add locale support to parse_date, achieve 100% coverage (#23).
+
+### Changed
+- Sort holidays and speed business days (#25).
 
 ### Fixed
 -
@@ -349,6 +373,18 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 -
 
+## [0.5.4] - 2026-02-02
+
+### Added
+- Improve edge case handling, add tests, and enhance documentation (#24).
+- Improve holiday handling, add locale support to parse_date, achieve 100% coverage (#23).
+
+### Changed
+- Sort holidays and speed business days (#25).
+
+### Fixed
+-
+
 ## [Unreleased]
 
 ### Added
@@ -467,6 +503,18 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Improve code quality: optimize workdays_between, unify holidays parameter, expand exports, and enhance docs (#22).
+
+### Fixed
+-
+
+## [0.5.4] - 2026-02-02
+
+### Added
+- Improve edge case handling, add tests, and enhance documentation (#24).
+- Improve holiday handling, add locale support to parse_date, achieve 100% coverage (#23).
+
+### Changed
+- Sort holidays and speed business days (#25).
 
 ### Fixed
 -
@@ -598,6 +646,18 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 -
 
+## [0.5.4] - 2026-02-02
+
+### Added
+- Improve edge case handling, add tests, and enhance documentation (#24).
+- Improve holiday handling, add locale support to parse_date, achieve 100% coverage (#23).
+
+### Changed
+- Sort holidays and speed business days (#25).
+
+### Fixed
+-
+
 ## [Unreleased]
 
 ### Added
@@ -718,6 +778,18 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Improve code quality: optimize workdays_between, unify holidays parameter, expand exports, and enhance docs (#22).
+
+### Fixed
+-
+
+## [0.5.4] - 2026-02-02
+
+### Added
+- Improve edge case handling, add tests, and enhance documentation (#24).
+- Improve holiday handling, add locale support to parse_date, achieve 100% coverage (#23).
+
+### Changed
+- Sort holidays and speed business days (#25).
 
 ### Fixed
 -
