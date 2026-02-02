@@ -939,9 +939,7 @@ def add_business_days(dt: date, num_days: int, holidays: Iterable[date] | None =
     if num_days == 0:
         return dt
 
-    if holidays is None or (
-        isinstance(holidays, (set, frozenset, list, tuple)) and len(holidays) == 0
-    ):
+    if holidays is None or (isinstance(holidays, (set, frozenset, list, tuple)) and len(holidays) == 0):
         return _add_business_days_no_holidays(dt, num_days)
 
     holidays_set: set[date] = set(holidays) if holidays is not None else set()
