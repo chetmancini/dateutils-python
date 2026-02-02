@@ -697,7 +697,8 @@ def get_us_federal_holidays(year: int, holiday_types: tuple[str, ...] | None = N
                       "VETERANS_DAY", "THANKSGIVING", "CHRISTMAS"
 
     Returns:
-        List[date]: A list of date objects for the holidays in that year.
+        List[date]: A list of date objects for the holidays in that year,
+        sorted in chronological order.
 
     Examples:
         >>> from datetime import date
@@ -781,9 +782,9 @@ def _get_us_federal_holidays_cached(year: int, holiday_types: tuple[str, ...] | 
     # 4th Thursday in November (Thanksgiving Day)
     all_holiday_types["THANKSGIVING"] = find_nth_weekday(year, 11, 3, 4)  # Thursday = 3
 
-    # If holiday_types is None, return all holidays
+    # If holiday_types is None, return all holidays in chronological order
     if holiday_types is None:
-        return tuple(all_holiday_types.values())
+        return tuple(sorted(all_holiday_types.values()))
 
     # Otherwise, return only the specified holiday types
     result = []
@@ -791,7 +792,7 @@ def _get_us_federal_holidays_cached(year: int, holiday_types: tuple[str, ...] | 
         if holiday_type in all_holiday_types:
             result.append(all_holiday_types[holiday_type])
 
-    return tuple(result)
+    return tuple(sorted(result))
 
 
 def get_us_federal_holidays_list(year: int, holiday_types: list[str] | None = None) -> list[date]:
@@ -935,6 +936,12 @@ def add_business_days(dt: date, num_days: int, holidays: Iterable[date] | None =
     if not -10000 <= num_days <= 10000:  # noqa: PLR2004
         raise ValueError(f"num_days must be between -10000 and 10000, got {num_days}")
 
+    if num_days == 0:
+        return dt
+
+    if holidays is None or (isinstance(holidays, (set, frozenset, list, tuple)) and len(holidays) == 0):
+        return _add_business_days_no_holidays(dt, num_days)
+
     holidays_set: set[date] = set(holidays) if holidays is not None else set()
     current = dt
     added = 0
@@ -946,6 +953,50 @@ def add_business_days(dt: date, num_days: int, holidays: Iterable[date] | None =
             added += 1
 
     return current
+
+
+def _add_business_days_no_holidays(dt: date, num_days: int) -> date:
+    """Fast path for add_business_days when there are no holidays."""
+    if num_days == 0:
+        return dt
+    direction = 1 if num_days > 0 else -1
+    remaining = abs(num_days)
+    dt, weekday = _normalize_business_day_start(dt, direction)
+    days = _business_days_to_calendar_days(weekday, remaining, direction)
+    return dt + timedelta(days=days * direction)
+
+
+def _normalize_business_day_start(dt: date, direction: int) -> tuple[date, int]:
+    """Normalize weekend start dates for business-day arithmetic."""
+    weekday = dt.weekday()
+    if direction > 0:
+        if weekday == calendar.SATURDAY:
+            dt -= timedelta(days=1)
+            weekday = calendar.FRIDAY
+        elif weekday == calendar.SUNDAY:
+            dt -= timedelta(days=2)
+            weekday = calendar.FRIDAY
+        return dt, weekday
+
+    if weekday == calendar.SATURDAY:
+        dt += timedelta(days=2)
+        weekday = calendar.MONDAY
+    elif weekday == calendar.SUNDAY:
+        dt += timedelta(days=1)
+        weekday = calendar.MONDAY
+    return dt, weekday
+
+
+def _business_days_to_calendar_days(weekday: int, remaining: int, direction: int) -> int:
+    """Convert a business-day count into calendar days, excluding holidays."""
+    weeks, extra = divmod(remaining, WEEKDAYS_IN_WEEK)
+    days = weeks * DAYS_IN_WEEK
+    if extra:
+        if direction > 0:
+            days += extra + 2 if weekday + extra >= WEEKDAYS_IN_WEEK else extra
+        else:
+            days += extra + 2 if weekday - extra < 0 else extra
+    return days
 
 
 def next_business_day(dt: date, holidays: Iterable[date] | None = None) -> date:
