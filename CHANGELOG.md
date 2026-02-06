@@ -111,6 +111,17 @@
 ### Fixed
 -
 
+## [0.5.5] - 2026-02-05
+
+### Added
+-
+
+### Changed
+-
+
+### Fixed
+- Fix ISO8601 validation and start defaults (#26).
+
 ## [Unreleased]
 
 ### Added
@@ -247,6 +258,17 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 -
+
+## [0.5.5] - 2026-02-05
+
+### Added
+-
+
+### Changed
+-
+
+### Fixed
+- Fix ISO8601 validation and start defaults (#26).
 
 ## [Unreleased]
 
@@ -385,6 +407,17 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 -
 
+## [0.5.5] - 2026-02-05
+
+### Added
+-
+
+### Changed
+-
+
+### Fixed
+- Fix ISO8601 validation and start defaults (#26).
+
 ## [Unreleased]
 
 ### Added
@@ -518,6 +551,17 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 -
+
+## [0.5.5] - 2026-02-05
+
+### Added
+-
+
+### Changed
+-
+
+### Fixed
+- Fix ISO8601 validation and start defaults (#26).
 
 ## [Unreleased]
 
@@ -658,6 +702,17 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 -
 
+## [0.5.5] - 2026-02-05
+
+### Added
+-
+
+### Changed
+-
+
+### Fixed
+- Fix ISO8601 validation and start defaults (#26).
+
 ## [Unreleased]
 
 ### Added
@@ -793,6 +848,17 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 -
+
+## [0.5.5] - 2026-02-05
+
+### Added
+-
+
+### Changed
+-
+
+### Fixed
+- Fix ISO8601 validation and start defaults (#26).
 
 ## [Unreleased]
 
