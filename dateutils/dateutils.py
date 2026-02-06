@@ -69,6 +69,8 @@ WEEKDAYS_IN_WEEK = 5
 _FEBRUARY = 2
 _LEAP_DAY = 29
 _FEB_28 = 28
+_MAX_TZ_OFFSET_HOURS = 23
+_MAX_TZ_OFFSET_MINUTES = 59
 
 # Compiled regex for ISO 8601 parsing (verbose mode for readability)
 _ISO8601_PATTERN = re.compile(
@@ -312,8 +314,8 @@ def generate_quarters(
         raise ValueError(f"until_q must be between 1 and 4, got {until_q}")
 
     today = date.today()
-    start_y = start_year or today.year
-    start_q = start_quarter or date_to_quarter(today)
+    start_y = today.year if start_year is None else start_year
+    start_q = date_to_quarter(today) if start_quarter is None else start_quarter
 
     if not 1 <= start_q <= QUARTERS_IN_YEAR:
         raise ValueError(f"start_quarter must be between 1 and 4, got {start_q}")
@@ -385,7 +387,7 @@ def generate_years(until: int = 1970, *, start_year: int | None = None) -> Gener
     Yields:
         int: Years from the start toward the target, moving forward or backward.
     """
-    start = start_year or date.today().year
+    start = date.today().year if start_year is None else start_year
     current = start
     yield current
     if current == until:
@@ -1412,39 +1414,45 @@ def parse_iso8601(iso_str: str) -> datetime | None:
 
     date_part, time_part, ms_part, tz_part = match.groups()
 
-    if time_part is None:
-        # Date only
-        return datetime.strptime(date_part, "%Y-%m-%d")
+    try:
+        if time_part is None:
+            # Date only
+            return datetime.strptime(date_part, "%Y-%m-%d")
 
-    # Combine date and time
-    dt_str = f"{date_part}T{time_part}"
-    dt_format = "%Y-%m-%dT%H:%M:%S"
+        # Combine date and time
+        dt_str = f"{date_part}T{time_part}"
+        dt_format = "%Y-%m-%dT%H:%M:%S"
 
-    if ms_part:
-        # Truncate to microsecond precision (6 digits max after the decimal point)
-        # Python's %f only supports up to 6 digits; anything beyond is silently truncated by strptime
-        max_fractional_len = 7  # ".XXXXXX" (1 dot + 6 digits)
-        if len(ms_part) > max_fractional_len:
-            ms_part = ms_part[:max_fractional_len]
-        dt_str += ms_part
-        dt_format += ".%f"
+        if ms_part:
+            # Truncate to microsecond precision (6 digits max after the decimal point)
+            max_fractional_len = 7  # ".XXXXXX" (1 dot + 6 digits)
+            if len(ms_part) > max_fractional_len:
+                ms_part = ms_part[:max_fractional_len]
+            dt_str += ms_part
+            dt_format += ".%f"
 
-    dt = datetime.strptime(dt_str, dt_format)
+        dt = datetime.strptime(dt_str, dt_format)
 
-    # Handle timezone
-    if tz_part:
-        if tz_part == "Z":
-            dt = dt.replace(tzinfo=timezone.utc)
-        else:
-            # Convert +HH:MM or +HHMM to ±HHMM for timedelta calculation
-            tz_part = tz_part.replace(":", "")
-            sign = -1 if tz_part[0] == "-" else 1
-            hours = int(tz_part[1:3])
-            minutes = int(tz_part[3:5])
-            offset = sign * timedelta(hours=hours, minutes=minutes)
-            dt = dt.replace(tzinfo=timezone(offset))
+        # Handle timezone
+        if tz_part:
+            if tz_part == "Z":
+                dt = dt.replace(tzinfo=timezone.utc)
+            else:
+                # Convert +HH:MM or +HHMM to ±HHMM and validate components
+                tz_digits = tz_part.replace(":", "")
+                sign = -1 if tz_digits[0] == "-" else 1
+                hours = int(tz_digits[1:3])
+                minutes = int(tz_digits[3:5])
 
-    return dt
+                if hours > _MAX_TZ_OFFSET_HOURS or minutes > _MAX_TZ_OFFSET_MINUTES:
+                    return None
+
+                offset = sign * timedelta(hours=hours, minutes=minutes)
+                dt = dt.replace(tzinfo=timezone(offset))
+
+        return dt
+    except ValueError:
+        return None
 
 
 def format_date(dt: date | datetime, format_str: str = "%Y-%m-%d") -> str:
