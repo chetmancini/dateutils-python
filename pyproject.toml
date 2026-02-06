@@ -42,10 +42,10 @@ Documentation = "https://github.com/chetmancini/dateutils-python#readme"
 [dependency-groups]
 dev = [
     "freezegun>=1.5.5",
-    "pytest>=9.0.0",
-    "ruff>=0.14.13",
+    "pytest>=9.0.2",
+    "ruff>=0.15.0",
     "pytest-cov>=7.0.0",
-    "ty>=0.0.12",
+    "ty>=0.0.15",
     "build>=1.4.0",
     "pre-commit>=4.5.1",
     "bump2version>=1.0.1",
