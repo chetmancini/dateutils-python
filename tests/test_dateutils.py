@@ -185,15 +185,20 @@ def test_generate_quarters_invalid_until_q() -> None:
 
 
 def test_generate_quarters_invalid_start_quarter() -> None:
-    """Invalid start_quarter values should raise ValueError.
+    """Invalid start_quarter values should raise ValueError."""
+    with pytest.raises(ValueError, match="start_quarter must be between 1 and 4, got 0"):
+        list(generate_quarters(until_year=2024, until_q=1, start_year=2024, start_quarter=0))
 
-    Note: start_quarter=0 is falsy so it uses the default. We test with -1 and 5.
-    """
     with pytest.raises(ValueError, match="start_quarter must be between 1 and 4, got -1"):
         list(generate_quarters(until_year=2024, until_q=1, start_year=2024, start_quarter=-1))
 
     with pytest.raises(ValueError, match="start_quarter must be between 1 and 4, got 5"):
         list(generate_quarters(until_year=2024, until_q=1, start_year=2024, start_quarter=5))
+
+
+def test_generate_years_honors_zero_start_year() -> None:
+    """A falsy but explicit start_year should not be replaced by the default."""
+    assert [0, 1, 2] == list(generate_years(until=2, start_year=0))
 
 
 @freeze_time("2018-9-12")
@@ -1251,6 +1256,15 @@ def test_parse_iso8601_nanosecond_truncation() -> None:
     assert result is not None
     assert result.microsecond == 123456
     assert result.tzinfo == datetime.timezone.utc
+
+
+def test_parse_iso8601_invalid_values_return_none() -> None:
+    """Invalid calendar/time/offset values should return None, not raise."""
+    assert parse_iso8601("2024-02-30") is None
+    assert parse_iso8601("2024-13-01") is None
+    assert parse_iso8601("2024-03-27T25:00:00") is None
+    assert parse_iso8601("2024-03-27T14:30:45+24:00") is None
+    assert parse_iso8601("2024-03-27T14:30:45+02:99") is None
 
 
 def test_format_date() -> None:
