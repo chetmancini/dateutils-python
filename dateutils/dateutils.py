@@ -79,9 +79,9 @@ _ISO8601_PATTERN = re.compile(
     (\d{4}-\d{2}-\d{2})           # Date part: YYYY-MM-DD (required)
     (?:
         T(\d{2}:\d{2}:\d{2})      # Time part: THH:MM:SS (optional)
+        (\.\d+)?                  # Fractional seconds: .123456 (optional)
+        (Z | [+-]\d{2}:?\d{2})?   # Timezone: Z or ±HH:MM or ±HHMM (optional)
     )?
-    (\.\d+)?                       # Fractional seconds: .123456 (optional)
-    (Z | [+-]\d{2}:?\d{2})?        # Timezone: Z or ±HH:MM or ±HHMM (optional)
     $
     """,
     re.VERBOSE,
@@ -610,7 +610,7 @@ def date_range(start_date: date, end_date: date) -> list[date]:
         raise ValueError(f"start_date ({start_date}) must be <= end_date ({end_date})")
 
     days_diff = (end_date - start_date).days + 1
-    if days_diff > (10 * DAYS_IN_YEAR):
+    if days_diff > (10 * DAYS_IN_YEAR + 3):
         raise ValueError(f"Date range too large ({days_diff} days). Consider using a generator for large ranges.")
 
     return [start_date + timedelta(days=i) for i in range(days_diff)]
@@ -1350,29 +1350,50 @@ def parse_date(
     return None
 
 
-def parse_datetime(datetime_str: str, formats: list[str] | None = None) -> datetime | None:
+def parse_datetime(datetime_str: str, formats: list[str] | None = None, dayfirst: bool = False) -> datetime | None:
     """
     Parse a datetime string using multiple possible formats
 
     Args:
         datetime_str: The datetime string to parse
-        formats: List of format strings to try (if None, uses common formats)
+        formats: List of format strings to try (if None, uses common formats).
+            If provided, `dayfirst` is ignored.
+        dayfirst: If True, ambiguous dates are parsed as day/month/year (European).
+            If False (default), ambiguous dates are parsed as month/day/year (US).
+            Only applies when `formats` is None.
 
     Returns:
         A datetime object if parsing was successful, None otherwise
     """
     if formats is None:
-        formats = [
-            "%Y-%m-%d %H:%M:%S",  # 2023-01-31 14:30:45
-            "%Y-%m-%dT%H:%M:%S",  # 2023-01-31T14:30:45
-            "%Y-%m-%dT%H:%M:%S.%f",  # 2023-01-31T14:30:45.123456
-            "%Y-%m-%dT%H:%M:%SZ",  # 2023-01-31T14:30:45Z
-            "%Y-%m-%dT%H:%M:%S.%fZ",  # 2023-01-31T14:30:45.123456Z
-            "%d/%m/%Y %H:%M:%S",  # 31/01/2023 14:30:45
-            "%m/%d/%Y %H:%M:%S",  # 01/31/2023 14:30:45
-            "%d-%m-%Y %H:%M:%S",  # 31-01-2023 14:30:45
-            "%Y/%m/%d %H:%M:%S",  # 2023/01/31 14:30:45
-        ]
+        if dayfirst:
+            # European/international style: day before month
+            formats = [
+                "%Y-%m-%d %H:%M:%S",  # 2023-01-31 14:30:45
+                "%Y-%m-%dT%H:%M:%S",  # 2023-01-31T14:30:45
+                "%Y-%m-%dT%H:%M:%S.%f",  # 2023-01-31T14:30:45.123456
+                "%Y-%m-%dT%H:%M:%SZ",  # 2023-01-31T14:30:45Z
+                "%Y-%m-%dT%H:%M:%S.%fZ",  # 2023-01-31T14:30:45.123456Z
+                "%d/%m/%Y %H:%M:%S",  # 31/01/2023 14:30:45
+                "%m/%d/%Y %H:%M:%S",  # 01/31/2023 14:30:45 (fallback for US)
+                "%d-%m-%Y %H:%M:%S",  # 31-01-2023 14:30:45
+                "%m-%d-%Y %H:%M:%S",  # 01-31-2023 14:30:45 (fallback for US)
+                "%Y/%m/%d %H:%M:%S",  # 2023/01/31 14:30:45
+            ]
+        else:
+            # US style (default): month before day
+            formats = [
+                "%Y-%m-%d %H:%M:%S",  # 2023-01-31 14:30:45
+                "%Y-%m-%dT%H:%M:%S",  # 2023-01-31T14:30:45
+                "%Y-%m-%dT%H:%M:%S.%f",  # 2023-01-31T14:30:45.123456
+                "%Y-%m-%dT%H:%M:%SZ",  # 2023-01-31T14:30:45Z
+                "%Y-%m-%dT%H:%M:%S.%fZ",  # 2023-01-31T14:30:45.123456Z
+                "%m/%d/%Y %H:%M:%S",  # 01/31/2023 14:30:45
+                "%d/%m/%Y %H:%M:%S",  # 31/01/2023 14:30:45 (fallback for European)
+                "%m-%d-%Y %H:%M:%S",  # 01-31-2023 14:30:45
+                "%d-%m-%Y %H:%M:%S",  # 31-01-2023 14:30:45 (fallback for European)
+                "%Y/%m/%d %H:%M:%S",  # 2023/01/31 14:30:45
+            ]
 
     for fmt in formats:
         try:
@@ -1416,6 +1437,8 @@ def parse_iso8601(iso_str: str) -> datetime | None:
 
     try:
         if time_part is None:
+            if ms_part or tz_part:
+                return None
             # Date only
             return datetime.strptime(date_part, "%Y-%m-%d")
 

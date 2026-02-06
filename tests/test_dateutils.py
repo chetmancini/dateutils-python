@@ -1173,6 +1173,16 @@ def test_parse_datetime() -> None:
         2024, 3, 27, 14, 30, 45
     )
 
+    # Test ambiguous date defaults to US style (month first), consistent with parse_date
+    assert parse_datetime("03/04/2024 12:00:00") == datetime.datetime(2024, 3, 4, 12, 0, 0)
+
+    # Test dayfirst=True interprets ambiguous date as European (day first)
+    assert parse_datetime("03/04/2024 12:00:00", dayfirst=True) == datetime.datetime(2024, 4, 3, 12, 0, 0)
+
+    # Test dayfirst with dash separator
+    assert parse_datetime("03-04-2024 12:00:00") == datetime.datetime(2024, 3, 4, 12, 0, 0)
+    assert parse_datetime("03-04-2024 12:00:00", dayfirst=True) == datetime.datetime(2024, 4, 3, 12, 0, 0)
+
     # Test invalid datetime
     assert parse_datetime("not a datetime") is None
     assert parse_datetime("2024-03-27T25:70:80") is None  # Invalid hours, minutes, seconds
@@ -1232,6 +1242,43 @@ def test_parse_iso8601() -> None:
     assert parse_iso8601("not iso8601") is None
     assert parse_iso8601("2024/03/27") is None  # Wrong date separator
     assert parse_iso8601("2024-03-27 14:30:45") is None  # Space instead of T
+    assert parse_iso8601("2024-03-27+0200") is None  # Timezone without time
+    assert parse_iso8601("2024-03-27+02:00") is None  # Timezone without time
+    assert parse_iso8601("2024-03-27Z") is None  # UTC designator without time
+    assert parse_iso8601("2024-03-27.123") is None  # Fractional seconds without time
+    assert parse_iso8601("2024-03-27.123Z") is None  # Fractional + timezone without time
+
+
+def test_parse_iso8601_malformed_edge_cases() -> None:
+    """Test that malformed date+tz and date+fraction combinations are handled correctly."""
+    # Fractional seconds with non-Z timezone offset (valid ISO 8601)
+    result = parse_iso8601("2024-03-27T14:30:45.123+02:00")
+    assert result is not None
+    assert result.microsecond == 123000
+    assert result.tzinfo is not None
+    assert result.tzinfo.utcoffset(None) == datetime.timedelta(hours=2)
+
+    result = parse_iso8601("2024-03-27T14:30:45.123456-05:30")
+    assert result is not None
+    assert result.microsecond == 123456
+    assert result.tzinfo is not None
+    assert result.tzinfo.utcoffset(None) == datetime.timedelta(hours=-5, minutes=-30)
+
+    # Invalid timezone offset values (accepted by regex, rejected by validation)
+    assert parse_iso8601("2024-03-27T14:30:45+25:00") is None  # Hours > 23
+    assert parse_iso8601("2024-03-27T14:30:45+00:60") is None  # Minutes > 59
+    assert parse_iso8601("2024-03-27T14:30:45.123+25:00") is None  # Fraction + invalid tz
+
+    # Invalid calendar dates (accepted by regex, rejected by strptime)
+    assert parse_iso8601("2024-13-01T14:30:45") is None  # Month 13
+    assert parse_iso8601("2024-02-30T14:30:45") is None  # Feb 30
+    assert parse_iso8601("2024-00-15T14:30:45") is None  # Month 0
+
+    # Malformed fraction/tz patterns (rejected by regex)
+    assert parse_iso8601("2024-03-27T14:30:45.") is None  # Trailing dot, no digits
+    assert parse_iso8601("2024-03-27TZ") is None  # T without time, then Z
+    assert parse_iso8601("2024-03-27T+02:00") is None  # T without time, then tz offset
+    assert parse_iso8601("2024-03-27T.123") is None  # T without time, then fraction
 
 
 def test_parse_iso8601_nanosecond_truncation() -> None:
