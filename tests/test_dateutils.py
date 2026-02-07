@@ -79,10 +79,10 @@ def test_utc_truncate_epoch_day() -> None:
     """Test truncating a timestamp to the start of the day in UTC."""
     from dateutils.dateutils import utc_truncate_epoch_day
 
-    # Timestamp for 2024-03-27 15:30:45 UTC
+    # Timestamp for 2024-03-28 15:30:45 UTC
     ts = 1711639845
 
-    # Expected: 2024-03-27 00:00:00 UTC
+    # Expected: 2024-03-28 00:00:00 UTC
     expected = 1711584000
 
     assert utc_truncate_epoch_day(ts) == expected
@@ -96,7 +96,7 @@ def test_utc_from_timestamp() -> None:
     """Test converting a timestamp to a datetime in UTC timezone."""
     from dateutils.dateutils import utc_from_timestamp
 
-    # Timestamp for 2024-03-27 15:30:45 UTC
+    # Timestamp for 2024-03-28 15:30:45 UTC
     ts = 1711639845
 
     dt = utc_from_timestamp(ts)
@@ -1494,6 +1494,11 @@ def test_add_business_days_with_holidays() -> None:
     # Adding business days from weekend should start from next business day
     assert add_business_days(weekend_start, 1) == datetime.date(2024, 4, 1)  # Monday
     assert add_business_days(weekend_start, 1, holidays) == datetime.date(2024, 4, 2)  # Tuesday (Monday is holiday)
+
+    # Subtracting business days from weekend (no-holidays fast path)
+    assert add_business_days(weekend_start, -1) == datetime.date(2024, 3, 29)  # Friday
+    sunday_start = datetime.date(2024, 3, 31)  # Sunday
+    assert add_business_days(sunday_start, -1) == datetime.date(2024, 3, 29)  # Friday
 
     # Test adding 0 days (should return same day if business day, or error/next business day if not)
     assert add_business_days(start, 0) == start  # Monday stays Monday
