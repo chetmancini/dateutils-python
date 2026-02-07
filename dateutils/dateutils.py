@@ -944,7 +944,7 @@ def add_business_days(dt: date, num_days: int, holidays: Iterable[date] | None =
     if holidays is None or (isinstance(holidays, (set, frozenset, list, tuple)) and len(holidays) == 0):
         return _add_business_days_no_holidays(dt, num_days)
 
-    holidays_set: set[date] = set(holidays) if holidays is not None else set()
+    holidays_set: set[date] = set(holidays)
     current = dt
     added = 0
     days_to_add = 1 if num_days >= 0 else -1
@@ -959,8 +959,6 @@ def add_business_days(dt: date, num_days: int, holidays: Iterable[date] | None =
 
 def _add_business_days_no_holidays(dt: date, num_days: int) -> date:
     """Fast path for add_business_days when there are no holidays."""
-    if num_days == 0:
-        return dt
     direction = 1 if num_days > 0 else -1
     remaining = abs(num_days)
     dt, weekday = _normalize_business_day_start(dt, direction)
@@ -1168,19 +1166,19 @@ def pretty_date(timestamp: int | datetime | None = None, now_override: int | Non
             if second_diff < 2 * SECONDS_IN_MINUTE:
                 return "in a minute"
             if second_diff < SECONDS_IN_HOUR:
-                return "in " + str(int(second_diff / SECONDS_IN_MINUTE)) + " minutes"
+                return "in " + str(second_diff // SECONDS_IN_MINUTE) + " minutes"
             if second_diff < 2 * SECONDS_IN_HOUR:
                 return "in an hour"
-            return "in " + str(int(second_diff / SECONDS_IN_HOUR)) + " hours"
+            return "in " + str(second_diff // SECONDS_IN_HOUR) + " hours"
         elif day_diff == 1:
             return "Tomorrow"
         elif day_diff < DAYS_IN_WEEK:
             return "in " + str(day_diff) + " days"
         elif day_diff < DAYS_IN_MONTH_MAX:
-            return "in " + str(int(day_diff / DAYS_IN_WEEK)) + " weeks"
+            return "in " + str(day_diff // DAYS_IN_WEEK) + " weeks"
         elif day_diff < DAYS_IN_YEAR:
-            return "in " + str(int(day_diff / DAYS_IN_MONTH_APPROX)) + " months"
-        return "in " + str(int(day_diff / DAYS_IN_YEAR)) + " years"
+            return "in " + str(day_diff // DAYS_IN_MONTH_APPROX) + " months"
+        return "in " + str(day_diff // DAYS_IN_YEAR) + " years"
 
     # Past dates
     day_diff = diff.days
@@ -1194,20 +1192,20 @@ def pretty_date(timestamp: int | datetime | None = None, now_override: int | Non
         if second_diff < 2 * SECONDS_IN_MINUTE:
             return "a minute ago"
         if second_diff < SECONDS_IN_HOUR:
-            return str(int(second_diff / SECONDS_IN_MINUTE)) + " minutes ago"
+            return str(second_diff // SECONDS_IN_MINUTE) + " minutes ago"
         if second_diff < 2 * SECONDS_IN_HOUR:
             return "an hour ago"
         # timedelta.seconds is always < 86400, so this is the final case for day_diff == 0
-        return str(int(second_diff / SECONDS_IN_HOUR)) + " hours ago"
+        return str(second_diff // SECONDS_IN_HOUR) + " hours ago"
     if day_diff == 1:
         return "Yesterday"
     elif day_diff < DAYS_IN_WEEK:
         return str(day_diff) + " days ago"
     elif day_diff < DAYS_IN_MONTH_MAX:
-        return str(int(day_diff / DAYS_IN_WEEK)) + " weeks ago"
+        return str(day_diff // DAYS_IN_WEEK) + " weeks ago"
     elif day_diff < DAYS_IN_YEAR:
-        return str(int(day_diff / DAYS_IN_MONTH_APPROX)) + " months ago"
-    return str(int(day_diff / DAYS_IN_YEAR)) + " years ago"
+        return str(day_diff // DAYS_IN_MONTH_APPROX) + " months ago"
+    return str(day_diff // DAYS_IN_YEAR) + " years ago"
 
 
 def httpdate(date_time: datetime) -> str:
@@ -1437,9 +1435,7 @@ def parse_iso8601(iso_str: str) -> datetime | None:
 
     try:
         if time_part is None:
-            if ms_part or tz_part:
-                return None
-            # Date only
+            # Date only (regex guarantees ms_part and tz_part are also None)
             return datetime.strptime(date_part, "%Y-%m-%d")
 
         # Combine date and time
