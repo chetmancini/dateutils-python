@@ -129,7 +129,7 @@ workdays = workdays_between(start, end, holidays=holidays_2024)
 ### Date Parsing and Formatting
 
 ```python
-from dateutils.dateutils import parse_date, parse_datetime, to_iso8601
+from dateutils.dateutils import parse_date, parse_datetime, parse_iso8601, to_iso8601
 
 # Parse a date string (tries multiple formats)
 dt = parse_date("2024-06-06")  # Returns date object
@@ -165,7 +165,7 @@ timezones = get_available_timezones()  # List of all available timezone names
 
 # Get timezone offset
 offset = get_timezone_offset("America/New_York")  # Returns timedelta
-offset_str = format_timezone_offset("America/New_York")  # Returns "+05:00" format
+offset_str = format_timezone_offset("America/New_York")  # Returns "-05:00" or "-04:00" (DST)
 ```
 
 ### Quarter and Month Operations
@@ -260,7 +260,10 @@ pretty_date(a_day_ago)    # "Yesterday"
 The library now includes comprehensive input validation with helpful error messages:
 
 ```python
-from dateutils.dateutils import start_of_quarter, workdays_between
+from datetime import date
+from zoneinfo import ZoneInfoNotFoundError
+
+from dateutils.dateutils import now_in_timezone, start_of_quarter, workdays_between
 
 # Invalid quarter raises ValueError
 try:
@@ -274,11 +277,11 @@ try:
 except ValueError as e:
     print(e)  # "start_date (2024-06-10) must be <= end_date (2024-06-01)"
 
-# Invalid timezone names provide helpful messages
+# Invalid timezone names raise ZoneInfoNotFoundError
 try:
     now_in_timezone("Invalid/Timezone")
-except ValueError as e:
-    print(e)  # "Invalid timezone name 'Invalid/Timezone'. Use get_available_timezones() to see valid options."
+except ZoneInfoNotFoundError as e:
+    print(e)  # e.g., "No time zone found with key Invalid/Timezone"
 ```
 
 ## Performance Features

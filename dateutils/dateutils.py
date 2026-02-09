@@ -1536,6 +1536,12 @@ def to_iso8601(dt: date | datetime) -> str:
 ##################
 # Timezone operations
 ##################
+@lru_cache(maxsize=1)
+def _get_available_timezones_cached() -> tuple[str, ...]:
+    """Cache timezone names to avoid repeated full-database sorting."""
+    return tuple(sorted(available_timezones()))
+
+
 def get_available_timezones() -> list[str]:
     """
     Get a list of available timezone names
@@ -1543,7 +1549,8 @@ def get_available_timezones() -> list[str]:
     Returns:
         List of timezone names (e.g. "America/New_York", "Europe/London", etc.)
     """
-    return sorted(available_timezones())
+    # Return a new list so callers can mutate safely without affecting cache.
+    return list(_get_available_timezones_cached())
 
 
 def now_in_timezone(tz_name: str) -> datetime:
@@ -1559,13 +1566,8 @@ def now_in_timezone(tz_name: str) -> datetime:
     Raises:
         zoneinfo.ZoneInfoNotFoundError: If timezone name is invalid
     """
-    try:
-        tz = ZoneInfo(tz_name)
-        return datetime.now(tz)
-    except ZoneInfoNotFoundError as e:
-        raise ValueError(
-            f"Invalid timezone name '{tz_name}'. Use get_available_timezones() to see valid options."
-        ) from e
+    tz = ZoneInfo(tz_name)
+    return datetime.now(tz)
 
 
 def today_in_timezone(tz_name: str) -> date:
@@ -1579,7 +1581,7 @@ def today_in_timezone(tz_name: str) -> date:
         Current date in the specified timezone
 
     Raises:
-        ValueError: If timezone name is invalid
+        zoneinfo.ZoneInfoNotFoundError: If timezone name is invalid
     """
     return now_in_timezone(tz_name).date()
 
