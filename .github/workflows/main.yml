@@ -41,5 +41,8 @@ jobs:
       - name: Run typecheck
         run: make typecheck
 
+      - name: Run doctests
+        run: make doctest
+
       - name: Run tests
         run: make test
