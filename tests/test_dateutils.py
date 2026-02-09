@@ -1051,6 +1051,8 @@ def test_convert_timezone_dst_nonexistent_time() -> None:
 
 def test_parse_date() -> None:
     """Test parsing date strings in various formats."""
+    assert parse_date(" 2024-03-27 ") == datetime.date(2024, 3, 27)
+
     # Test ISO format
     assert parse_date("2024-03-27") == datetime.date(2024, 3, 27)
 
@@ -1144,6 +1146,10 @@ def test_parse_date_invalid_calendar_dates() -> None:
 
 def test_parse_datetime() -> None:
     """Test parsing datetime strings in various formats."""
+    assert parse_datetime(" 2024-03-27T14:30:45Z ") == datetime.datetime(
+        2024, 3, 27, 14, 30, 45, tzinfo=datetime.timezone.utc
+    )
+
     # Test ISO format with space separator
     assert parse_datetime("2024-03-27 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)
 
@@ -1190,6 +1196,10 @@ def test_parse_datetime() -> None:
 
 def test_parse_iso8601() -> None:
     """Test parsing ISO 8601 formatted strings."""
+    assert parse_iso8601(" 2024-03-27T14:30:45Z ") == datetime.datetime(
+        2024, 3, 27, 14, 30, 45, tzinfo=datetime.timezone.utc
+    )
+
     # Test date only
     assert parse_iso8601("2024-03-27") == datetime.datetime(2024, 3, 27)
 
@@ -1498,6 +1508,7 @@ def test_add_business_days_with_holidays() -> None:
     # Subtracting business days from weekend (no-holidays fast path)
     assert add_business_days(weekend_start, -1) == datetime.date(2024, 3, 29)  # Friday
     sunday_start = datetime.date(2024, 3, 31)  # Sunday
+    assert add_business_days(sunday_start, 1) == datetime.date(2024, 4, 1)  # Monday
     assert add_business_days(sunday_start, -1) == datetime.date(2024, 3, 29)  # Friday
 
     # Test adding 0 days (should return same day if business day, or error/next business day if not)

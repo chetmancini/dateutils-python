@@ -717,6 +717,7 @@ def get_us_federal_holidays(year: int, holiday_types: tuple[str, ...] | None = N
         True
         >>> date(2024, 1, 15) in fixed_holidays  # MLK Day (floating)
         False
+
     Note:
         The returned list is a copy of the cached holiday data, so modifying it
         will not affect future calls or pollute the cache.
@@ -1307,6 +1308,8 @@ def parse_date(
         >>> parse_date("2024-20-80")
 
     """
+    date_str = date_str.strip()
+
     if formats is None:
         if dayfirst:
             # European/international style: day before month
@@ -1363,6 +1366,8 @@ def parse_datetime(datetime_str: str, formats: list[str] | None = None, dayfirst
     Returns:
         A datetime object if parsing was successful, None otherwise
     """
+    datetime_str = datetime_str.strip()
+
     if formats is None:
         if dayfirst:
             # European/international style: day before month
@@ -1427,6 +1432,8 @@ def parse_iso8601(iso_str: str) -> datetime | None:
     Returns:
         A datetime object, or None if parsing failed
     """
+    iso_str = iso_str.strip()
+
     match = _ISO8601_PATTERN.match(iso_str)
     if not match:
         return None
@@ -1916,13 +1923,13 @@ def time_until_next_occurrence(target_time: datetime, from_time: datetime | None
         >>> target = datetime(2024, 1, 1, 15, 0, 0, tzinfo=timezone.utc)  # 3:00 PM
         >>> from_dt = datetime(2024, 1, 1, 14, 30, 0, tzinfo=timezone.utc)  # 2:30 PM
         >>> time_until_next_occurrence(target, from_dt)
-        datetime.timedelta(seconds=1800)  # 30 minutes
+        datetime.timedelta(seconds=1800)
 
         >>> # If the target time has already passed today, returns time until tomorrow
         >>> from_dt = datetime(2024, 1, 1, 16, 0, 0, tzinfo=timezone.utc)  # 4:00 PM
         >>> delta = time_until_next_occurrence(target, from_dt)  # Next 3:00 PM is tomorrow
         >>> delta.total_seconds()
-        82800.0  # 23 hours
+        82800.0
 
         >>> # Useful for scheduling: "How long until the daily 2 AM job runs?"
         >>> job_time = datetime(2024, 1, 1, 2, 0, 0, tzinfo=timezone.utc)
