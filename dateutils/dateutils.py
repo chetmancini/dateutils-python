@@ -838,7 +838,9 @@ def _get_us_federal_holidays_cached(year: int, holiday_types: tuple[str, ...] | 
     if holiday_types is None:
         return tuple(sorted(all_holiday_types.values()))
 
-    invalid_holiday_types = sorted({holiday_type for holiday_type in holiday_types if holiday_type not in all_holiday_types})
+    invalid_holiday_types = sorted(
+        {holiday_type for holiday_type in holiday_types if holiday_type not in all_holiday_types}
+    )
     if invalid_holiday_types:
         invalid_types = ", ".join(invalid_holiday_types)
         valid_types = ", ".join(sorted(all_holiday_types))
