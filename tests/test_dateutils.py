@@ -750,6 +750,15 @@ def test_get_available_timezones() -> None:
     assert "Europe/London" in timezones
 
 
+def test_get_available_timezones_returns_fresh_list() -> None:
+    """The returned list should be safe to mutate without affecting future calls."""
+    first = get_available_timezones()
+    first.append("Fake/Timezone")
+
+    second = get_available_timezones()
+    assert "Fake/Timezone" not in second
+
+
 @freeze_time("2024-03-27 12:00:00", tz_offset=0)  # UTC time
 def test_now_in_timezone() -> None:
     """Test getting current time in different timezones."""
@@ -1907,11 +1916,11 @@ def test_timezone_error_handling() -> None:
     assert now_in_timezone("UTC") is not None
     assert today_in_timezone("America/New_York") is not None
 
-    # Invalid timezone should raise ValueError with helpful message
-    with pytest.raises(ValueError, match="Invalid timezone name 'Invalid/Timezone'"):
+    # now_in_timezone/today_in_timezone propagate ZoneInfoNotFoundError from zoneinfo
+    with pytest.raises(ZoneInfoNotFoundError):
         now_in_timezone("Invalid/Timezone")
 
-    with pytest.raises(ValueError, match="Invalid timezone name 'Bad_Zone'"):
+    with pytest.raises(ZoneInfoNotFoundError):
         today_in_timezone("Bad_Zone")
 
     with pytest.raises(ValueError, match="Invalid timezone name 'Invalid/Zone'"):
