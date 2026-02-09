@@ -122,6 +122,19 @@
 ### Fixed
 - Fix ISO8601 validation and start defaults (#26).
 
+## [0.5.6] - 2026-02-09
+
+### Added
+- Add doctest CI and parser/coverage fixes (#30).
+- Clean up code quality issues: fix comments, simplify logic, add test coverage (#29).
+
+### Changed
+- Update dev dependencies to latest versions (#27).
+
+### Fixed
+- Fix timezone error behavior and docs (#31).
+- Fix date_range limit to account for leap days (#28).
+
 ## [Unreleased]
 
 ### Added
@@ -269,6 +282,19 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Fix ISO8601 validation and start defaults (#26).
+
+## [0.5.6] - 2026-02-09
+
+### Added
+- Add doctest CI and parser/coverage fixes (#30).
+- Clean up code quality issues: fix comments, simplify logic, add test coverage (#29).
+
+### Changed
+- Update dev dependencies to latest versions (#27).
+
+### Fixed
+- Fix timezone error behavior and docs (#31).
+- Fix date_range limit to account for leap days (#28).
 
 ## [Unreleased]
 
@@ -418,6 +444,19 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Fix ISO8601 validation and start defaults (#26).
 
+## [0.5.6] - 2026-02-09
+
+### Added
+- Add doctest CI and parser/coverage fixes (#30).
+- Clean up code quality issues: fix comments, simplify logic, add test coverage (#29).
+
+### Changed
+- Update dev dependencies to latest versions (#27).
+
+### Fixed
+- Fix timezone error behavior and docs (#31).
+- Fix date_range limit to account for leap days (#28).
+
 ## [Unreleased]
 
 ### Added
@@ -562,6 +601,19 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Fix ISO8601 validation and start defaults (#26).
+
+## [0.5.6] - 2026-02-09
+
+### Added
+- Add doctest CI and parser/coverage fixes (#30).
+- Clean up code quality issues: fix comments, simplify logic, add test coverage (#29).
+
+### Changed
+- Update dev dependencies to latest versions (#27).
+
+### Fixed
+- Fix timezone error behavior and docs (#31).
+- Fix date_range limit to account for leap days (#28).
 
 ## [Unreleased]
 
@@ -713,6 +765,19 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Fix ISO8601 validation and start defaults (#26).
 
+## [0.5.6] - 2026-02-09
+
+### Added
+- Add doctest CI and parser/coverage fixes (#30).
+- Clean up code quality issues: fix comments, simplify logic, add test coverage (#29).
+
+### Changed
+- Update dev dependencies to latest versions (#27).
+
+### Fixed
+- Fix timezone error behavior and docs (#31).
+- Fix date_range limit to account for leap days (#28).
+
 ## [Unreleased]
 
 ### Added
@@ -859,6 +924,19 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Fix ISO8601 validation and start defaults (#26).
+
+## [0.5.6] - 2026-02-09
+
+### Added
+- Add doctest CI and parser/coverage fixes (#30).
+- Clean up code quality issues: fix comments, simplify logic, add test coverage (#29).
+
+### Changed
+- Update dev dependencies to latest versions (#27).
+
+### Fixed
+- Fix timezone error behavior and docs (#31).
+- Fix date_range limit to account for leap days (#28).
 
 ## [Unreleased]
 
