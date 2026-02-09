@@ -603,10 +603,19 @@ def test_pretty_date_with_invalid_timestamp() -> None:
     """Test pretty_date with invalid integer timestamp."""
     from dateutils.dateutils import pretty_date
 
-    # Very large invalid timestamp should return "just now" (timedelta(0))
+    # Very large invalid timestamp should raise ValueError
     invalid_ts = 2**63
-    result = pretty_date(invalid_ts)
-    assert result == "just now"
+    with pytest.raises(ValueError, match=f"Invalid timestamp: {invalid_ts}"):
+        pretty_date(invalid_ts)
+
+
+def test_pretty_date_with_invalid_now_override() -> None:
+    """Test pretty_date with invalid now_override timestamp."""
+    from dateutils.dateutils import pretty_date
+
+    invalid_now = 2**63
+    with pytest.raises(ValueError, match=f"Invalid now_override timestamp: {invalid_now}"):
+        pretty_date(datetime.datetime(2024, 3, 27, 12, 0, 0), now_override=invalid_now)
 
 
 def test_pretty_date_naive_datetime() -> None:
@@ -1119,6 +1128,37 @@ def test_parse_date_dayfirst() -> None:
     assert parse_date("2024|07|22", formats=["%Y|%m|%d"], dayfirst=True) == datetime.date(2024, 7, 22)
 
 
+def test_parse_date_english_month_names_locale_independent() -> None:
+    """English month-name parsing should not depend on process locale."""
+    original_locale = locale.setlocale(locale.LC_TIME)
+    try:
+        switched = False
+        for candidate in ("fr_FR.UTF-8", "de_DE.UTF-8", "es_ES.UTF-8"):
+            try:
+                locale.setlocale(locale.LC_TIME, candidate)
+                switched = True
+                break
+            except locale.Error:
+                continue
+        if not switched:
+            pytest.skip("No non-English locale available for testing")
+
+        assert parse_date("March 27, 2024") == datetime.date(2024, 3, 27)
+        assert parse_date("27 Mar 2024") == datetime.date(2024, 3, 27)
+    finally:
+        locale.setlocale(locale.LC_TIME, original_locale)
+
+
+def test_parse_date_custom_formats_do_not_use_default_fallbacks() -> None:
+    """When custom formats are supplied, default format/text parsing should be skipped."""
+    assert parse_date("March 27, 2024", formats=["%Y/%m/%d"]) is None
+
+
+def test_parse_date_invalid_english_month_name() -> None:
+    """Unknown month names should return None."""
+    assert parse_date("Foober 27, 2024") is None
+
+
 def test_parse_date_invalid_calendar_dates() -> None:
     """Test that invalid but recognizable calendar dates return None.
 
@@ -1481,6 +1521,44 @@ def test_workdays_between_with_generator() -> None:
     assert workdays_between(start, end, holidays=holiday_generator()) == 3
 
 
+def test_business_day_functions_with_datetime_holidays() -> None:
+    """Datetime holiday inputs should be normalized to date values consistently."""
+    start = datetime.date(2024, 7, 1)  # Monday
+    end = datetime.date(2024, 7, 5)  # Friday
+    holiday_dt = datetime.datetime(2024, 7, 4, 12, 0, 0)  # Midday on Thursday
+
+    # Thursday holiday removes one workday.
+    assert workdays_between(start, end, holidays=[holiday_dt]) == 4
+    # Adding one business day from Wednesday should skip Thursday holiday and land Friday.
+    assert add_business_days(datetime.date(2024, 7, 3), 1, holidays=[holiday_dt]) == datetime.date(2024, 7, 5)
+    # The holiday itself should not be considered a business day.
+    assert is_business_day(datetime.date(2024, 7, 4), holidays=[holiday_dt]) is False
+
+
+def test_business_day_functions_invalid_holiday_input_type() -> None:
+    """Non-date holiday values should raise TypeError."""
+    with pytest.raises(TypeError, match="holidays must contain date or datetime values"):
+        workdays_between(datetime.date(2024, 7, 1), datetime.date(2024, 7, 5), holidays=["2024-07-04"])  # type: ignore[list-item]
+
+
+def test_add_business_days_empty_holiday_generator_uses_fast_path() -> None:
+    """An empty holiday generator should behave like no holidays."""
+
+    def empty_holidays():
+        if False:
+            yield datetime.date(2024, 1, 1)
+
+    start = datetime.date(2024, 7, 3)  # Wednesday
+    assert add_business_days(start, 1, holidays=empty_holidays()) == datetime.date(2024, 7, 4)
+
+
+def test_normalize_holiday_dates_accepts_none() -> None:
+    """Internal holiday normalization should handle None as empty input."""
+    from dateutils.dateutils import _normalize_holiday_dates
+
+    assert _normalize_holiday_dates(None) == set()
+
+
 def test_add_business_days_with_holidays() -> None:
     """Test adding business days with holiday exclusions."""
     # Start on a Monday
@@ -1705,10 +1783,15 @@ def test_get_us_federal_holidays_filter_empty() -> None:
 
 
 def test_get_us_federal_holidays_filter_invalid_type() -> None:
-    """Test filtering with an invalid holiday type (should be ignored)."""
-    holidays = get_us_federal_holidays(2024, holiday_types=("INVALID_HOLIDAY", "CHRISTMAS"))
-    assert len(holidays) == 1
-    assert datetime.date(2024, 12, 25) in holidays
+    """Test filtering with an invalid holiday type raises ValueError."""
+    with pytest.raises(ValueError, match="Invalid holiday type\\(s\\): INVALID_HOLIDAY"):
+        get_us_federal_holidays(2024, holiday_types=("INVALID_HOLIDAY", "CHRISTMAS"))
+
+
+def test_get_us_federal_holidays_filter_deduplicates_types() -> None:
+    """Duplicate holiday types should not produce duplicate dates."""
+    holidays = get_us_federal_holidays(2024, holiday_types=("CHRISTMAS", "CHRISTMAS", "NEW_YEARS_DAY"))
+    assert holidays == [datetime.date(2024, 1, 1), datetime.date(2024, 12, 25)]
 
 
 def test_get_us_federal_holidays_returns_copy() -> None:
@@ -2264,6 +2347,15 @@ def test_time_until_next_occurrence_timezone_branches() -> None:
     from_time_naive = datetime.datetime(2024, 7, 22, 10, 0, 0)
     delta = time_until_next_occurrence(target_with_tz, from_time_naive)
     assert delta == datetime.timedelta(hours=4)
+
+
+def test_time_until_next_occurrence_across_timezones() -> None:
+    """Cross-timezone comparisons should never produce negative durations."""
+    target_auckland = datetime.datetime(2023, 6, 1, 9, 30, 0, tzinfo=ZoneInfo("Pacific/Auckland"))
+    from_utc = datetime.datetime(2024, 1, 1, 21, 0, 0, tzinfo=datetime.timezone.utc)
+
+    delta = time_until_next_occurrence(target_auckland, from_utc)
+    assert delta == datetime.timedelta(hours=23, minutes=30)
 
 
 def test_date_range_generator() -> None:
