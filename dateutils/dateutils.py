@@ -47,6 +47,7 @@ from collections.abc import Generator, Iterable
 from datetime import date, datetime, timedelta, timezone
 from email.utils import format_datetime as _format_http_datetime
 from functools import lru_cache
+from typing import cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 ##################
@@ -86,6 +87,36 @@ _ISO8601_PATTERN = re.compile(
     """,
     re.VERBOSE,
 )
+
+# Locale-independent English month parsing for parse_date()
+_ENGLISH_MONTH_BY_NAME = {
+    "january": 1,
+    "jan": 1,
+    "february": 2,
+    "feb": 2,
+    "march": 3,
+    "mar": 3,
+    "april": 4,
+    "apr": 4,
+    "may": 5,
+    "june": 6,
+    "jun": 6,
+    "july": 7,
+    "jul": 7,
+    "august": 8,
+    "aug": 8,
+    "september": 9,
+    "sep": 9,
+    "sept": 9,
+    "october": 10,
+    "oct": 10,
+    "november": 11,
+    "nov": 11,
+    "december": 12,
+    "dec": 12,
+}
+_MONTH_DAY_YEAR_PATTERN = re.compile(r"^(?P<month>[A-Za-z.]+)\s+(?P<day>\d{1,2}),\s*(?P<year>\d{4})$")
+_DAY_MONTH_YEAR_PATTERN = re.compile(r"^(?P<day>\d{1,2})\s+(?P<month>[A-Za-z.]+)\s+(?P<year>\d{4})$")
 
 
 ##################
@@ -666,6 +697,22 @@ def is_weekend(dt: date) -> bool:
     return dt.weekday() >= calendar.SATURDAY  # 5 = Saturday, 6 = Sunday
 
 
+def _normalize_holiday_dates(holidays: Iterable[date | datetime] | None) -> set[date]:
+    """Normalize holiday values to plain date objects."""
+    if holidays is None:
+        return set()
+
+    normalized: set[date] = set()
+    for holiday in holidays:
+        if isinstance(holiday, datetime):
+            normalized.add(holiday.date())
+        elif isinstance(holiday, date):
+            normalized.add(holiday)
+        else:
+            raise TypeError(f"holidays must contain date or datetime values, got {type(holiday).__name__}")
+    return normalized
+
+
 def get_us_federal_holidays(year: int, holiday_types: tuple[str, ...] | None = None) -> list[date]:
     """
     Get a list of US federal holidays for a given year.
@@ -701,6 +748,9 @@ def get_us_federal_holidays(year: int, holiday_types: tuple[str, ...] | None = N
     Returns:
         List[date]: A list of date objects for the holidays in that year,
         sorted in chronological order.
+
+    Raises:
+        ValueError: If `holiday_types` contains unknown holiday names.
 
     Examples:
         >>> from datetime import date
@@ -789,13 +839,16 @@ def _get_us_federal_holidays_cached(year: int, holiday_types: tuple[str, ...] | 
     if holiday_types is None:
         return tuple(sorted(all_holiday_types.values()))
 
-    # Otherwise, return only the specified holiday types
-    result = []
-    for holiday_type in holiday_types:
-        if holiday_type in all_holiday_types:
-            result.append(all_holiday_types[holiday_type])
+    invalid_holiday_types = sorted(
+        {holiday_type for holiday_type in holiday_types if holiday_type not in all_holiday_types}
+    )
+    if invalid_holiday_types:
+        invalid_types = ", ".join(invalid_holiday_types)
+        valid_types = ", ".join(sorted(all_holiday_types))
+        raise ValueError(f"Invalid holiday type(s): {invalid_types}. Valid values: {valid_types}")
 
-    return tuple(sorted(result))
+    # Deduplicate by date in case duplicate types are requested.
+    return tuple(sorted({all_holiday_types[holiday_type] for holiday_type in holiday_types}))
 
 
 def get_us_federal_holidays_list(year: int, holiday_types: list[str] | None = None) -> list[date]:
@@ -803,13 +856,14 @@ def get_us_federal_holidays_list(year: int, holiday_types: list[str] | None = No
     Convenience wrapper for get_us_federal_holidays that accepts a list instead of tuple.
 
     This function converts the list to a tuple and calls the cached version.
+    Unknown holiday types raise ValueError.
     """
     if holiday_types is None:
         return get_us_federal_holidays(year, None)
     return get_us_federal_holidays(year, tuple(holiday_types))
 
 
-def workdays_between(start_date: date, end_date: date, holidays: Iterable[date] | None = None) -> int:
+def workdays_between(start_date: date, end_date: date, holidays: Iterable[date | datetime] | None = None) -> int:
     """
     Count workdays (Monday-Friday) between two dates, inclusive.
 
@@ -823,8 +877,9 @@ def workdays_between(start_date: date, end_date: date, holidays: Iterable[date] 
     Args:
         start_date: The start date (inclusive).
         end_date: The end date (inclusive).
-        holidays: Optional collection of holiday dates to exclude (list, set, tuple,
-            generator, etc.). Duplicates are automatically handled.
+        holidays: Optional collection of holiday dates/datetimes to exclude
+            (list, set, tuple, generator, etc.). Duplicates are automatically
+            handled.
 
     Warning:
         **Generators are consumed on first use.** If you need to call this function
@@ -839,6 +894,7 @@ def workdays_between(start_date: date, end_date: date, holidays: Iterable[date] 
 
     Raises:
         ValueError: If start_date is after end_date
+        TypeError: If `holidays` contains values that are not date/datetime
 
     Examples:
         >>> from datetime import date
@@ -888,7 +944,7 @@ def workdays_between(start_date: date, end_date: date, holidays: Iterable[date] 
     # Subtract holidays that fall on weekdays within the range
     # Convert to set to handle duplicates and consume generators safely
     if holidays is not None:
-        holidays_set = set(holidays)
+        holidays_set = _normalize_holiday_dates(holidays)
         for holiday in holidays_set:
             if start_date <= holiday <= end_date and holiday.weekday() < WEEKDAYS_IN_WEEK:
                 workdays -= 1
@@ -896,7 +952,7 @@ def workdays_between(start_date: date, end_date: date, holidays: Iterable[date] 
     return workdays
 
 
-def add_business_days(dt: date, num_days: int, holidays: Iterable[date] | None = None) -> date:
+def add_business_days(dt: date, num_days: int, holidays: Iterable[date | datetime] | None = None) -> date:
     """
     Add business days to a date, skipping weekends and holidays.
 
@@ -906,7 +962,8 @@ def add_business_days(dt: date, num_days: int, holidays: Iterable[date] | None =
     Args:
         dt: The starting date.
         num_days: Number of business days to add (can be negative).
-        holidays: Optional collection of holiday dates to skip (list, set, tuple, etc.).
+        holidays: Optional collection of holiday dates/datetimes to skip (list,
+            set, tuple, etc.).
             Using a set provides O(1) lookup performance for large holiday lists.
             **Note:** Generators are consumed on first use.
 
@@ -915,6 +972,7 @@ def add_business_days(dt: date, num_days: int, holidays: Iterable[date] | None =
 
     Raises:
         ValueError: If num_days is extremely large (> 10000 or < -10000)
+        TypeError: If `holidays` contains values that are not date/datetime
 
     Examples:
         >>> from datetime import date
@@ -945,7 +1003,10 @@ def add_business_days(dt: date, num_days: int, holidays: Iterable[date] | None =
     if holidays is None or (isinstance(holidays, (set, frozenset, list, tuple)) and len(holidays) == 0):
         return _add_business_days_no_holidays(dt, num_days)
 
-    holidays_set: set[date] = set(holidays)
+    holidays_set = _normalize_holiday_dates(holidays)
+    if not holidays_set:
+        return _add_business_days_no_holidays(dt, num_days)
+
     current = dt
     added = 0
     days_to_add = 1 if num_days >= 0 else -1
@@ -1000,7 +1061,7 @@ def _business_days_to_calendar_days(weekday: int, remaining: int, direction: int
     return days
 
 
-def next_business_day(dt: date, holidays: Iterable[date] | None = None) -> date:
+def next_business_day(dt: date, holidays: Iterable[date | datetime] | None = None) -> date:
     """
     Find the next business day from a given date, skipping weekends and holidays.
 
@@ -1030,7 +1091,7 @@ def next_business_day(dt: date, holidays: Iterable[date] | None = None) -> date:
     return add_business_days(dt, 1, holidays)
 
 
-def previous_business_day(dt: date, holidays: Iterable[date] | None = None) -> date:
+def previous_business_day(dt: date, holidays: Iterable[date | datetime] | None = None) -> date:
     """
     Find the previous business day from a given date, skipping weekends and holidays.
 
@@ -1063,7 +1124,10 @@ def previous_business_day(dt: date, holidays: Iterable[date] | None = None) -> d
 def _ts_difference(timestamp: int | datetime | None = None, now_override: int | None = None) -> timedelta:
     """Helper function to calculate time difference for pretty_date."""
     if now_override is not None:
-        now = datetime.fromtimestamp(now_override, tz=timezone.utc)
+        try:
+            now = datetime.fromtimestamp(now_override, tz=timezone.utc)
+        except (ValueError, OSError, OverflowError) as e:
+            raise ValueError(f"Invalid now_override timestamp: {now_override}") from e
     else:
         now = datetime.now(timezone.utc)
 
@@ -1072,16 +1136,16 @@ def _ts_difference(timestamp: int | datetime | None = None, now_override: int | 
     elif isinstance(timestamp, int):
         try:
             ts_dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
-        except (ValueError, OSError, OverflowError):
-            return timedelta(0)  # Return zero diff for invalid timestamps
+        except (ValueError, OSError, OverflowError) as e:
+            raise ValueError(f"Invalid timestamp: {timestamp}") from e
         return now - ts_dt
     elif isinstance(timestamp, datetime):
         # Handle naive datetimes by assuming UTC
         if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=timezone.utc)
         return now - timestamp
-    # Type system guarantees we never reach here (timestamp is int | datetime | None)
-    return timedelta(0)  # pragma: no cover
+    # Runtime callers may still violate type hints.
+    raise TypeError(f"timestamp must be int, datetime, or None; got {type(timestamp).__name__}")  # pragma: no cover
 
 
 def pretty_date(timestamp: int | datetime | None = None, now_override: int | None = None) -> str:  # noqa: C901, PLR0911, PLR0912
@@ -1114,6 +1178,10 @@ def pretty_date(timestamp: int | datetime | None = None, now_override: int | Non
             - "X weeks ago" / "in X weeks"
             - "X months ago" / "in X months"
             - "X years ago" / "in X years"
+
+    Raises:
+        ValueError: If `timestamp` or `now_override` is an invalid Unix timestamp.
+        TypeError: If `timestamp` is not an int, datetime, or None.
 
     Examples:
         >>> from datetime import datetime, timezone
@@ -1310,10 +1378,12 @@ def parse_date(
     """
     date_str = date_str.strip()
 
-    if formats is None:
+    default_formats = formats is None
+    parse_formats: list[str]
+    if default_formats:
         if dayfirst:
             # European/international style: day before month
-            formats = [
+            parse_formats = [
                 "%Y-%m-%d",  # 2023-01-31 (ISO - unambiguous)
                 "%d/%m/%Y",  # 31/01/2023
                 "%m/%d/%Y",  # 01/31/2023 (fallback for US)
@@ -1321,14 +1391,10 @@ def parse_date(
                 "%m-%d-%Y",  # 01-31-2023 (fallback for US)
                 "%d.%m.%Y",  # 31.01.2023
                 "%Y/%m/%d",  # 2023/01/31
-                "%B %d, %Y",  # January 31, 2023
-                "%d %B %Y",  # 31 January 2023
-                "%b %d, %Y",  # Jan 31, 2023
-                "%d %b %Y",  # 31 Jan 2023
             ]
         else:
             # US style (default): month before day
-            formats = [
+            parse_formats = [
                 "%Y-%m-%d",  # 2023-01-31 (ISO - unambiguous)
                 "%m/%d/%Y",  # 01/31/2023
                 "%d/%m/%Y",  # 31/01/2023 (fallback for European)
@@ -1336,18 +1402,42 @@ def parse_date(
                 "%d-%m-%Y",  # 31-01-2023 (fallback for European)
                 "%d.%m.%Y",  # 31.01.2023
                 "%Y/%m/%d",  # 2023/01/31
-                "%B %d, %Y",  # January 31, 2023
-                "%d %B %Y",  # 31 January 2023
-                "%b %d, %Y",  # Jan 31, 2023
-                "%d %b %Y",  # 31 Jan 2023
             ]
+    else:
+        parse_formats = cast(list[str], formats)
 
-    for fmt in formats:
+    for fmt in parse_formats:
         try:
             return datetime.strptime(date_str, fmt).date()
         except ValueError:
             continue
 
+    # Locale-independent fallback for English month names in the default parser.
+    if default_formats:
+        parsed_english = _parse_english_textual_date(date_str)
+        if parsed_english is not None:
+            return parsed_english
+
+    return None
+
+
+def _parse_english_textual_date(date_str: str) -> date | None:
+    """Parse common English month-name date formats without locale dependencies."""
+    normalized = re.sub(r"\s+", " ", date_str.strip())
+    for pattern in (_MONTH_DAY_YEAR_PATTERN, _DAY_MONTH_YEAR_PATTERN):
+        match = pattern.match(normalized)
+        if not match:
+            continue
+        month_name = match.group("month").lower().rstrip(".")
+        month = _ENGLISH_MONTH_BY_NAME.get(month_name)
+        if month is None:
+            return None
+        year = int(match.group("year"))
+        day = int(match.group("day"))
+        try:
+            return date(year, month, day)
+        except ValueError:
+            return None
     return None
 
 
@@ -1753,14 +1843,15 @@ def format_timezone_offset(tz_name: str) -> str:
 ##################
 # Additional utility functions
 ##################
-def is_business_day(dt: date, holidays: Iterable[date] | None = None) -> bool:
+def is_business_day(dt: date, holidays: Iterable[date | datetime] | None = None) -> bool:
     """
     Check if a date is a business day (not weekend or holiday).
 
     Args:
         dt: Date to check
-        holidays: Optional collection of holiday dates (list, set, tuple, generator, etc.).
-            Generators will be consumed. Internally converted to a set for O(1) lookup.
+        holidays: Optional collection of holiday dates/datetimes (list, set,
+            tuple, generator, etc.). Generators will be consumed. Internally
+            converted to a set for O(1) lookup.
 
     Returns:
         bool: True if the date is a business day, False otherwise
@@ -1781,7 +1872,7 @@ def is_business_day(dt: date, holidays: Iterable[date] | None = None) -> bool:
     if holidays is None:
         return True
     # Convert to set to handle generators and ensure O(1) lookup
-    holidays_set = set(holidays) if not isinstance(holidays, (set, frozenset)) else holidays
+    holidays_set = _normalize_holiday_dates(holidays)
     return dt not in holidays_set
 
 
@@ -1949,11 +2040,17 @@ def time_until_next_occurrence(target_time: datetime, from_time: datetime | None
     elif target_time.tzinfo is not None and from_time.tzinfo is None:
         from_time = from_time.replace(tzinfo=target_time.tzinfo)
 
-    # Calculate next occurrence
-    next_occurrence = target_time.replace(year=from_time.year, month=from_time.month, day=from_time.day)
+    from_time_in_target_tz = from_time.astimezone(target_time.tzinfo) if target_time.tzinfo is not None else from_time
 
-    if next_occurrence <= from_time:
+    # Calculate next occurrence based on the target timezone's local date.
+    next_occurrence = target_time.replace(
+        year=from_time_in_target_tz.year,
+        month=from_time_in_target_tz.month,
+        day=from_time_in_target_tz.day,
+    )
+
+    if next_occurrence <= from_time_in_target_tz:
         # Target time has already passed today, move to next day
         next_occurrence += timedelta(days=1)
 
-    return next_occurrence - from_time
+    return next_occurrence - from_time_in_target_tz
