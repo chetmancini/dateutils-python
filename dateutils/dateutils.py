@@ -47,6 +47,7 @@ from collections.abc import Generator, Iterable
 from datetime import date, datetime, timedelta, timezone
 from email.utils import format_datetime as _format_http_datetime
 from functools import lru_cache
+from typing import cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 ##################
@@ -1378,10 +1379,11 @@ def parse_date(
     date_str = date_str.strip()
 
     default_formats = formats is None
+    parse_formats: list[str]
     if default_formats:
         if dayfirst:
             # European/international style: day before month
-            formats = [
+            parse_formats = [
                 "%Y-%m-%d",  # 2023-01-31 (ISO - unambiguous)
                 "%d/%m/%Y",  # 31/01/2023
                 "%m/%d/%Y",  # 01/31/2023 (fallback for US)
@@ -1392,7 +1394,7 @@ def parse_date(
             ]
         else:
             # US style (default): month before day
-            formats = [
+            parse_formats = [
                 "%Y-%m-%d",  # 2023-01-31 (ISO - unambiguous)
                 "%m/%d/%Y",  # 01/31/2023
                 "%d/%m/%Y",  # 31/01/2023 (fallback for European)
@@ -1401,8 +1403,10 @@ def parse_date(
                 "%d.%m.%Y",  # 31.01.2023
                 "%Y/%m/%d",  # 2023/01/31
             ]
+    else:
+        parse_formats = cast(list[str], formats)
 
-    for fmt in formats:
+    for fmt in parse_formats:
         try:
             return datetime.strptime(date_str, fmt).date()
         except ValueError:
