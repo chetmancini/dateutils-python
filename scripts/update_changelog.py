@@ -7,6 +7,7 @@ Used by Makefile version bump commands.
 
 import argparse
 import re
+import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -14,8 +15,12 @@ from pathlib import Path
 
 def run_git_command(cmd: list[str]) -> str:
     """Run a git command and return the output."""
+    git_binary = shutil.which("git")
+    if git_binary is None:
+        return ""
+
     try:
-        result = subprocess.run(["git", *cmd], capture_output=True, text=True, check=True)
+        result = subprocess.run([git_binary, *cmd], capture_output=True, text=True, check=True)  # noqa: S603
         return result.stdout.strip()
     except subprocess.CalledProcessError:
         return ""

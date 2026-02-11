@@ -91,6 +91,7 @@ select = [
     "PL",  # pylint
     "RUF", # ruff-specific rules
 ]
+extend-select = ["S", "PT", "RET", "PERF"]
 ignore = [
     "E501",  # line length violations
     "PLR0913", # too many arguments

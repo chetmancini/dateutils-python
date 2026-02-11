@@ -808,14 +808,13 @@ def _get_us_federal_holidays_cached(year: int, holiday_types: tuple[str, ...] | 
             while d.weekday() != weekday:
                 d -= timedelta(days=1)
             return d
-        else:
-            # Start from the first day of the month
-            d = date(year, month, 1)
-            while d.weekday() != weekday:
-                d += timedelta(days=1)
-            # Move to the nth occurrence
-            d += timedelta(days=7 * (n - 1))
-            return d
+        # Start from the first day of the month
+        d = date(year, month, 1)
+        while d.weekday() != weekday:
+            d += timedelta(days=1)
+        # Move to the nth occurrence
+        d += timedelta(days=7 * (n - 1))
+        return d
 
     # 3rd Monday in January (Martin Luther King Jr. Day)
     all_holiday_types["MLK_DAY"] = find_nth_weekday(year, 1, 0, 3)  # Monday = 0
@@ -1133,13 +1132,13 @@ def _ts_difference(timestamp: int | datetime | None = None, now_override: int | 
 
     if timestamp is None:
         return timedelta(0)
-    elif isinstance(timestamp, int):
+    if isinstance(timestamp, int):
         try:
             ts_dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
         except (ValueError, OSError, OverflowError) as e:
             raise ValueError(f"Invalid timestamp: {timestamp}") from e
         return now - ts_dt
-    elif isinstance(timestamp, datetime):
+    if isinstance(timestamp, datetime):
         # Handle naive datetimes by assuming UTC
         if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=timezone.utc)
@@ -1239,14 +1238,14 @@ def pretty_date(timestamp: int | datetime | None = None, now_override: int | Non
             if second_diff < 2 * SECONDS_IN_HOUR:
                 return "in an hour"
             return "in " + str(second_diff // SECONDS_IN_HOUR) + " hours"
-        elif day_diff == 1:
+        if day_diff == 1:
             return "Tomorrow"
-        elif day_diff < DAYS_IN_WEEK:
+        if day_diff < DAYS_IN_WEEK:
             return "in " + str(day_diff) + " days"
-        elif day_diff < DAYS_IN_MONTH_MAX:
+        if day_diff < DAYS_IN_MONTH_MAX:
             weeks = day_diff // DAYS_IN_WEEK
             return f"in {weeks} week" if weeks == 1 else f"in {weeks} weeks"
-        elif day_diff < DAYS_IN_YEAR:
+        if day_diff < DAYS_IN_YEAR:
             months = day_diff // DAYS_IN_MONTH_APPROX
             return f"in {months} month" if months == 1 else f"in {months} months"
         years = day_diff // DAYS_IN_YEAR
@@ -1271,12 +1270,12 @@ def pretty_date(timestamp: int | datetime | None = None, now_override: int | Non
         return str(second_diff // SECONDS_IN_HOUR) + " hours ago"
     if day_diff == 1:
         return "Yesterday"
-    elif day_diff < DAYS_IN_WEEK:
+    if day_diff < DAYS_IN_WEEK:
         return str(day_diff) + " days ago"
-    elif day_diff < DAYS_IN_MONTH_MAX:
+    if day_diff < DAYS_IN_MONTH_MAX:
         weeks = day_diff // DAYS_IN_WEEK
         return f"{weeks} week ago" if weeks == 1 else f"{weeks} weeks ago"
-    elif day_diff < DAYS_IN_YEAR:
+    if day_diff < DAYS_IN_YEAR:
         months = day_diff // DAYS_IN_MONTH_APPROX
         return f"{months} month ago" if months == 1 else f"{months} months ago"
     years = day_diff // DAYS_IN_YEAR
@@ -1412,10 +1411,11 @@ def parse_date(
     else:
         parse_formats = cast(list[str], formats)
 
+    # Exception-driven parsing is expected here while trying multiple date layouts.
     for fmt in parse_formats:
         try:
             return datetime.strptime(date_str, fmt).date()
-        except ValueError:
+        except ValueError:  # noqa: PERF203
             continue
 
     # Locale-independent fallback for English month names in the default parser.
@@ -1494,6 +1494,7 @@ def parse_datetime(datetime_str: str, formats: list[str] | None = None, dayfirst
                 "%Y/%m/%d %H:%M:%S",  # 2023/01/31 14:30:45
             ]
 
+    # Exception-driven parsing is expected here while trying multiple datetime layouts.
     for fmt in formats:
         try:
             dt = datetime.strptime(datetime_str, fmt)
@@ -1501,7 +1502,7 @@ def parse_datetime(datetime_str: str, formats: list[str] | None = None, dayfirst
             if datetime_str.endswith("Z"):
                 dt = dt.replace(tzinfo=timezone.utc)
             return dt
-        except ValueError:
+        except ValueError:  # noqa: PERF203
             continue
 
     return None
