@@ -501,7 +501,7 @@ def test_workdays_between() -> None:
     # End date before start date (should raise ValueError now)
     start = datetime.date(2024, 3, 4)  # Monday
     end = datetime.date(2024, 3, 1)  # Friday of previous week
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="must be <= end_date"):
         workdays_between(start, end)
 
 
@@ -850,7 +850,7 @@ def test_convert_timezone() -> None:
     assert tokyo_from_ny.hour == 21  # 8 EDT = 21 JST
 
     # Test error case with naive datetime
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="timezone information"):
         convert_timezone(datetime.datetime(2024, 3, 27, 12, 0, 0), "America/New_York")
 
     # Test error case with invalid timezone name (now raises ValueError instead of ZoneInfoNotFoundError)
@@ -1861,7 +1861,7 @@ def test_date_add_business_days_properties(date_input: datetime.date) -> None:
 
 
 @pytest.mark.parametrize(
-    "year,expected",
+    ("year", "expected"),
     [
         (2020, True),  # Divisible by 4 and 400
         (2024, True),  # Divisible by 4 but not 100
@@ -1884,7 +1884,7 @@ def test_is_leap_year_properties(year: int, expected: bool) -> None:
 
 
 @pytest.mark.parametrize(
-    "date1,date2,expected_days",
+    ("date1", "date2", "expected_days"),
     [
         # One week apart, 5 business days
         (datetime.date(2024, 3, 25), datetime.date(2024, 3, 29), 5),
@@ -1904,7 +1904,7 @@ def test_workdays_between_properties(date1: datetime.date, date2: datetime.date,
 
         # Property 2: Reversed order should raise ValueError (with new validation)
         if date1 < date2:
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="must be <= end_date"):
                 workdays_between(date2, date1)
 
     # Property 3: Consistency with next_business_day
