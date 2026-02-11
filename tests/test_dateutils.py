@@ -347,6 +347,12 @@ def test_generate_weeks_start_equals_until() -> None:
     assert weeks_sun == [(datetime.date(2024, 7, 14), datetime.date(2024, 7, 20))]
 
 
+def test_generate_weeks_negative_count_validation() -> None:
+    """generate_weeks should reject negative count values."""
+    with pytest.raises(ValueError, match=r"count must be >= 0, got -1"):
+        list(generate_weeks(count=-1))
+
+
 def test_date_to_quarter() -> None:
     def to_date(m: int, d: int) -> datetime.datetime:
         return datetime.datetime(2018, m, d)
@@ -635,20 +641,30 @@ def test_pretty_date_future_extended() -> None:
 
     now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
 
-    # Test "in X minutes" (line 910)
+    # Test "in X minutes"
     minutes_future = datetime.datetime(2024, 3, 27, 12, 15, 0, tzinfo=datetime.timezone.utc)
     assert pretty_date(minutes_future, now_override=now_ts) == "in 15 minutes"
 
-    # Test "in an hour" (line 912)
+    # Test "in an hour"
     one_hour_future = datetime.datetime(2024, 3, 27, 13, 30, 0, tzinfo=datetime.timezone.utc)
     assert pretty_date(one_hour_future, now_override=now_ts) == "in an hour"
 
-    # Test "in X months" (line 920-921)
+    # Test singular forms for weeks/months/years
+    week_future = datetime.datetime(2024, 4, 3, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    assert pretty_date(week_future, now_override=now_ts) == "in 1 week"
+
+    month_future = datetime.datetime(2024, 4, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    assert pretty_date(month_future, now_override=now_ts) == "in 1 month"
+
+    year_future = datetime.datetime(2025, 3, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    assert pretty_date(year_future, now_override=now_ts) == "in 1 year"
+
+    # Test "in X months"
     months_future = datetime.datetime(2024, 6, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
     result = pretty_date(months_future, now_override=now_ts)
     assert result == "in 3 months"
 
-    # Test "in X years" (line 922)
+    # Test "in X years"
     years_future = datetime.datetime(2026, 3, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
     result = pretty_date(years_future, now_override=now_ts)
     assert result == "in 2 years"
@@ -660,25 +676,35 @@ def test_pretty_date_past_extended() -> None:
 
     now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
 
-    # Test "X minutes ago" (line 936)
+    # Test "X minutes ago"
     minutes_ago = datetime.datetime(2024, 3, 27, 11, 45, 0, tzinfo=datetime.timezone.utc)
     assert pretty_date(minutes_ago, now_override=now_ts) == "15 minutes ago"
 
-    # Test "an hour ago" (line 938)
+    # Test "an hour ago"
     one_hour_ago = datetime.datetime(2024, 3, 27, 10, 30, 0, tzinfo=datetime.timezone.utc)
     assert pretty_date(one_hour_ago, now_override=now_ts) == "an hour ago"
 
-    # Test "X weeks ago" (line 945-946)
+    # Test singular forms for weeks/months/years
+    week_ago = datetime.datetime(2024, 3, 20, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    assert pretty_date(week_ago, now_override=now_ts) == "1 week ago"
+
+    month_ago = datetime.datetime(2024, 2, 25, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    assert pretty_date(month_ago, now_override=now_ts) == "1 month ago"
+
+    year_ago = datetime.datetime(2023, 3, 28, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    assert pretty_date(year_ago, now_override=now_ts) == "1 year ago"
+
+    # Test "X weeks ago"
     weeks_ago = datetime.datetime(2024, 3, 13, 12, 0, 0, tzinfo=datetime.timezone.utc)
     result = pretty_date(weeks_ago, now_override=now_ts)
     assert result == "2 weeks ago"
 
-    # Test "X months ago" (line 947-948)
+    # Test "X months ago"
     months_ago = datetime.datetime(2023, 12, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
     result = pretty_date(months_ago, now_override=now_ts)
     assert result == "3 months ago"
 
-    # Test "X years ago" (line 949)
+    # Test "X years ago"
     years_ago = datetime.datetime(2022, 3, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
     result = pretty_date(years_ago, now_override=now_ts)
     assert result == "2 years ago"
@@ -1979,6 +2005,16 @@ def test_month_function_validation() -> None:
     with pytest.raises(ValueError, match="Year must be a positive integer, got -1"):
         end_of_month(-1, 6)
 
+    # Bool inputs should be rejected explicitly, even though bool is an int subclass
+    with pytest.raises(ValueError, match=r"Year must be a positive integer, got True"):
+        start_of_month(True, 1)
+
+    with pytest.raises(ValueError, match=r"Month must be between 1 and 12, got True"):
+        end_of_month(2024, True)
+
+    with pytest.raises(ValueError, match=r"Year must be a positive integer, got False"):
+        get_days_in_month(False, 6)
+
 
 def test_generate_months_validation() -> None:
     """Test that generate_months validates until_m parameter."""
@@ -2325,24 +2361,24 @@ def test_time_until_next_occurrence() -> None:
 
 def test_time_until_next_occurrence_timezone_branches() -> None:
     """Test time_until_next_occurrence with various timezone combinations."""
-    # Test when from_time is None and target_time has tzinfo (line 1515-1517)
+    # Test when from_time is None and target_time has tzinfo
     target_with_tz = datetime.datetime(2024, 7, 22, 14, 0, 0, tzinfo=datetime.timezone.utc)
     # This path uses datetime.now(target_time.tzinfo) internally
     delta = time_until_next_occurrence(target_with_tz)
     assert isinstance(delta, datetime.timedelta)
 
-    # Test when from_time is None and target_time has no tzinfo (line 1515, 1519)
+    # Test when from_time is None and target_time has no tzinfo
     target_naive = datetime.datetime(2024, 7, 22, 14, 0, 0)
     delta = time_until_next_occurrence(target_naive)
     assert isinstance(delta, datetime.timedelta)
 
-    # Test when target_time has no tzinfo but from_time does (line 1522-1523)
+    # Test when target_time has no tzinfo but from_time does
     target_naive = datetime.datetime(2024, 7, 22, 14, 0, 0)
     from_time_with_tz = datetime.datetime(2024, 7, 22, 10, 0, 0, tzinfo=datetime.timezone.utc)
     delta = time_until_next_occurrence(target_naive, from_time_with_tz)
     assert delta == datetime.timedelta(hours=4)
 
-    # Test when target_time has tzinfo but from_time doesn't (line 1524-1525)
+    # Test when target_time has tzinfo but from_time doesn't
     target_with_tz = datetime.datetime(2024, 7, 22, 14, 0, 0, tzinfo=datetime.timezone.utc)
     from_time_naive = datetime.datetime(2024, 7, 22, 10, 0, 0)
     delta = time_until_next_occurrence(target_with_tz, from_time_naive)
