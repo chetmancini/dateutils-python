@@ -448,9 +448,9 @@ def is_leap_year(year: int) -> bool:
 ##################
 def _validate_year_month(year: int, month: int) -> None:
     """Helper function to validate year and month values."""
-    if not isinstance(year, int) or year < 1:
+    if isinstance(year, bool) or not isinstance(year, int) or year < 1:
         raise ValueError(f"Year must be a positive integer, got {year}")
-    if not isinstance(month, int) or not 1 <= month <= MONTHS_IN_YEAR:
+    if isinstance(month, bool) or not isinstance(month, int) or not 1 <= month <= MONTHS_IN_YEAR:
         raise ValueError(f"Month must be between 1 and 12, got {month}")
 
 
@@ -585,7 +585,12 @@ def generate_weeks(
     Yields:
         tuple[date, date]: Tuples of (week_start, week_end) representing the
         inclusive week range.
+
+    Raises:
+        ValueError: If `count` is negative.
     """
+    if count < 0:
+        raise ValueError(f"count must be >= 0, got {count}")
 
     def _week_start(today: date) -> date:
         desired_start = calendar.MONDAY if start_on_monday else calendar.SUNDAY
@@ -597,20 +602,15 @@ def generate_weeks(
 
     if until_date is None:
         direction = -1
-    elif until_date > anchor:
-        direction = 1
-    elif until_date < anchor:
-        direction = -1
     else:
-        direction = 0
+        direction = int(until_date > anchor) - int(until_date < anchor)
 
     for _ in range(count):
         week_end = week_start + timedelta(days=6)
-        if until_date is not None:
-            if direction > 0 and week_start > until_date:
-                break
-            if direction < 0 and week_end < until_date:
-                break
+        if until_date is not None and (
+            (direction > 0 and week_start > until_date) or (direction < 0 and week_end < until_date)
+        ):
+            break
         yield week_start, week_end
         if direction == 0:
             break
@@ -1244,10 +1244,13 @@ def pretty_date(timestamp: int | datetime | None = None, now_override: int | Non
         elif day_diff < DAYS_IN_WEEK:
             return "in " + str(day_diff) + " days"
         elif day_diff < DAYS_IN_MONTH_MAX:
-            return "in " + str(day_diff // DAYS_IN_WEEK) + " weeks"
+            weeks = day_diff // DAYS_IN_WEEK
+            return f"in {weeks} week" if weeks == 1 else f"in {weeks} weeks"
         elif day_diff < DAYS_IN_YEAR:
-            return "in " + str(day_diff // DAYS_IN_MONTH_APPROX) + " months"
-        return "in " + str(day_diff // DAYS_IN_YEAR) + " years"
+            months = day_diff // DAYS_IN_MONTH_APPROX
+            return f"in {months} month" if months == 1 else f"in {months} months"
+        years = day_diff // DAYS_IN_YEAR
+        return f"in {years} year" if years == 1 else f"in {years} years"
 
     # Past dates
     day_diff = diff.days
@@ -1271,10 +1274,13 @@ def pretty_date(timestamp: int | datetime | None = None, now_override: int | Non
     elif day_diff < DAYS_IN_WEEK:
         return str(day_diff) + " days ago"
     elif day_diff < DAYS_IN_MONTH_MAX:
-        return str(day_diff // DAYS_IN_WEEK) + " weeks ago"
+        weeks = day_diff // DAYS_IN_WEEK
+        return f"{weeks} week ago" if weeks == 1 else f"{weeks} weeks ago"
     elif day_diff < DAYS_IN_YEAR:
-        return str(day_diff // DAYS_IN_MONTH_APPROX) + " months ago"
-    return str(day_diff // DAYS_IN_YEAR) + " years ago"
+        months = day_diff // DAYS_IN_MONTH_APPROX
+        return f"{months} month ago" if months == 1 else f"{months} months ago"
+    years = day_diff // DAYS_IN_YEAR
+    return f"{years} year ago" if years == 1 else f"{years} years ago"
 
 
 def httpdate(date_time: datetime) -> str:
