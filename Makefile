@@ -105,12 +105,13 @@ doctest: ## Run doctests to verify documentation examples
 	@echo "${GREEN}✓ Doctests passed${NC}"
 
 # Comprehensive Checks
-check: ## Run all checks (lint, format-check, typecheck, test)
+check: ## Run all checks (lint, format-check, typecheck, test, doctest)
 	@echo "${BLUE}Running comprehensive checks...${NC}"
 	@$(MAKE) --no-print-directory lint
 	@$(MAKE) --no-print-directory format-check
 	@$(MAKE) --no-print-directory typecheck
 	@$(MAKE) --no-print-directory test
+	@$(MAKE) --no-print-directory doctest
 	@echo "${GREEN}✓ All checks passed${NC}"
 
 # Development Workflow
@@ -149,9 +150,9 @@ update-changelog: ## Update CHANGELOG.md with new version info
 	@echo "${GREEN}✓ CHANGELOG.md updated${NC}"
 
 bump-version = @echo "${BLUE}Bumping $(1) version...${NC}"; \
-	OLD_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
-	uv run bump2version --allow-dirty $(1); \
-	NEW_VERSION=$$(grep '^current_version' .bumpversion.cfg | cut -d' ' -f3); \
+	OLD_VERSION=$$(grep '^version = ' pyproject.toml | cut -d'"' -f2); \
+	uv run bump2version --allow-dirty --current-version $$OLD_VERSION $(1); \
+	NEW_VERSION=$$(grep '^version = ' pyproject.toml | cut -d'"' -f2); \
 	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
 	uv lock; \
 	echo "${BLUE}Staging all changes...${NC}"; \
