@@ -2,6 +2,11 @@
 DateUtils Library Entry Point
 """
 
+import re
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _distribution_version
+from pathlib import Path
+
 # Re-export public functions and constants for easier access
 from .dateutils import (
     DAYS_IN_MONTH_APPROX,
@@ -137,4 +142,27 @@ __all__ = [
     "workdays_between",
 ]
 
-__version__ = "0.5.6"
+
+def _version_from_pyproject() -> str | None:
+    """Read the project version from pyproject.toml when distribution metadata is unavailable."""
+    pyproject_path = Path(__file__).resolve().parent.parent / "pyproject.toml"
+    version_pattern = re.compile(r'^version = "([^"]+)"$')
+    try:
+        for line in pyproject_path.read_text(encoding="utf-8").splitlines():
+            match = version_pattern.match(line.strip())
+            if match:
+                return match.group(1)
+    except OSError:
+        return None
+    return None
+
+
+def _resolve_version() -> str:
+    """Resolve package version from distribution metadata, falling back to pyproject in source checkouts."""
+    try:
+        return _distribution_version("dateutils-python")
+    except PackageNotFoundError:
+        return _version_from_pyproject() or "0+unknown"
+
+
+__version__ = _resolve_version()
