@@ -1,10 +1,14 @@
 import datetime
 import locale
+import re
+from importlib.metadata import PackageNotFoundError
+from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pytest
 from freezegun import freeze_time
 
+import dateutils
 from dateutils.dateutils import (
     add_business_days,
     age_in_years,
@@ -56,6 +60,58 @@ from dateutils.dateutils import (
     utc_truncate_epoch_day,
     workdays_between,
 )
+
+
+def test_package_version_matches_pyproject() -> None:
+    """Package __version__ should be derived from the pyproject source-of-truth."""
+    pyproject_path = Path(__file__).resolve().parent.parent / "pyproject.toml"
+    pyproject_contents = pyproject_path.read_text(encoding="utf-8")
+    version_match = re.search(r'^version = "([^"]+)"$', pyproject_contents, re.MULTILINE)
+    assert version_match is not None
+    assert dateutils.__version__ == version_match.group(1)
+
+
+def test_version_from_pyproject_helper() -> None:
+    """The helper should parse the version from pyproject.toml."""
+    assert dateutils._version_from_pyproject() == dateutils.__version__
+
+
+def test_version_from_pyproject_helper_handles_io_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The helper should return None when pyproject cannot be read."""
+
+    def _raise_oserror(*_args: object, **_kwargs: object) -> str:
+        raise OSError("read failure")
+
+    monkeypatch.setattr(Path, "read_text", _raise_oserror)
+    assert dateutils._version_from_pyproject() is None
+
+
+def test_version_from_pyproject_helper_handles_missing_version_line(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The helper should return None if no version line exists in pyproject content."""
+    monkeypatch.setattr(Path, "read_text", lambda *_args, **_kwargs: '[project]\nname = "dateutils-python"\n')
+    assert dateutils._version_from_pyproject() is None
+
+
+def test_resolve_version_falls_back_to_pyproject(monkeypatch: pytest.MonkeyPatch) -> None:
+    """If package metadata is unavailable, resolve version from pyproject helper."""
+
+    def _raise_not_found(_distribution_name: str) -> str:
+        raise PackageNotFoundError
+
+    monkeypatch.setattr(dateutils, "_distribution_version", _raise_not_found)
+    monkeypatch.setattr(dateutils, "_version_from_pyproject", lambda: "9.9.9")
+    assert dateutils._resolve_version() == "9.9.9"
+
+
+def test_resolve_version_returns_unknown_when_no_sources(monkeypatch: pytest.MonkeyPatch) -> None:
+    """If no version source is available, return the sentinel unknown version."""
+
+    def _raise_not_found(_distribution_name: str) -> str:
+        raise PackageNotFoundError
+
+    monkeypatch.setattr(dateutils, "_distribution_version", _raise_not_found)
+    monkeypatch.setattr(dateutils, "_version_from_pyproject", lambda: None)
+    assert dateutils._resolve_version() == "0+unknown"
 
 
 @freeze_time("2024-03-27")
@@ -1243,11 +1299,41 @@ def test_parse_datetime() -> None:
     with_ms_z = parse_datetime("2024-03-27T14:30:45.123456Z")
     assert with_ms_z == datetime.datetime(2024, 3, 27, 14, 30, 45, 123456, tzinfo=datetime.timezone.utc)
 
+    # Test with timezone offset with colon (ISO)
+    with_tz_colon = parse_datetime("2024-03-27T14:30:45+02:00")
+    assert with_tz_colon is not None
+    assert with_tz_colon.tzinfo is not None
+    assert with_tz_colon.tzinfo.utcoffset(None) == datetime.timedelta(hours=2)
+
+    # Test with timezone offset without colon (ISO)
+    with_tz_no_colon = parse_datetime("2024-03-27T14:30:45-0500")
+    assert with_tz_no_colon is not None
+    assert with_tz_no_colon.tzinfo is not None
+    assert with_tz_no_colon.tzinfo.utcoffset(None) == datetime.timedelta(hours=-5)
+
     # Test other date formats with time
     assert parse_datetime("27/03/2024 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)  # DD/MM/YYYY
     assert parse_datetime("03/27/2024 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)  # MM/DD/YYYY
     assert parse_datetime("27-03-2024 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)  # DD-MM-YYYY
     assert parse_datetime("2024/03/27 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)  # YYYY/MM/DD
+    assert parse_datetime("03/27/2024 14:30:45-0500") == datetime.datetime(
+        2024,
+        3,
+        27,
+        14,
+        30,
+        45,
+        tzinfo=datetime.timezone(datetime.timedelta(hours=-5)),
+    )
+    assert parse_datetime("03/27/2024 14:30:45 +02:00") == datetime.datetime(
+        2024,
+        3,
+        27,
+        14,
+        30,
+        45,
+        tzinfo=datetime.timezone(datetime.timedelta(hours=2)),
+    )
 
     # Test with custom format
     assert parse_datetime("2024|03|27|14|30|45", formats=["%Y|%m|%d|%H|%M|%S"]) == datetime.datetime(
@@ -1267,6 +1353,7 @@ def test_parse_datetime() -> None:
     # Test invalid datetime
     assert parse_datetime("not a datetime") is None
     assert parse_datetime("2024-03-27T25:70:80") is None  # Invalid hours, minutes, seconds
+    assert parse_datetime("2024-03-27T14:30:45+25:00") is None  # Invalid timezone offset
 
 
 def test_parse_iso8601() -> None:

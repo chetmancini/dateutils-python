@@ -1449,7 +1449,11 @@ def _parse_english_textual_date(date_str: str) -> date | None:
 
 def parse_datetime(datetime_str: str, formats: list[str] | None = None, dayfirst: bool = False) -> datetime | None:
     """
-    Parse a datetime string using multiple possible formats
+    Parse a datetime string using multiple possible formats.
+
+    Supports timezone-aware values in default parsing, including:
+    - UTC designator `Z`
+    - Numeric offsets with or without a colon (for example `+02:00`, `-0500`)
 
     Args:
         datetime_str: The datetime string to parse
@@ -1469,29 +1473,57 @@ def parse_datetime(datetime_str: str, formats: list[str] | None = None, dayfirst
             # European/international style: day before month
             formats = [
                 "%Y-%m-%d %H:%M:%S",  # 2023-01-31 14:30:45
+                "%Y-%m-%d %H:%M:%S%z",  # 2023-01-31 14:30:45+02:00
+                "%Y-%m-%d %H:%M:%S %z",  # 2023-01-31 14:30:45 +02:00
                 "%Y-%m-%dT%H:%M:%S",  # 2023-01-31T14:30:45
+                "%Y-%m-%dT%H:%M:%S%z",  # 2023-01-31T14:30:45+02:00
                 "%Y-%m-%dT%H:%M:%S.%f",  # 2023-01-31T14:30:45.123456
+                "%Y-%m-%dT%H:%M:%S.%f%z",  # 2023-01-31T14:30:45.123456+02:00
                 "%Y-%m-%dT%H:%M:%SZ",  # 2023-01-31T14:30:45Z
                 "%Y-%m-%dT%H:%M:%S.%fZ",  # 2023-01-31T14:30:45.123456Z
                 "%d/%m/%Y %H:%M:%S",  # 31/01/2023 14:30:45
+                "%d/%m/%Y %H:%M:%S%z",  # 31/01/2023 14:30:45+02:00
+                "%d/%m/%Y %H:%M:%S %z",  # 31/01/2023 14:30:45 +02:00
                 "%m/%d/%Y %H:%M:%S",  # 01/31/2023 14:30:45 (fallback for US)
+                "%m/%d/%Y %H:%M:%S%z",  # 01/31/2023 14:30:45+02:00
+                "%m/%d/%Y %H:%M:%S %z",  # 01/31/2023 14:30:45 +02:00
                 "%d-%m-%Y %H:%M:%S",  # 31-01-2023 14:30:45
+                "%d-%m-%Y %H:%M:%S%z",  # 31-01-2023 14:30:45+02:00
+                "%d-%m-%Y %H:%M:%S %z",  # 31-01-2023 14:30:45 +02:00
                 "%m-%d-%Y %H:%M:%S",  # 01-31-2023 14:30:45 (fallback for US)
+                "%m-%d-%Y %H:%M:%S%z",  # 01-31-2023 14:30:45+02:00
+                "%m-%d-%Y %H:%M:%S %z",  # 01-31-2023 14:30:45 +02:00
                 "%Y/%m/%d %H:%M:%S",  # 2023/01/31 14:30:45
+                "%Y/%m/%d %H:%M:%S%z",  # 2023/01/31 14:30:45+02:00
+                "%Y/%m/%d %H:%M:%S %z",  # 2023/01/31 14:30:45 +02:00
             ]
         else:
             # US style (default): month before day
             formats = [
                 "%Y-%m-%d %H:%M:%S",  # 2023-01-31 14:30:45
+                "%Y-%m-%d %H:%M:%S%z",  # 2023-01-31 14:30:45+02:00
+                "%Y-%m-%d %H:%M:%S %z",  # 2023-01-31 14:30:45 +02:00
                 "%Y-%m-%dT%H:%M:%S",  # 2023-01-31T14:30:45
+                "%Y-%m-%dT%H:%M:%S%z",  # 2023-01-31T14:30:45+02:00
                 "%Y-%m-%dT%H:%M:%S.%f",  # 2023-01-31T14:30:45.123456
+                "%Y-%m-%dT%H:%M:%S.%f%z",  # 2023-01-31T14:30:45.123456+02:00
                 "%Y-%m-%dT%H:%M:%SZ",  # 2023-01-31T14:30:45Z
                 "%Y-%m-%dT%H:%M:%S.%fZ",  # 2023-01-31T14:30:45.123456Z
                 "%m/%d/%Y %H:%M:%S",  # 01/31/2023 14:30:45
+                "%m/%d/%Y %H:%M:%S%z",  # 01/31/2023 14:30:45+02:00
+                "%m/%d/%Y %H:%M:%S %z",  # 01/31/2023 14:30:45 +02:00
                 "%d/%m/%Y %H:%M:%S",  # 31/01/2023 14:30:45 (fallback for European)
+                "%d/%m/%Y %H:%M:%S%z",  # 31/01/2023 14:30:45+02:00
+                "%d/%m/%Y %H:%M:%S %z",  # 31/01/2023 14:30:45 +02:00
                 "%m-%d-%Y %H:%M:%S",  # 01-31-2023 14:30:45
+                "%m-%d-%Y %H:%M:%S%z",  # 01-31-2023 14:30:45+02:00
+                "%m-%d-%Y %H:%M:%S %z",  # 01-31-2023 14:30:45 +02:00
                 "%d-%m-%Y %H:%M:%S",  # 31-01-2023 14:30:45 (fallback for European)
+                "%d-%m-%Y %H:%M:%S%z",  # 31-01-2023 14:30:45+02:00
+                "%d-%m-%Y %H:%M:%S %z",  # 31-01-2023 14:30:45 +02:00
                 "%Y/%m/%d %H:%M:%S",  # 2023/01/31 14:30:45
+                "%Y/%m/%d %H:%M:%S%z",  # 2023/01/31 14:30:45+02:00
+                "%Y/%m/%d %H:%M:%S %z",  # 2023/01/31 14:30:45 +02:00
             ]
 
     # Exception-driven parsing is expected here while trying multiple datetime layouts.
