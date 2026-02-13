@@ -135,6 +135,19 @@
 - Fix timezone error behavior and docs (#31).
 - Fix date_range limit to account for leap days (#28).
 
+## [0.5.7] - 2026-02-13
+
+### Added
+- Fix doctests, versions, and add better iso support (#36).
+- Enable Ruff S/PT/RET/PERF and address findings (#35).
+
+### Changed
+- Update dev dependencies and refresh uv.lock (#34).
+
+### Fixed
+- Fix pretty_date grammar and validation edge cases (#33).
+- Fix dateutils edge-case handling regressions (#32).
+
 ## [Unreleased]
 
 ### Added
@@ -295,6 +308,19 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Fix timezone error behavior and docs (#31).
 - Fix date_range limit to account for leap days (#28).
+
+## [0.5.7] - 2026-02-13
+
+### Added
+- Fix doctests, versions, and add better iso support (#36).
+- Enable Ruff S/PT/RET/PERF and address findings (#35).
+
+### Changed
+- Update dev dependencies and refresh uv.lock (#34).
+
+### Fixed
+- Fix pretty_date grammar and validation edge cases (#33).
+- Fix dateutils edge-case handling regressions (#32).
 
 ## [Unreleased]
 
@@ -457,6 +483,19 @@ All notable changes to this project will be documented in this file.
 - Fix timezone error behavior and docs (#31).
 - Fix date_range limit to account for leap days (#28).
 
+## [0.5.7] - 2026-02-13
+
+### Added
+- Fix doctests, versions, and add better iso support (#36).
+- Enable Ruff S/PT/RET/PERF and address findings (#35).
+
+### Changed
+- Update dev dependencies and refresh uv.lock (#34).
+
+### Fixed
+- Fix pretty_date grammar and validation edge cases (#33).
+- Fix dateutils edge-case handling regressions (#32).
+
 ## [Unreleased]
 
 ### Added
@@ -614,6 +653,19 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Fix timezone error behavior and docs (#31).
 - Fix date_range limit to account for leap days (#28).
+
+## [0.5.7] - 2026-02-13
+
+### Added
+- Fix doctests, versions, and add better iso support (#36).
+- Enable Ruff S/PT/RET/PERF and address findings (#35).
+
+### Changed
+- Update dev dependencies and refresh uv.lock (#34).
+
+### Fixed
+- Fix pretty_date grammar and validation edge cases (#33).
+- Fix dateutils edge-case handling regressions (#32).
 
 ## [Unreleased]
 
@@ -778,6 +830,19 @@ All notable changes to this project will be documented in this file.
 - Fix timezone error behavior and docs (#31).
 - Fix date_range limit to account for leap days (#28).
 
+## [0.5.7] - 2026-02-13
+
+### Added
+- Fix doctests, versions, and add better iso support (#36).
+- Enable Ruff S/PT/RET/PERF and address findings (#35).
+
+### Changed
+- Update dev dependencies and refresh uv.lock (#34).
+
+### Fixed
+- Fix pretty_date grammar and validation edge cases (#33).
+- Fix dateutils edge-case handling regressions (#32).
+
 ## [Unreleased]
 
 ### Added
@@ -937,6 +1002,19 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Fix timezone error behavior and docs (#31).
 - Fix date_range limit to account for leap days (#28).
+
+## [0.5.7] - 2026-02-13
+
+### Added
+- Fix doctests, versions, and add better iso support (#36).
+- Enable Ruff S/PT/RET/PERF and address findings (#35).
+
+### Changed
+- Update dev dependencies and refresh uv.lock (#34).
+
+### Fixed
+- Fix pretty_date grammar and validation edge cases (#33).
+- Fix dateutils edge-case handling regressions (#32).
 
 ## [Unreleased]
 
