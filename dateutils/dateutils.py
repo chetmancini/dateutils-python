@@ -118,6 +118,39 @@ _ENGLISH_MONTH_BY_NAME = {
 _MONTH_DAY_YEAR_PATTERN = re.compile(r"^(?P<month>[A-Za-z.]+)\s+(?P<day>\d{1,2}),\s*(?P<year>\d{4})$")
 _DAY_MONTH_YEAR_PATTERN = re.compile(r"^(?P<day>\d{1,2})\s+(?P<month>[A-Za-z.]+)\s+(?P<year>\d{4})$")
 
+# Shared default datetime parsing formats for parse_datetime()
+_COMMON_DATETIME_FORMATS = (
+    "%Y-%m-%d %H:%M:%S",  # 2023-01-31 14:30:45
+    "%Y-%m-%d %H:%M:%S%z",  # 2023-01-31 14:30:45+02:00
+    "%Y-%m-%d %H:%M:%S %z",  # 2023-01-31 14:30:45 +02:00
+    "%Y-%m-%dT%H:%M:%S",  # 2023-01-31T14:30:45
+    "%Y-%m-%dT%H:%M:%S%z",  # 2023-01-31T14:30:45+02:00
+    "%Y-%m-%dT%H:%M:%S.%f",  # 2023-01-31T14:30:45.123456
+    "%Y-%m-%dT%H:%M:%S.%f%z",  # 2023-01-31T14:30:45.123456+02:00
+    "%Y-%m-%dT%H:%M:%SZ",  # 2023-01-31T14:30:45Z
+    "%Y-%m-%dT%H:%M:%S.%fZ",  # 2023-01-31T14:30:45.123456Z
+)
+_TIME_SUFFIXES = ("%H:%M:%S", "%H:%M:%S%z", "%H:%M:%S %z")
+_AMBIGUOUS_DATE_FORMATS = {
+    True: ("%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y", "%m-%d-%Y"),
+    False: ("%m/%d/%Y", "%d/%m/%Y", "%m-%d-%Y", "%d-%m-%Y"),
+}
+
+
+def _build_default_datetime_formats(dayfirst: bool) -> tuple[str, ...]:
+    """Build ordered default parse_datetime formats for day-first or month-first preference."""
+    formats = list(_COMMON_DATETIME_FORMATS)
+    ordered_date_formats = (*_AMBIGUOUS_DATE_FORMATS[dayfirst], "%Y/%m/%d")
+    for date_fmt in ordered_date_formats:
+        formats.extend(f"{date_fmt} {time_fmt}" for time_fmt in _TIME_SUFFIXES)
+    return tuple(formats)
+
+
+_DEFAULT_DATETIME_FORMATS = {
+    True: _build_default_datetime_formats(dayfirst=True),
+    False: _build_default_datetime_formats(dayfirst=False),
+}
+
 
 ##################
 # UTC
@@ -1147,7 +1180,44 @@ def _ts_difference(timestamp: int | datetime | None = None, now_override: int | 
     raise TypeError(f"timestamp must be int, datetime, or None; got {type(timestamp).__name__}")  # pragma: no cover
 
 
-def pretty_date(timestamp: int | datetime | None = None, now_override: int | None = None) -> str:  # noqa: C901, PLR0911, PLR0912
+def _format_relative_count(count: int, unit: str, *, future: bool) -> str:
+    """Format relative count/unit text for future or past expressions."""
+    unit_label = unit if count == 1 else f"{unit}s"
+    if future:
+        return f"in {count} {unit_label}"
+    return f"{count} {unit_label} ago"
+
+
+def _format_relative_within_day(second_diff: int, *, future: bool) -> str:
+    """Format relative text for differences smaller than one day."""
+    if second_diff < RECENT_SECONDS:
+        return "just now"
+    if second_diff < SECONDS_IN_MINUTE:
+        return _format_relative_count(second_diff, "second", future=future)
+    if second_diff < 2 * SECONDS_IN_MINUTE:
+        return "in a minute" if future else "a minute ago"
+    if second_diff < SECONDS_IN_HOUR:
+        return _format_relative_count(second_diff // SECONDS_IN_MINUTE, "minute", future=future)
+    if second_diff < 2 * SECONDS_IN_HOUR:
+        return "in an hour" if future else "an hour ago"
+    # second_diff is < 1 day in this helper.
+    return _format_relative_count(second_diff // SECONDS_IN_HOUR, "hour", future=future)
+
+
+def _format_relative_day_or_longer(day_diff: int, *, future: bool) -> str:
+    """Format relative text for differences of one day or longer."""
+    if day_diff == 1:
+        return "Tomorrow" if future else "Yesterday"
+    if day_diff < DAYS_IN_WEEK:
+        return _format_relative_count(day_diff, "day", future=future)
+    if day_diff < DAYS_IN_MONTH_MAX:
+        return _format_relative_count(day_diff // DAYS_IN_WEEK, "week", future=future)
+    if day_diff < DAYS_IN_YEAR:
+        return _format_relative_count(day_diff // DAYS_IN_MONTH_APPROX, "month", future=future)
+    return _format_relative_count(day_diff // DAYS_IN_YEAR, "year", future=future)
+
+
+def pretty_date(timestamp: int | datetime | None = None, now_override: int | None = None) -> str:
     """
     Format a timestamp as a human-readable relative time string.
 
@@ -1220,66 +1290,18 @@ def pretty_date(timestamp: int | datetime | None = None, now_override: int | Non
     diff = _ts_difference(timestamp, now_override)
     total_seconds = diff.total_seconds()
 
-    # Future dates (negative diff means timestamp is in the future)
-    if total_seconds < 0:
+    future = total_seconds < 0
+    if future:
         total_seconds = abs(total_seconds)
         day_diff = int(total_seconds // SECONDS_IN_DAY)
         second_diff = int(total_seconds % SECONDS_IN_DAY)
-
-        if day_diff == 0:
-            if second_diff < RECENT_SECONDS:
-                return "just now"
-            if second_diff < SECONDS_IN_MINUTE:
-                return "in " + str(second_diff) + " seconds"
-            if second_diff < 2 * SECONDS_IN_MINUTE:
-                return "in a minute"
-            if second_diff < SECONDS_IN_HOUR:
-                return "in " + str(second_diff // SECONDS_IN_MINUTE) + " minutes"
-            if second_diff < 2 * SECONDS_IN_HOUR:
-                return "in an hour"
-            return "in " + str(second_diff // SECONDS_IN_HOUR) + " hours"
-        if day_diff == 1:
-            return "Tomorrow"
-        if day_diff < DAYS_IN_WEEK:
-            return "in " + str(day_diff) + " days"
-        if day_diff < DAYS_IN_MONTH_MAX:
-            weeks = day_diff // DAYS_IN_WEEK
-            return f"in {weeks} week" if weeks == 1 else f"in {weeks} weeks"
-        if day_diff < DAYS_IN_YEAR:
-            months = day_diff // DAYS_IN_MONTH_APPROX
-            return f"in {months} month" if months == 1 else f"in {months} months"
-        years = day_diff // DAYS_IN_YEAR
-        return f"in {years} year" if years == 1 else f"in {years} years"
-
-    # Past dates
-    day_diff = diff.days
-    second_diff = diff.seconds
+    else:
+        day_diff = diff.days
+        second_diff = diff.seconds
 
     if day_diff == 0:
-        if second_diff < RECENT_SECONDS:
-            return "just now"
-        if second_diff < SECONDS_IN_MINUTE:
-            return str(second_diff) + " seconds ago"
-        if second_diff < 2 * SECONDS_IN_MINUTE:
-            return "a minute ago"
-        if second_diff < SECONDS_IN_HOUR:
-            return str(second_diff // SECONDS_IN_MINUTE) + " minutes ago"
-        if second_diff < 2 * SECONDS_IN_HOUR:
-            return "an hour ago"
-        # timedelta.seconds is always < 86400, so this is the final case for day_diff == 0
-        return str(second_diff // SECONDS_IN_HOUR) + " hours ago"
-    if day_diff == 1:
-        return "Yesterday"
-    if day_diff < DAYS_IN_WEEK:
-        return str(day_diff) + " days ago"
-    if day_diff < DAYS_IN_MONTH_MAX:
-        weeks = day_diff // DAYS_IN_WEEK
-        return f"{weeks} week ago" if weeks == 1 else f"{weeks} weeks ago"
-    if day_diff < DAYS_IN_YEAR:
-        months = day_diff // DAYS_IN_MONTH_APPROX
-        return f"{months} month ago" if months == 1 else f"{months} months ago"
-    years = day_diff // DAYS_IN_YEAR
-    return f"{years} year ago" if years == 1 else f"{years} years ago"
+        return _format_relative_within_day(second_diff, future=future)
+    return _format_relative_day_or_longer(day_diff, future=future)
 
 
 def httpdate(date_time: datetime) -> str:
@@ -1468,66 +1490,14 @@ def parse_datetime(datetime_str: str, formats: list[str] | None = None, dayfirst
     """
     datetime_str = datetime_str.strip()
 
+    parse_formats: Iterable[str]
     if formats is None:
-        if dayfirst:
-            # European/international style: day before month
-            formats = [
-                "%Y-%m-%d %H:%M:%S",  # 2023-01-31 14:30:45
-                "%Y-%m-%d %H:%M:%S%z",  # 2023-01-31 14:30:45+02:00
-                "%Y-%m-%d %H:%M:%S %z",  # 2023-01-31 14:30:45 +02:00
-                "%Y-%m-%dT%H:%M:%S",  # 2023-01-31T14:30:45
-                "%Y-%m-%dT%H:%M:%S%z",  # 2023-01-31T14:30:45+02:00
-                "%Y-%m-%dT%H:%M:%S.%f",  # 2023-01-31T14:30:45.123456
-                "%Y-%m-%dT%H:%M:%S.%f%z",  # 2023-01-31T14:30:45.123456+02:00
-                "%Y-%m-%dT%H:%M:%SZ",  # 2023-01-31T14:30:45Z
-                "%Y-%m-%dT%H:%M:%S.%fZ",  # 2023-01-31T14:30:45.123456Z
-                "%d/%m/%Y %H:%M:%S",  # 31/01/2023 14:30:45
-                "%d/%m/%Y %H:%M:%S%z",  # 31/01/2023 14:30:45+02:00
-                "%d/%m/%Y %H:%M:%S %z",  # 31/01/2023 14:30:45 +02:00
-                "%m/%d/%Y %H:%M:%S",  # 01/31/2023 14:30:45 (fallback for US)
-                "%m/%d/%Y %H:%M:%S%z",  # 01/31/2023 14:30:45+02:00
-                "%m/%d/%Y %H:%M:%S %z",  # 01/31/2023 14:30:45 +02:00
-                "%d-%m-%Y %H:%M:%S",  # 31-01-2023 14:30:45
-                "%d-%m-%Y %H:%M:%S%z",  # 31-01-2023 14:30:45+02:00
-                "%d-%m-%Y %H:%M:%S %z",  # 31-01-2023 14:30:45 +02:00
-                "%m-%d-%Y %H:%M:%S",  # 01-31-2023 14:30:45 (fallback for US)
-                "%m-%d-%Y %H:%M:%S%z",  # 01-31-2023 14:30:45+02:00
-                "%m-%d-%Y %H:%M:%S %z",  # 01-31-2023 14:30:45 +02:00
-                "%Y/%m/%d %H:%M:%S",  # 2023/01/31 14:30:45
-                "%Y/%m/%d %H:%M:%S%z",  # 2023/01/31 14:30:45+02:00
-                "%Y/%m/%d %H:%M:%S %z",  # 2023/01/31 14:30:45 +02:00
-            ]
-        else:
-            # US style (default): month before day
-            formats = [
-                "%Y-%m-%d %H:%M:%S",  # 2023-01-31 14:30:45
-                "%Y-%m-%d %H:%M:%S%z",  # 2023-01-31 14:30:45+02:00
-                "%Y-%m-%d %H:%M:%S %z",  # 2023-01-31 14:30:45 +02:00
-                "%Y-%m-%dT%H:%M:%S",  # 2023-01-31T14:30:45
-                "%Y-%m-%dT%H:%M:%S%z",  # 2023-01-31T14:30:45+02:00
-                "%Y-%m-%dT%H:%M:%S.%f",  # 2023-01-31T14:30:45.123456
-                "%Y-%m-%dT%H:%M:%S.%f%z",  # 2023-01-31T14:30:45.123456+02:00
-                "%Y-%m-%dT%H:%M:%SZ",  # 2023-01-31T14:30:45Z
-                "%Y-%m-%dT%H:%M:%S.%fZ",  # 2023-01-31T14:30:45.123456Z
-                "%m/%d/%Y %H:%M:%S",  # 01/31/2023 14:30:45
-                "%m/%d/%Y %H:%M:%S%z",  # 01/31/2023 14:30:45+02:00
-                "%m/%d/%Y %H:%M:%S %z",  # 01/31/2023 14:30:45 +02:00
-                "%d/%m/%Y %H:%M:%S",  # 31/01/2023 14:30:45 (fallback for European)
-                "%d/%m/%Y %H:%M:%S%z",  # 31/01/2023 14:30:45+02:00
-                "%d/%m/%Y %H:%M:%S %z",  # 31/01/2023 14:30:45 +02:00
-                "%m-%d-%Y %H:%M:%S",  # 01-31-2023 14:30:45
-                "%m-%d-%Y %H:%M:%S%z",  # 01-31-2023 14:30:45+02:00
-                "%m-%d-%Y %H:%M:%S %z",  # 01-31-2023 14:30:45 +02:00
-                "%d-%m-%Y %H:%M:%S",  # 31-01-2023 14:30:45 (fallback for European)
-                "%d-%m-%Y %H:%M:%S%z",  # 31-01-2023 14:30:45+02:00
-                "%d-%m-%Y %H:%M:%S %z",  # 31-01-2023 14:30:45 +02:00
-                "%Y/%m/%d %H:%M:%S",  # 2023/01/31 14:30:45
-                "%Y/%m/%d %H:%M:%S%z",  # 2023/01/31 14:30:45+02:00
-                "%Y/%m/%d %H:%M:%S %z",  # 2023/01/31 14:30:45 +02:00
-            ]
+        parse_formats = _DEFAULT_DATETIME_FORMATS[dayfirst]
+    else:
+        parse_formats = formats
 
     # Exception-driven parsing is expected here while trying multiple datetime layouts.
-    for fmt in formats:
+    for fmt in parse_formats:
         try:
             dt = datetime.strptime(datetime_str, fmt)
             # Handle ISO 8601 format with timezone designator
