@@ -119,6 +119,9 @@ from dateutils.dateutils import get_us_federal_holidays, get_us_federal_holidays
 # Get all US federal holidays for a year (cached for performance)
 holidays_2024 = get_us_federal_holidays(2024)  # Returns 11 holidays
 
+# Get observed holidays for business-day calculations (weekend holidays shift to Fri/Mon)
+observed_2021 = get_us_federal_holidays(2021, observed=True)
+
 # Get specific holiday types
 fixed_holidays = get_us_federal_holidays(2024, ("NEW_YEARS_DAY", "CHRISTMAS"))
 
