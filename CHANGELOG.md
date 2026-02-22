@@ -148,6 +148,18 @@
 - Fix pretty_date grammar and validation edge cases (#33).
 - Fix dateutils edge-case handling regressions (#32).
 
+## [0.6.0] - 2026-02-22
+
+### Added
+- Add observed US holidays and improve parse_date errors (#39).
+
+### Changed
+- Refactor parsers to raise ParseError (#38).
+- Refactor pretty_date and parse_datetime defaults (#37).
+
+### Fixed
+-
+
 ## [Unreleased]
 
 ### Added
@@ -321,6 +333,18 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Fix pretty_date grammar and validation edge cases (#33).
 - Fix dateutils edge-case handling regressions (#32).
+
+## [0.6.0] - 2026-02-22
+
+### Added
+- Add observed US holidays and improve parse_date errors (#39).
+
+### Changed
+- Refactor parsers to raise ParseError (#38).
+- Refactor pretty_date and parse_datetime defaults (#37).
+
+### Fixed
+-
 
 ## [Unreleased]
 
@@ -496,6 +520,18 @@ All notable changes to this project will be documented in this file.
 - Fix pretty_date grammar and validation edge cases (#33).
 - Fix dateutils edge-case handling regressions (#32).
 
+## [0.6.0] - 2026-02-22
+
+### Added
+- Add observed US holidays and improve parse_date errors (#39).
+
+### Changed
+- Refactor parsers to raise ParseError (#38).
+- Refactor pretty_date and parse_datetime defaults (#37).
+
+### Fixed
+-
+
 ## [Unreleased]
 
 ### Added
@@ -666,6 +702,18 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Fix pretty_date grammar and validation edge cases (#33).
 - Fix dateutils edge-case handling regressions (#32).
+
+## [0.6.0] - 2026-02-22
+
+### Added
+- Add observed US holidays and improve parse_date errors (#39).
+
+### Changed
+- Refactor parsers to raise ParseError (#38).
+- Refactor pretty_date and parse_datetime defaults (#37).
+
+### Fixed
+-
 
 ## [Unreleased]
 
@@ -843,6 +891,18 @@ All notable changes to this project will be documented in this file.
 - Fix pretty_date grammar and validation edge cases (#33).
 - Fix dateutils edge-case handling regressions (#32).
 
+## [0.6.0] - 2026-02-22
+
+### Added
+- Add observed US holidays and improve parse_date errors (#39).
+
+### Changed
+- Refactor parsers to raise ParseError (#38).
+- Refactor pretty_date and parse_datetime defaults (#37).
+
+### Fixed
+-
+
 ## [Unreleased]
 
 ### Added
@@ -1015,6 +1075,18 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Fix pretty_date grammar and validation edge cases (#33).
 - Fix dateutils edge-case handling regressions (#32).
+
+## [0.6.0] - 2026-02-22
+
+### Added
+- Add observed US holidays and improve parse_date errors (#39).
+
+### Changed
+- Refactor parsers to raise ParseError (#38).
+- Refactor pretty_date and parse_datetime defaults (#37).
+
+### Fixed
+-
 
 ## [Unreleased]
 
