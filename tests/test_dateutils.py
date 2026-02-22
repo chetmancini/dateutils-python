@@ -809,8 +809,6 @@ def test_httpdate_locale_independence() -> None:
         locale.setlocale(locale.LC_TIME, original_locale)
 
 
-
-
 ##################
 # Holiday and business day tests
 ##################
@@ -1407,8 +1405,6 @@ def test_generate_months_validation() -> None:
 
     with pytest.raises(ValueError, match="until_m must be between 1 and 12, got 13"):
         list(generate_months(until_year=2023, until_m=13))
-
-
 
 
 def test_utc_functions_error_handling() -> None:
