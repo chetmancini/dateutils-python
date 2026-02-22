@@ -1506,12 +1506,16 @@ def _parse_english_textual_date(date_str: str) -> date | None:
         month_name = match.group("month").lower().rstrip(".")
         month = _ENGLISH_MONTH_BY_NAME.get(month_name)
         if month is None:
+            # Unknown month tokens are treated as "no textual match" so parse_date
+            # can continue to generic format-mismatch handling.
             return None
         year = int(match.group("year"))
         day = int(match.group("day"))
         try:
             return date(year, month, day)
         except ValueError:
+            # Calendar-invalid textual dates (for example "Feb 29, 2023") are
+            # re-raised so parse_date can surface a specific invalid-date reason.
             raise
     return None
 
