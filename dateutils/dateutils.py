@@ -1511,8 +1511,8 @@ def _parse_english_textual_date(date_str: str) -> date | None:
         day = int(match.group("day"))
         try:
             return date(year, month, day)
-        except ValueError as e:
-            raise ValueError(str(e)) from e
+        except ValueError:
+            raise
     return None
 
 

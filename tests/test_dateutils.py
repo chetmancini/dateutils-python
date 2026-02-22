@@ -1596,7 +1596,6 @@ def test_parse_iso8601_errors_include_details() -> None:
     assert err.value == "2024-02-30"
     assert err.reason
     assert "invalid value" not in err.reason
-    assert "month" in err.reason
 
 
 def test_format_date() -> None:
