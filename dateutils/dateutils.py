@@ -1418,11 +1418,7 @@ def _resolve_date_formats(formats: list[str] | None, dayfirst: bool) -> tuple[tu
 def _is_calendar_date_value_error(error: ValueError) -> bool:
     """Return True when a strptime/date ValueError indicates calendar-invalid fields."""
     message = str(error).lower()
-    return (
-        "out of range" in message
-        or "must be in range" in message
-        or "invalid date" in message
-    )
+    return "out of range" in message or "must be in range" in message or "invalid date" in message
 
 
 def _parse_date_from_formats(date_str: str, parse_formats: Iterable[str]) -> tuple[date | None, ValueError | None]:
