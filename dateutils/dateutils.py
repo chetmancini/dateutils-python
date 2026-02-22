@@ -47,8 +47,13 @@ from datetime import date, datetime, timedelta, timezone
 from email.utils import format_datetime as _format_http_datetime
 from functools import lru_cache
 
-from . import parsing as _parsing
-from . import timezones as _timezones
+try:
+    from . import parsing as _parsing
+    from . import timezones as _timezones
+except ImportError:  # pragma: no cover
+    # Support doctest's direct file import mode (no package context).
+    import parsing as _parsing
+    import timezones as _timezones
 
 ##################
 # Constants
