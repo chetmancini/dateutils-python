@@ -1262,8 +1262,9 @@ def test_parse_date_invalid_calendar_dates() -> None:
         parse_date("February 30, 2024")
 
     # April, June, September, November have 30 days (not 31)
-    with pytest.raises(ParseError):
+    with pytest.raises(ParseError) as exc_info:
         parse_date("2024-04-31")  # April has 30 days
+    assert "invalid calendar date" in exc_info.value.reason
     with pytest.raises(ParseError):
         parse_date("2024-06-31")  # June has 30 days
     with pytest.raises(ParseError):
@@ -1293,10 +1294,7 @@ def test_parse_date_errors_include_details() -> None:
     assert parse_date("03/04/2024", dayfirst=True) == datetime.date(2024, 4, 3)
     assert parse_date("2024|03|27", formats=["%Y|%m|%d"]) == datetime.date(2024, 3, 27)
 
-    with pytest.raises(ParseError, match="Failed to parse date"):
-        parse_date("not a date")
-
-    with pytest.raises(ParseError) as exc_info:
+    with pytest.raises(ParseError, match="Failed to parse date") as exc_info:
         parse_date("not a date")
 
     err = exc_info.value
@@ -2019,6 +2017,28 @@ def test_get_us_federal_holidays_filter_deduplicates_types() -> None:
     assert holidays == [datetime.date(2024, 1, 1), datetime.date(2024, 12, 25)]
 
 
+def test_get_us_federal_holidays_observed_shifts_weekend_fixed_dates() -> None:
+    """Observed mode should shift weekend fixed holidays to Friday/Monday."""
+    holidays = get_us_federal_holidays(2021, observed=True)
+    assert len(holidays) == 11
+
+    # Weekend fixed dates in 2021 are shifted to observed weekdays.
+    assert datetime.date(2021, 6, 18) in holidays  # Juneteenth observed (Jun 19 is Saturday)
+    assert datetime.date(2021, 7, 5) in holidays  # Independence Day observed (Jul 4 is Sunday)
+    assert datetime.date(2021, 12, 24) in holidays  # Christmas observed (Dec 25 is Saturday)
+
+    # Actual weekend fixed dates should not be present in observed mode.
+    assert datetime.date(2021, 6, 19) not in holidays
+    assert datetime.date(2021, 7, 4) not in holidays
+    assert datetime.date(2021, 12, 25) not in holidays
+
+
+def test_get_us_federal_holidays_observed_new_years_cross_year_boundary() -> None:
+    """Observed New Year's Day may fall in the previous calendar year."""
+    holidays = get_us_federal_holidays(2022, holiday_types=("NEW_YEARS_DAY",), observed=True)
+    assert holidays == [datetime.date(2021, 12, 31)]
+
+
 def test_get_us_federal_holidays_returns_copy() -> None:
     """Mutating the returned list should not corrupt the cached data."""
     holidays = get_us_federal_holidays(2024)
@@ -2632,3 +2652,8 @@ def test_get_us_federal_holidays_list_wrapper() -> None:
     # Should produce same results as tuple version
     holidays_tuple = get_us_federal_holidays(2024, ("NEW_YEARS_DAY", "CHRISTMAS"))
     assert holidays_list == holidays_tuple
+
+    # Observed mode should also match tuple version.
+    observed_list = get_us_federal_holidays_list(2021, ["JUNETEENTH", "INDEPENDENCE_DAY"], observed=True)
+    observed_tuple = get_us_federal_holidays(2021, ("JUNETEENTH", "INDEPENDENCE_DAY"), observed=True)
+    assert observed_list == observed_tuple

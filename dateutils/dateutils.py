@@ -6,7 +6,7 @@ and timezones in Python. It includes functions for:
 
 - UTC date/time operations
 - Quarter, month, week, and day operations
-- Business day calculations (including basic US fixed holiday support)
+- Business day calculations (including basic US federal holiday support)
 - Date/time parsing and formatting
 - Timezone conversions
 - Human-readable date formatting
@@ -14,13 +14,13 @@ and timezones in Python. It includes functions for:
 The utilities aim to simplify common date and time operations while providing
 consistent handling of timezone information.
 
-**Note on Holidays:** Basic support for fixed US federal holidays is included
+**Note on Holidays:** Basic support for US federal holidays is included
 via `get_us_federal_holidays()`. For comprehensive, region-specific,
-or rule-based holiday calculations (e.g., floating holidays like Easter,
-observed holidays falling on weekends), consider using a dedicated library
-like `holidays`. You can easily integrate it by generating a list of holiday
-dates from that library and passing it to the `holidays` argument of the
-relevant business day functions in this module.
+or rule-based holiday calculations (e.g., Easter or region-specific bank
+holidays), consider using a dedicated library like `holidays`. You can easily
+integrate it by generating a list of holiday dates from that library and
+passing it to the `holidays` argument of the relevant business day functions
+in this module.
 
 Example using the `holidays` library:
 ```python
@@ -134,25 +134,21 @@ _AMBIGUOUS_DATE_FORMATS = {
     True: ("%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y", "%m-%d-%Y"),
     False: ("%m/%d/%Y", "%d/%m/%Y", "%m-%d-%Y", "%d-%m-%Y"),
 }
+
+
+def _build_default_date_formats(dayfirst: bool) -> tuple[str, ...]:
+    """Build ordered default parse_date formats for day-first or month-first preference."""
+    return (
+        "%Y-%m-%d",  # 2023-01-31 (ISO - unambiguous)
+        *_AMBIGUOUS_DATE_FORMATS[dayfirst],
+        "%d.%m.%Y",  # 31.01.2023
+        "%Y/%m/%d",  # 2023/01/31
+    )
+
+
 _DEFAULT_DATE_FORMATS = {
-    True: (
-        "%Y-%m-%d",  # 2023-01-31 (ISO - unambiguous)
-        "%d/%m/%Y",  # 31/01/2023
-        "%m/%d/%Y",  # 01/31/2023 (fallback for US)
-        "%d-%m-%Y",  # 31-01-2023
-        "%m-%d-%Y",  # 01-31-2023 (fallback for US)
-        "%d.%m.%Y",  # 31.01.2023
-        "%Y/%m/%d",  # 2023/01/31
-    ),
-    False: (
-        "%Y-%m-%d",  # 2023-01-31 (ISO - unambiguous)
-        "%m/%d/%Y",  # 01/31/2023
-        "%d/%m/%Y",  # 31/01/2023 (fallback for European)
-        "%m-%d-%Y",  # 01-31-2023
-        "%d-%m-%Y",  # 31-01-2023 (fallback for European)
-        "%d.%m.%Y",  # 31.01.2023
-        "%Y/%m/%d",  # 2023/01/31
-    ),
+    True: _build_default_date_formats(dayfirst=True),
+    False: _build_default_date_formats(dayfirst=False),
 }
 
 
@@ -787,7 +783,18 @@ def _normalize_holiday_dates(holidays: Iterable[date | datetime] | None) -> set[
     return normalized
 
 
-def get_us_federal_holidays(year: int, holiday_types: tuple[str, ...] | None = None) -> list[date]:
+def _observed_us_federal_holiday(holiday_date: date) -> date:
+    """Shift weekend fixed-date holidays to their observed weekday."""
+    if holiday_date.weekday() == calendar.SATURDAY:
+        return holiday_date - timedelta(days=1)
+    if holiday_date.weekday() == calendar.SUNDAY:
+        return holiday_date + timedelta(days=1)
+    return holiday_date
+
+
+def get_us_federal_holidays(
+    year: int, holiday_types: tuple[str, ...] | None = None, observed: bool = False
+) -> list[date]:
     """
     Get a list of US federal holidays for a given year.
 
@@ -807,17 +814,14 @@ def get_us_federal_holidays(year: int, holiday_types: tuple[str, ...] | None = N
     - Columbus Day (2nd Monday of October)
     - Thanksgiving Day (4th Thursday of November)
 
-    Note: This function returns the *actual* date of the holiday. It does *not*
-    account for the observed date when the holiday falls on a weekend
-    (e.g., observed on Mon/Fri). For observed holiday calculation, use a dedicated
-    library like `holidays`.
-
     Args:
         year: The year for which to get the holidays.
         holiday_types: Optional tuple of holiday types to include. If None, all holidays are included.
                       Valid values: "NEW_YEARS_DAY", "MLK_DAY", "PRESIDENTS_DAY", "MEMORIAL_DAY",
                       "JUNETEENTH", "INDEPENDENCE_DAY", "LABOR_DAY", "COLUMBUS_DAY",
                       "VETERANS_DAY", "THANKSGIVING", "CHRISTMAS"
+        observed: If True, fixed-date holidays that fall on Saturday/Sunday are shifted
+            to their federally observed weekday (Friday/Monday).
 
     Returns:
         List[date]: A list of date objects for the holidays in that year,
@@ -834,6 +838,10 @@ def get_us_federal_holidays(year: int, holiday_types: tuple[str, ...] | None = N
         >>> date(2024, 11, 28) in holidays_2024  # Thanksgiving
         True
 
+        >>> observed_2022 = get_us_federal_holidays(2022, observed=True)
+        >>> date(2021, 12, 31) in observed_2022  # Observed New Year's Day 2022
+        True
+
         >>> # Get only fixed holidays
         >>> fixed_holidays = get_us_federal_holidays(2024, ("NEW_YEARS_DAY", "JUNETEENTH",
         ...                                                "INDEPENDENCE_DAY", "VETERANS_DAY", "CHRISTMAS"))
@@ -848,22 +856,24 @@ def get_us_federal_holidays(year: int, holiday_types: tuple[str, ...] | None = N
 
     Implementation Note:
         Holiday calculations are cached (LRU cache with maxsize=32) for performance.
-        This cache holds up to 32 year/holiday_type combinations. For applications
-        that query many different years, older entries may be evicted. To clear the
-        cache manually: ``_get_us_federal_holidays_cached.cache_clear()``
+        This cache holds up to 32 year/holiday_type/observed combinations. For
+        applications that query many different years, older entries may be
+        evicted. To clear the cache manually:
+        ``_get_us_federal_holidays_cached.cache_clear()``
 
     Thread Safety:
         The LRU cache is thread-safe. Concurrent calls with the same parameters
         safely share cached results.
     """
-    return list(_get_us_federal_holidays_cached(year, holiday_types))
+    return list(_get_us_federal_holidays_cached(year, holiday_types, observed))
 
 
 @lru_cache(maxsize=32)
-def _get_us_federal_holidays_cached(year: int, holiday_types: tuple[str, ...] | None = None) -> tuple[date, ...]:
+def _get_us_federal_holidays_cached(
+    year: int, holiday_types: tuple[str, ...] | None = None, observed: bool = False
+) -> tuple[date, ...]:
     """Internal helper that stores immutable tuples for caching purposes."""
-    # Define all possible holiday types
-    all_holiday_types: dict[str, date] = {
+    fixed_holidays: dict[str, date] = {
         # Fixed holidays
         "NEW_YEARS_DAY": date(year, 1, 1),
         "JUNETEENTH": date(year, 6, 19),
@@ -871,6 +881,14 @@ def _get_us_federal_holidays_cached(year: int, holiday_types: tuple[str, ...] | 
         "VETERANS_DAY": date(year, 11, 11),
         "CHRISTMAS": date(year, 12, 25),
     }
+    if observed:
+        fixed_holidays = {
+            holiday_name: _observed_us_federal_holiday(holiday_date)
+            for holiday_name, holiday_date in fixed_holidays.items()
+        }
+
+    # Define all possible holiday types
+    all_holiday_types: dict[str, date] = dict(fixed_holidays)
 
     # Calculate floating holidays more efficiently
     def find_nth_weekday(year: int, month: int, weekday: int, n: int, from_end: bool = False) -> date:
@@ -924,16 +942,23 @@ def _get_us_federal_holidays_cached(year: int, holiday_types: tuple[str, ...] | 
     return tuple(sorted({all_holiday_types[holiday_type] for holiday_type in holiday_types}))
 
 
-def get_us_federal_holidays_list(year: int, holiday_types: list[str] | None = None) -> list[date]:
+def get_us_federal_holidays_list(
+    year: int, holiday_types: list[str] | None = None, observed: bool = False
+) -> list[date]:
     """
     Convenience wrapper for get_us_federal_holidays that accepts a list instead of tuple.
 
     This function converts the list to a tuple and calls the cached version.
     Unknown holiday types raise ValueError.
+
+    Args:
+        year: The year for which to get the holidays.
+        holiday_types: Optional list of holiday type names to include.
+        observed: If True, shift weekend fixed-date holidays to observed weekdays.
     """
     if holiday_types is None:
-        return get_us_federal_holidays(year, None)
-    return get_us_federal_holidays(year, tuple(holiday_types))
+        return get_us_federal_holidays(year, None, observed)
+    return get_us_federal_holidays(year, tuple(holiday_types), observed)
 
 
 def workdays_between(start_date: date, end_date: date, holidays: Iterable[date | datetime] | None = None) -> int:
@@ -1390,15 +1415,28 @@ def _resolve_date_formats(formats: list[str] | None, dayfirst: bool) -> tuple[tu
     return tuple(formats), False
 
 
-def _parse_date_from_formats(date_str: str, parse_formats: Iterable[str]) -> date | None:
+def _is_calendar_date_value_error(error: ValueError) -> bool:
+    """Return True when a strptime/date ValueError indicates calendar-invalid fields."""
+    message = str(error).lower()
+    return (
+        "out of range" in message
+        or "must be in range" in message
+        or "invalid date" in message
+    )
+
+
+def _parse_date_from_formats(date_str: str, parse_formats: Iterable[str]) -> tuple[date | None, ValueError | None]:
     """Attempt to parse a date against the provided formats."""
+    calendar_error: ValueError | None = None
     # Exception-driven parsing is expected here while trying multiple date layouts.
     for fmt in parse_formats:
         try:
-            return datetime.strptime(date_str, fmt).date()
-        except ValueError:  # noqa: PERF203
+            return datetime.strptime(date_str, fmt).date(), None
+        except ValueError as e:  # noqa: PERF203
+            if calendar_error is None and _is_calendar_date_value_error(e):
+                calendar_error = e
             continue
-    return None
+    return None, calendar_error
 
 
 def parse_date(
@@ -1472,9 +1510,16 @@ def parse_date(
     if not parse_formats:
         raise ParseError(parser="date", value=date_str, reason="no formats were provided")
 
-    parsed = _parse_date_from_formats(date_str, parse_formats)
+    parsed, calendar_error = _parse_date_from_formats(date_str, parse_formats)
     if parsed is not None:
         return parsed
+    if calendar_error is not None:
+        raise ParseError(
+            parser="date",
+            value=date_str,
+            reason=f"invalid calendar date ({calendar_error})",
+            attempted_formats=parse_formats,
+        ) from calendar_error
 
     # Locale-independent fallback for English month names in the default parser.
     if default_formats:
