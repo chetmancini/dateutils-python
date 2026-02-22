@@ -10,6 +10,7 @@ from freezegun import freeze_time
 
 import dateutils
 from dateutils.dateutils import (
+    ParseError,
     add_business_days,
     age_in_years,
     convert_timezone,
@@ -1174,8 +1175,10 @@ def test_parse_date() -> None:
     assert parse_date("2024 03 27", formats=["%Y %m %d"]) == datetime.date(2024, 3, 27)
 
     # Test invalid date
-    assert parse_date("not a date") is None
-    assert parse_date("2024-13-45") is None  # Invalid month and day
+    with pytest.raises(ParseError):
+        parse_date("not a date")
+    with pytest.raises(ParseError):
+        parse_date("2024-13-45")  # Invalid month and day
 
 
 def test_parse_date_dayfirst() -> None:
@@ -1233,46 +1236,77 @@ def test_parse_date_english_month_names_locale_independent() -> None:
 
 def test_parse_date_custom_formats_do_not_use_default_fallbacks() -> None:
     """When custom formats are supplied, default format/text parsing should be skipped."""
-    assert parse_date("March 27, 2024", formats=["%Y/%m/%d"]) is None
+    with pytest.raises(ParseError):
+        parse_date("March 27, 2024", formats=["%Y/%m/%d"])
 
 
 def test_parse_date_invalid_english_month_name() -> None:
-    """Unknown month names should return None."""
-    assert parse_date("Foober 27, 2024") is None
+    """Unknown month names should raise ParseError."""
+    with pytest.raises(ParseError):
+        parse_date("Foober 27, 2024")
 
 
 def test_parse_date_invalid_calendar_dates() -> None:
-    """Test that invalid but recognizable calendar dates return None.
-
-    These are dates that match the expected format but don't exist in the
-    Gregorian calendar. The function returns None for these, which is
-    indistinguishable from completely unparseable strings.
-    """
+    """Invalid but recognizable calendar dates should raise ParseError."""
     # Feb 29 in non-leap year
-    assert parse_date("2023-02-29") is None  # 2023 is not a leap year
-    assert parse_date("Feb 29, 2023") is None
+    with pytest.raises(ParseError):
+        parse_date("2023-02-29")  # 2023 is not a leap year
+    with pytest.raises(ParseError) as exc_info:
+        parse_date("Feb 29, 2023")
+    assert "invalid calendar date" in exc_info.value.reason
 
     # Feb 30 never exists
-    assert parse_date("2024-02-30") is None
-    assert parse_date("February 30, 2024") is None
+    with pytest.raises(ParseError):
+        parse_date("2024-02-30")
+    with pytest.raises(ParseError):
+        parse_date("February 30, 2024")
 
     # April, June, September, November have 30 days (not 31)
-    assert parse_date("2024-04-31") is None  # April has 30 days
-    assert parse_date("2024-06-31") is None  # June has 30 days
-    assert parse_date("2024-09-31") is None  # September has 30 days
-    assert parse_date("2024-11-31") is None  # November has 30 days
+    with pytest.raises(ParseError):
+        parse_date("2024-04-31")  # April has 30 days
+    with pytest.raises(ParseError):
+        parse_date("2024-06-31")  # June has 30 days
+    with pytest.raises(ParseError):
+        parse_date("2024-09-31")  # September has 30 days
+    with pytest.raises(ParseError):
+        parse_date("2024-11-31")  # November has 30 days
 
     # Invalid month
-    assert parse_date("2024-13-01") is None
-    assert parse_date("2024-00-15") is None
+    with pytest.raises(ParseError):
+        parse_date("2024-13-01")
+    with pytest.raises(ParseError):
+        parse_date("2024-00-15")
 
     # Invalid day
-    assert parse_date("2024-01-32") is None
-    assert parse_date("2024-01-00") is None
+    with pytest.raises(ParseError):
+        parse_date("2024-01-32")
+    with pytest.raises(ParseError):
+        parse_date("2024-01-00")
 
     # Valid leap year Feb 29 should work
     assert parse_date("2024-02-29") == datetime.date(2024, 2, 29)  # 2024 is a leap year
     assert parse_date("Feb 29, 2024") == datetime.date(2024, 2, 29)
+
+
+def test_parse_date_errors_include_details() -> None:
+    """Date parsing should raise ParseError with useful details."""
+    assert parse_date("03/04/2024", dayfirst=True) == datetime.date(2024, 4, 3)
+    assert parse_date("2024|03|27", formats=["%Y|%m|%d"]) == datetime.date(2024, 3, 27)
+
+    with pytest.raises(ParseError, match="Failed to parse date"):
+        parse_date("not a date")
+
+    with pytest.raises(ParseError) as exc_info:
+        parse_date("not a date")
+
+    err = exc_info.value
+    assert err.parser == "date"
+    assert err.value == "not a date"
+    assert "supported format" in err.reason
+    assert "%Y-%m-%d" in err.attempted_formats
+
+    with pytest.raises(ParseError, match="no formats were provided"):
+        parse_date("2024-03-27", formats=[])
 
 
 def test_parse_datetime() -> None:
@@ -1351,9 +1385,33 @@ def test_parse_datetime() -> None:
     assert parse_datetime("03-04-2024 12:00:00", dayfirst=True) == datetime.datetime(2024, 4, 3, 12, 0, 0)
 
     # Test invalid datetime
-    assert parse_datetime("not a datetime") is None
-    assert parse_datetime("2024-03-27T25:70:80") is None  # Invalid hours, minutes, seconds
-    assert parse_datetime("2024-03-27T14:30:45+25:00") is None  # Invalid timezone offset
+    with pytest.raises(ParseError):
+        parse_datetime("not a datetime")
+    with pytest.raises(ParseError):
+        parse_datetime("2024-03-27T25:70:80")  # Invalid hours, minutes, seconds
+    with pytest.raises(ParseError):
+        parse_datetime("2024-03-27T14:30:45+25:00")  # Invalid timezone offset
+
+
+def test_parse_datetime_errors_include_details() -> None:
+    """Datetime parsing should raise ParseError with format details on failure."""
+    assert parse_datetime("2024-03-27T14:30:45Z") == datetime.datetime(
+        2024, 3, 27, 14, 30, 45, tzinfo=datetime.timezone.utc
+    )
+
+    with pytest.raises(ParseError, match="Failed to parse datetime"):
+        parse_datetime("not a datetime")
+
+    with pytest.raises(ParseError) as exc_info:
+        parse_datetime("not a datetime", formats=["%Y|%m|%d"])
+
+    err = exc_info.value
+    assert err.parser == "datetime"
+    assert err.value == "not a datetime"
+    assert err.attempted_formats == ("%Y|%m|%d",)
+
+    with pytest.raises(ParseError, match="no formats were provided"):
+        parse_datetime("2024-03-27 14:30:45", formats=[])
 
 
 def test_parse_iso8601() -> None:
@@ -1404,21 +1462,32 @@ def test_parse_iso8601() -> None:
     assert half_hour_offset.tzinfo.utcoffset(None) == datetime.timedelta(hours=-5, minutes=-30)
 
     # Test basic format without T separator (should fail)
-    assert parse_iso8601("2024-03-27 14:30:45") is None
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27 14:30:45")
 
     # Test with partial time specification
-    assert parse_iso8601("2024-03-27T14") is None
-    assert parse_iso8601("2024-03-27T14:30") is None
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27T14")
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27T14:30")
 
     # Test invalid patterns
-    assert parse_iso8601("not iso8601") is None
-    assert parse_iso8601("2024/03/27") is None  # Wrong date separator
-    assert parse_iso8601("2024-03-27 14:30:45") is None  # Space instead of T
-    assert parse_iso8601("2024-03-27+0200") is None  # Timezone without time
-    assert parse_iso8601("2024-03-27+02:00") is None  # Timezone without time
-    assert parse_iso8601("2024-03-27Z") is None  # UTC designator without time
-    assert parse_iso8601("2024-03-27.123") is None  # Fractional seconds without time
-    assert parse_iso8601("2024-03-27.123Z") is None  # Fractional + timezone without time
+    with pytest.raises(ParseError):
+        parse_iso8601("not iso8601")
+    with pytest.raises(ParseError):
+        parse_iso8601("2024/03/27")  # Wrong date separator
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27 14:30:45")  # Space instead of T
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27+0200")  # Timezone without time
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27+02:00")  # Timezone without time
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27Z")  # UTC designator without time
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27.123")  # Fractional seconds without time
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27.123Z")  # Fractional + timezone without time
 
 
 def test_parse_iso8601_malformed_edge_cases() -> None:
@@ -1437,20 +1506,30 @@ def test_parse_iso8601_malformed_edge_cases() -> None:
     assert result.tzinfo.utcoffset(None) == datetime.timedelta(hours=-5, minutes=-30)
 
     # Invalid timezone offset values (accepted by regex, rejected by validation)
-    assert parse_iso8601("2024-03-27T14:30:45+25:00") is None  # Hours > 23
-    assert parse_iso8601("2024-03-27T14:30:45+00:60") is None  # Minutes > 59
-    assert parse_iso8601("2024-03-27T14:30:45.123+25:00") is None  # Fraction + invalid tz
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27T14:30:45+25:00")  # Hours > 23
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27T14:30:45+00:60")  # Minutes > 59
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27T14:30:45.123+25:00")  # Fraction + invalid tz
 
     # Invalid calendar dates (accepted by regex, rejected by strptime)
-    assert parse_iso8601("2024-13-01T14:30:45") is None  # Month 13
-    assert parse_iso8601("2024-02-30T14:30:45") is None  # Feb 30
-    assert parse_iso8601("2024-00-15T14:30:45") is None  # Month 0
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-13-01T14:30:45")  # Month 13
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-02-30T14:30:45")  # Feb 30
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-00-15T14:30:45")  # Month 0
 
     # Malformed fraction/tz patterns (rejected by regex)
-    assert parse_iso8601("2024-03-27T14:30:45.") is None  # Trailing dot, no digits
-    assert parse_iso8601("2024-03-27TZ") is None  # T without time, then Z
-    assert parse_iso8601("2024-03-27T+02:00") is None  # T without time, then tz offset
-    assert parse_iso8601("2024-03-27T.123") is None  # T without time, then fraction
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27T14:30:45.")  # Trailing dot, no digits
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27TZ")  # T without time, then Z
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27T+02:00")  # T without time, then tz offset
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27T.123")  # T without time, then fraction
 
 
 def test_parse_iso8601_nanosecond_truncation() -> None:
@@ -1477,13 +1556,47 @@ def test_parse_iso8601_nanosecond_truncation() -> None:
     assert result.tzinfo == datetime.timezone.utc
 
 
-def test_parse_iso8601_invalid_values_return_none() -> None:
-    """Invalid calendar/time/offset values should return None, not raise."""
-    assert parse_iso8601("2024-02-30") is None
-    assert parse_iso8601("2024-13-01") is None
-    assert parse_iso8601("2024-03-27T25:00:00") is None
-    assert parse_iso8601("2024-03-27T14:30:45+24:00") is None
-    assert parse_iso8601("2024-03-27T14:30:45+02:99") is None
+def test_parse_iso8601_invalid_values_raise() -> None:
+    """Invalid calendar/time/offset values should raise ParseError."""
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-02-30")
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-13-01")
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27T25:00:00")
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27T14:30:45+24:00")
+    with pytest.raises(ParseError):
+        parse_iso8601("2024-03-27T14:30:45+02:99")
+
+
+def test_parse_iso8601_errors_include_details() -> None:
+    """ISO parsing should raise ParseError with clear reasons."""
+    assert parse_iso8601("2024-03-27T14:30:45+02:00") == datetime.datetime(
+        2024,
+        3,
+        27,
+        14,
+        30,
+        45,
+        tzinfo=datetime.timezone(datetime.timedelta(hours=2)),
+    )
+
+    with pytest.raises(ParseError, match="supported pattern"):
+        parse_iso8601("2024-03-27 14:30:45")
+
+    with pytest.raises(ParseError, match="timezone offset is out of range"):
+        parse_iso8601("2024-03-27T14:30:45+25:00")
+
+    with pytest.raises(ParseError) as exc_info:
+        parse_iso8601("2024-02-30")
+
+    err = exc_info.value
+    assert err.parser == "ISO 8601 datetime"
+    assert err.value == "2024-02-30"
+    assert err.reason
+    assert "invalid value" not in err.reason
+    assert "month" in err.reason
 
 
 def test_format_date() -> None:

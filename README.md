@@ -129,9 +129,9 @@ workdays = workdays_between(start, end, holidays=holidays_2024)
 ### Date Parsing and Formatting
 
 ```python
-from dateutils.dateutils import parse_date, parse_datetime, parse_iso8601, to_iso8601
+from dateutils.dateutils import ParseError, parse_date, parse_datetime, parse_iso8601, to_iso8601
 
-# Parse a date string (tries multiple formats)
+# Parse a date string (tries multiple formats, raises ParseError on failure)
 dt = parse_date("2024-06-06")  # Returns date object
 dt = parse_date("06/06/2024")  # Also works
 dt = parse_date("June 6, 2024")  # Also works
@@ -139,6 +139,12 @@ dt = parse_date("June 6, 2024")  # Also works
 # Parse ISO 8601 datetime
 dt = parse_iso8601("2024-06-06T12:30:45Z")  # With timezone
 dt = parse_iso8601("2024-06-06")  # Date only
+
+# Parse with explicit error handling
+try:
+    parse_datetime("not a datetime")
+except ParseError as e:
+    print(e)  # Includes parser name, bad value, and parse reason
 
 # Format as ISO 8601
 iso_str = to_iso8601(dt)  # e.g., "2024-06-06T12:30:45+00:00"
@@ -263,7 +269,7 @@ The library now includes comprehensive input validation with helpful error messa
 from datetime import date
 from zoneinfo import ZoneInfoNotFoundError
 
-from dateutils.dateutils import now_in_timezone, start_of_quarter, workdays_between
+from dateutils.dateutils import ParseError, now_in_timezone, parse_date, start_of_quarter, workdays_between
 
 # Invalid quarter raises ValueError
 try:
@@ -276,6 +282,12 @@ try:
     workdays_between(date(2024, 6, 10), date(2024, 6, 1))  # end < start
 except ValueError as e:
     print(e)  # "start_date (2024-06-10) must be <= end_date (2024-06-01)"
+
+# Invalid parse raises ParseError
+try:
+    parse_date("2024-99-99")
+except ParseError as e:
+    print(e)  # "Failed to parse date from '2024-99-99': ..."
 
 # Invalid timezone names raise ZoneInfoNotFoundError
 try:

@@ -47,7 +47,6 @@ from collections.abc import Generator, Iterable
 from datetime import date, datetime, timedelta, timezone
 from email.utils import format_datetime as _format_http_datetime
 from functools import lru_cache
-from typing import cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 ##################
@@ -135,6 +134,26 @@ _AMBIGUOUS_DATE_FORMATS = {
     True: ("%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y", "%m-%d-%Y"),
     False: ("%m/%d/%Y", "%d/%m/%Y", "%m-%d-%Y", "%d-%m-%Y"),
 }
+_DEFAULT_DATE_FORMATS = {
+    True: (
+        "%Y-%m-%d",  # 2023-01-31 (ISO - unambiguous)
+        "%d/%m/%Y",  # 31/01/2023
+        "%m/%d/%Y",  # 01/31/2023 (fallback for US)
+        "%d-%m-%Y",  # 31-01-2023
+        "%m-%d-%Y",  # 01-31-2023 (fallback for US)
+        "%d.%m.%Y",  # 31.01.2023
+        "%Y/%m/%d",  # 2023/01/31
+    ),
+    False: (
+        "%Y-%m-%d",  # 2023-01-31 (ISO - unambiguous)
+        "%m/%d/%Y",  # 01/31/2023
+        "%d/%m/%Y",  # 31/01/2023 (fallback for European)
+        "%m-%d-%Y",  # 01-31-2023
+        "%d-%m-%Y",  # 31-01-2023 (fallback for European)
+        "%d.%m.%Y",  # 31.01.2023
+        "%Y/%m/%d",  # 2023/01/31
+    ),
+}
 
 
 def _build_default_datetime_formats(dayfirst: bool) -> tuple[str, ...]:
@@ -150,6 +169,28 @@ _DEFAULT_DATETIME_FORMATS = {
     True: _build_default_datetime_formats(dayfirst=True),
     False: _build_default_datetime_formats(dayfirst=False),
 }
+
+
+class ParseError(ValueError):
+    """Raised when strict parsing functions cannot parse an input value."""
+
+    def __init__(
+        self,
+        *,
+        parser: str,
+        value: str,
+        reason: str,
+        attempted_formats: Iterable[str] | None = None,
+    ) -> None:
+        self.parser = parser
+        self.value = value
+        self.reason = reason.rstrip(".")
+        self.attempted_formats = tuple(attempted_formats or ())
+
+        details = f"Failed to parse {self.parser} from {self.value!r}: {self.reason}."
+        if self.attempted_formats:
+            details += f" Attempted formats: {', '.join(self.attempted_formats)}."
+        super().__init__(details)
 
 
 ##################
@@ -1342,12 +1383,30 @@ def httpdate(date_time: datetime) -> str:
 ##################
 # Parsing and formatting
 ##################
+def _resolve_date_formats(formats: list[str] | None, dayfirst: bool) -> tuple[tuple[str, ...], bool]:
+    """Return date formats and whether defaults are being used."""
+    if formats is None:
+        return _DEFAULT_DATE_FORMATS[dayfirst], True
+    return tuple(formats), False
+
+
+def _parse_date_from_formats(date_str: str, parse_formats: Iterable[str]) -> date | None:
+    """Attempt to parse a date against the provided formats."""
+    # Exception-driven parsing is expected here while trying multiple date layouts.
+    for fmt in parse_formats:
+        try:
+            return datetime.strptime(date_str, fmt).date()
+        except ValueError:  # noqa: PERF203
+            continue
+    return None
+
+
 def parse_date(
     date_str: str,
     formats: list[str] | None = None,
     *,
     dayfirst: bool = False,
-) -> date | None:
+) -> date:
     """
     Parse a date string using multiple possible formats.
 
@@ -1365,9 +1424,10 @@ def parse_date(
             Only applies when `formats` is None.
 
     Returns:
-        A date object if parsing was successful, None otherwise. Returns None
-        for both unparseable strings and invalid calendar dates (e.g., Feb 29
-        in a non-leap year, April 31, etc.).
+        A parsed date object.
+
+    Raises:
+        ParseError: If the input cannot be parsed or if parsed values are invalid.
 
     Examples:
         >>> from datetime import date
@@ -1397,56 +1457,43 @@ def parse_date(
         >>> parse_date("20242207", formats=["%Y%d%m"])
         datetime.date(2024, 7, 22)
 
-        >>> # Parsing fails
-        >>> parse_date("invalid date string")
-
-        >>> parse_date("2024-20-80")
+        >>> try:
+        ...     parse_date("invalid date string")
+        ... except ParseError as e:
+        ...     print(e.parser)
+        ...     print(e.value)
+        date
+        invalid date string
 
     """
     date_str = date_str.strip()
 
-    default_formats = formats is None
-    parse_formats: list[str]
-    if default_formats:
-        if dayfirst:
-            # European/international style: day before month
-            parse_formats = [
-                "%Y-%m-%d",  # 2023-01-31 (ISO - unambiguous)
-                "%d/%m/%Y",  # 31/01/2023
-                "%m/%d/%Y",  # 01/31/2023 (fallback for US)
-                "%d-%m-%Y",  # 31-01-2023
-                "%m-%d-%Y",  # 01-31-2023 (fallback for US)
-                "%d.%m.%Y",  # 31.01.2023
-                "%Y/%m/%d",  # 2023/01/31
-            ]
-        else:
-            # US style (default): month before day
-            parse_formats = [
-                "%Y-%m-%d",  # 2023-01-31 (ISO - unambiguous)
-                "%m/%d/%Y",  # 01/31/2023
-                "%d/%m/%Y",  # 31/01/2023 (fallback for European)
-                "%m-%d-%Y",  # 01-31-2023
-                "%d-%m-%Y",  # 31-01-2023 (fallback for European)
-                "%d.%m.%Y",  # 31.01.2023
-                "%Y/%m/%d",  # 2023/01/31
-            ]
-    else:
-        parse_formats = cast(list[str], formats)
+    parse_formats, default_formats = _resolve_date_formats(formats, dayfirst)
+    if not parse_formats:
+        raise ParseError(parser="date", value=date_str, reason="no formats were provided")
 
-    # Exception-driven parsing is expected here while trying multiple date layouts.
-    for fmt in parse_formats:
-        try:
-            return datetime.strptime(date_str, fmt).date()
-        except ValueError:  # noqa: PERF203
-            continue
+    parsed = _parse_date_from_formats(date_str, parse_formats)
+    if parsed is not None:
+        return parsed
 
     # Locale-independent fallback for English month names in the default parser.
     if default_formats:
-        parsed_english = _parse_english_textual_date(date_str)
+        try:
+            parsed_english = _parse_english_textual_date(date_str)
+        except ValueError as e:
+            raise ParseError(
+                parser="date",
+                value=date_str,
+                reason=f"invalid calendar date ({e})",
+                attempted_formats=parse_formats,
+            ) from e
         if parsed_english is not None:
             return parsed_english
 
-    return None
+    reason = "value did not match any supported format"
+    if default_formats:
+        reason += " (including English month-name forms)"
+    raise ParseError(parser="date", value=date_str, reason=reason, attempted_formats=parse_formats)
 
 
 def _parse_english_textual_date(date_str: str) -> date | None:
@@ -1464,12 +1511,34 @@ def _parse_english_textual_date(date_str: str) -> date | None:
         day = int(match.group("day"))
         try:
             return date(year, month, day)
-        except ValueError:
-            return None
+        except ValueError as e:
+            raise ValueError(str(e)) from e
     return None
 
 
-def parse_datetime(datetime_str: str, formats: list[str] | None = None, dayfirst: bool = False) -> datetime | None:
+def _resolve_datetime_formats(formats: list[str] | None, dayfirst: bool) -> tuple[str, ...]:
+    """Return datetime formats."""
+    if formats is None:
+        return _DEFAULT_DATETIME_FORMATS[dayfirst]
+    return tuple(formats)
+
+
+def _parse_datetime_from_formats(datetime_str: str, parse_formats: Iterable[str]) -> datetime | None:
+    """Attempt to parse a datetime against the provided formats."""
+    # Exception-driven parsing is expected here while trying multiple datetime layouts.
+    for fmt in parse_formats:
+        try:
+            dt = datetime.strptime(datetime_str, fmt)
+            # Handle ISO 8601 format with timezone designator
+            if datetime_str.endswith("Z"):
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+        except ValueError:  # noqa: PERF203
+            continue
+    return None
+
+
+def parse_datetime(datetime_str: str, formats: list[str] | None = None, dayfirst: bool = False) -> datetime:
     """
     Parse a datetime string using multiple possible formats.
 
@@ -1486,31 +1555,31 @@ def parse_datetime(datetime_str: str, formats: list[str] | None = None, dayfirst
             Only applies when `formats` is None.
 
     Returns:
-        A datetime object if parsing was successful, None otherwise
+        A parsed datetime object.
+
+    Raises:
+        ParseError: If the input cannot be parsed.
     """
     datetime_str = datetime_str.strip()
 
-    parse_formats: Iterable[str]
-    if formats is None:
-        parse_formats = _DEFAULT_DATETIME_FORMATS[dayfirst]
-    else:
-        parse_formats = formats
+    parse_formats = _resolve_datetime_formats(formats, dayfirst)
 
-    # Exception-driven parsing is expected here while trying multiple datetime layouts.
-    for fmt in parse_formats:
-        try:
-            dt = datetime.strptime(datetime_str, fmt)
-            # Handle ISO 8601 format with timezone designator
-            if datetime_str.endswith("Z"):
-                dt = dt.replace(tzinfo=timezone.utc)
-            return dt
-        except ValueError:  # noqa: PERF203
-            continue
+    if not parse_formats:
+        raise ParseError(parser="datetime", value=datetime_str, reason="no formats were provided")
 
-    return None
+    parsed = _parse_datetime_from_formats(datetime_str, parse_formats)
+    if parsed is not None:
+        return parsed
+
+    raise ParseError(
+        parser="datetime",
+        value=datetime_str,
+        reason="value did not match any supported format",
+        attempted_formats=parse_formats,
+    )
 
 
-def parse_iso8601(iso_str: str) -> datetime | None:
+def parse_iso8601(iso_str: str) -> datetime:
     """
     Parse an ISO 8601 formatted date/time string.
 
@@ -1529,55 +1598,62 @@ def parse_iso8601(iso_str: str) -> datetime | None:
         iso_str: The ISO 8601 string to parse
 
     Returns:
-        A datetime object, or None if parsing failed
-    """
-    iso_str = iso_str.strip()
+        A parsed datetime object.
 
+    Raises:
+        ParseError: If the input does not match supported ISO 8601 shapes.
+    """
+    normalized = iso_str.strip()
+    try:
+        return _parse_iso8601_unchecked(normalized)
+    except ValueError as e:
+        raise ParseError(parser="ISO 8601 datetime", value=normalized, reason=str(e)) from e
+
+
+def _parse_iso8601_unchecked(iso_str: str) -> datetime:
+    """Parse ISO 8601 string and raise ValueError on invalid inputs."""
     match = _ISO8601_PATTERN.match(iso_str)
     if not match:
-        return None
+        raise ValueError("value does not match supported pattern YYYY-MM-DD[THH:MM:SS[.fraction][Z|±HH:MM|±HHMM]]")
 
     date_part, time_part, ms_part, tz_part = match.groups()
 
-    try:
-        if time_part is None:
-            # Date only (regex guarantees ms_part and tz_part are also None)
-            return datetime.strptime(date_part, "%Y-%m-%d")
+    if time_part is None:
+        # Date only (regex guarantees ms_part and tz_part are also None)
+        return datetime.strptime(date_part, "%Y-%m-%d")
 
-        # Combine date and time
-        dt_str = f"{date_part}T{time_part}"
-        dt_format = "%Y-%m-%dT%H:%M:%S"
+    # Combine date and time
+    dt_str = f"{date_part}T{time_part}"
+    dt_format = "%Y-%m-%dT%H:%M:%S"
 
-        if ms_part:
-            # Truncate to microsecond precision (6 digits max after the decimal point)
-            max_fractional_len = 7  # ".XXXXXX" (1 dot + 6 digits)
-            if len(ms_part) > max_fractional_len:
-                ms_part = ms_part[:max_fractional_len]
-            dt_str += ms_part
-            dt_format += ".%f"
+    if ms_part:
+        # Truncate to microsecond precision (6 digits max after the decimal point)
+        max_fractional_len = 7  # ".XXXXXX" (1 dot + 6 digits)
+        if len(ms_part) > max_fractional_len:
+            ms_part = ms_part[:max_fractional_len]
+        dt_str += ms_part
+        dt_format += ".%f"
 
-        dt = datetime.strptime(dt_str, dt_format)
+    dt = datetime.strptime(dt_str, dt_format)
 
-        # Handle timezone
-        if tz_part:
-            if tz_part == "Z":
-                dt = dt.replace(tzinfo=timezone.utc)
-            else:
-                # Convert +HH:MM or +HHMM to ±HHMM and validate components
-                tz_digits = tz_part.replace(":", "")
-                sign = -1 if tz_digits[0] == "-" else 1
-                hours = int(tz_digits[1:3])
-                minutes = int(tz_digits[3:5])
+    # Handle timezone
+    if tz_part:
+        if tz_part == "Z":
+            dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            # Convert +HH:MM or +HHMM to ±HHMM and validate components
+            tz_digits = tz_part.replace(":", "")
+            sign = -1 if tz_digits[0] == "-" else 1
+            hours = int(tz_digits[1:3])
+            minutes = int(tz_digits[3:5])
 
-                if hours > _MAX_TZ_OFFSET_HOURS or minutes > _MAX_TZ_OFFSET_MINUTES:
-                    return None
+            if hours > _MAX_TZ_OFFSET_HOURS or minutes > _MAX_TZ_OFFSET_MINUTES:
+                raise ValueError(f"timezone offset is out of range: {tz_part}")
 
-                offset = sign * timedelta(hours=hours, minutes=minutes)
-                dt = dt.replace(tzinfo=timezone(offset))
+            offset = sign * timedelta(hours=hours, minutes=minutes)
+            dt = dt.replace(tzinfo=timezone(offset))
 
-        return dt
-    except ValueError:
-        return None
+    return dt
 
 
 def format_date(dt: date | datetime, format_str: str = "%Y-%m-%d") -> str:
