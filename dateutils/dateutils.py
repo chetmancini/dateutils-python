@@ -42,18 +42,20 @@ print(workdays)
 """
 
 import calendar
+import importlib
 from collections.abc import Generator, Iterable
 from datetime import date, datetime, timedelta, timezone
 from email.utils import format_datetime as _format_http_datetime
 from functools import lru_cache
+from typing import Any, cast
 
 try:
     from . import parsing as _parsing
     from . import timezones as _timezones
 except ImportError:  # pragma: no cover
     # Support doctest's direct file import mode (no package context).
-    import parsing as _parsing
-    import timezones as _timezones
+    _parsing = cast(Any, importlib.import_module("parsing"))
+    _timezones = cast(Any, importlib.import_module("timezones"))
 
 ##################
 # Constants

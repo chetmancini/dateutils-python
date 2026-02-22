@@ -1,5 +1,6 @@
 import datetime
 import locale
+from typing import cast
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -17,6 +18,10 @@ from dateutils.dateutils import (
 ##################
 # Parsing and formatting tests
 ##################
+
+
+def _parse_error(exc_info: pytest.ExceptionInfo[BaseException]) -> ParseError:
+    return cast(ParseError, exc_info.value)
 
 
 def test_parse_date() -> None:
@@ -122,7 +127,7 @@ def test_parse_date_invalid_calendar_dates() -> None:
         parse_date("2023-02-29")  # 2023 is not a leap year
     with pytest.raises(ParseError) as exc_info:
         parse_date("Feb 29, 2023")
-    assert "invalid calendar date" in exc_info.value.reason
+    assert "invalid calendar date" in _parse_error(exc_info).reason
 
     # Feb 30 never exists
     with pytest.raises(ParseError):
@@ -133,7 +138,7 @@ def test_parse_date_invalid_calendar_dates() -> None:
     # April, June, September, November have 30 days (not 31)
     with pytest.raises(ParseError) as exc_info:
         parse_date("2024-04-31")  # April has 30 days
-    assert "invalid calendar date" in exc_info.value.reason
+    assert "invalid calendar date" in _parse_error(exc_info).reason
     with pytest.raises(ParseError):
         parse_date("2024-06-31")  # June has 30 days
     with pytest.raises(ParseError):
@@ -166,7 +171,7 @@ def test_parse_date_errors_include_details() -> None:
     with pytest.raises(ParseError, match="Failed to parse date") as exc_info:
         parse_date("not a date")
 
-    err = exc_info.value
+    err = _parse_error(exc_info)
     assert err.parser == "date"
     assert err.value == "not a date"
     assert "supported format" in err.reason
@@ -272,7 +277,7 @@ def test_parse_datetime_errors_include_details() -> None:
     with pytest.raises(ParseError) as exc_info:
         parse_datetime("not a datetime", formats=["%Y|%m|%d"])
 
-    err = exc_info.value
+    err = _parse_error(exc_info)
     assert err.parser == "datetime"
     assert err.value == "not a datetime"
     assert err.attempted_formats == ("%Y|%m|%d",)
@@ -458,7 +463,7 @@ def test_parse_iso8601_errors_include_details() -> None:
     with pytest.raises(ParseError) as exc_info:
         parse_iso8601("2024-02-30")
 
-    err = exc_info.value
+    err = _parse_error(exc_info)
     assert err.parser == "ISO 8601 datetime"
     assert err.value == "2024-02-30"
     assert err.reason
