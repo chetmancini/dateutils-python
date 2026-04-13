@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=82.0.1", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -42,11 +42,11 @@ Documentation = "https://github.com/chetmancini/dateutils-python#readme"
 [dependency-groups]
 dev = [
     "freezegun>=1.5.5",
-    "pytest>=9.0.2",
-    "ruff>=0.15.4",
-    "pytest-cov>=7.0.0",
-    "ty>=0.0.19",
-    "build>=1.4.0",
+    "pytest>=9.0.3",
+    "ruff>=0.15.10",
+    "pytest-cov>=7.1.0",
+    "ty>=0.0.29",
+    "build>=1.4.3",
     "pre-commit>=4.5.1",
     "bump2version>=1.0.1",
     "twine>=6.2.0",
