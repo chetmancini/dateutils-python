@@ -1734,6 +1734,38 @@ def test_time_until_next_occurrence_across_timezones() -> None:
     assert delta == datetime.timedelta(hours=23, minutes=30)
 
 
+def test_time_until_next_occurrence_normalizes_dst_gap_forward() -> None:
+    """Nonexistent spring-forward target times should roll to the next valid local time."""
+    ny_tz = ZoneInfo("America/New_York")
+    target = datetime.datetime(2024, 1, 1, 2, 30, 0, tzinfo=ny_tz)
+    from_time = datetime.datetime(2024, 3, 10, 3, 15, 0, tzinfo=ny_tz)
+
+    delta = time_until_next_occurrence(target, from_time)
+    assert delta == datetime.timedelta(minutes=15)
+
+
+def test_time_until_next_occurrence_counts_fall_back_extra_hour() -> None:
+    """Elapsed time should be computed on the UTC timeline across fall-back transitions."""
+    ny_tz = ZoneInfo("America/New_York")
+    target = datetime.datetime(2024, 1, 1, 2, 30, 0, tzinfo=ny_tz)
+    from_time = datetime.datetime(2024, 11, 3, 0, 30, 0, tzinfo=ny_tz)
+
+    delta = time_until_next_occurrence(target, from_time)
+    assert delta == datetime.timedelta(hours=3)
+
+
+def test_time_until_next_occurrence_honors_fold_for_ambiguous_times() -> None:
+    """Ambiguous fall-back times default to the first occurrence unless fold=1 is set."""
+    ny_tz = ZoneInfo("America/New_York")
+    from_time = datetime.datetime(2024, 11, 3, 0, 30, 0, tzinfo=ny_tz)
+
+    first_target = datetime.datetime(2024, 1, 1, 1, 30, 0, tzinfo=ny_tz)
+    second_target = first_target.replace(fold=1)
+
+    assert time_until_next_occurrence(first_target, from_time) == datetime.timedelta(hours=1)
+    assert time_until_next_occurrence(second_target, from_time) == datetime.timedelta(hours=2)
+
+
 def test_date_range_generator() -> None:
     """Test the date_range_generator function."""
     start = datetime.date(2024, 1, 1)

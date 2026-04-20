@@ -1486,6 +1486,10 @@ def time_until_next_occurrence(target_time: datetime, from_time: datetime | None
           the same timezone as the aware datetime (using `replace`, not `astimezone`).
           This means no conversion is performed - the naive time is assumed to already
           represent that timezone.
+        - For timezone-aware datetimes, DST transitions are normalized before
+          comparison. Spring-forward gap times roll forward to the next valid
+          local time, and fall-back ambiguous times honor `target_time.fold`
+          (`fold=0` for the first occurrence, `fold=1` for the second).
 
     Examples:
         >>> from datetime import datetime, timezone, timedelta
@@ -1519,6 +1523,36 @@ def time_until_next_occurrence(target_time: datetime, from_time: datetime | None
         from_time = from_time.replace(tzinfo=target_time.tzinfo)
 
     from_time_in_target_tz = from_time.astimezone(target_time.tzinfo) if target_time.tzinfo is not None else from_time
+
+    if target_time.tzinfo is not None:
+        from_time_utc = from_time_in_target_tz.astimezone(timezone.utc)
+        candidate_date = from_time_in_target_tz.date()
+
+        # Round-trip through UTC so nonexistent local times are normalized forward
+        # and ambiguous times respect the `fold` carried by `target_time`.
+        next_occurrence = (
+            target_time.replace(
+                year=candidate_date.year,
+                month=candidate_date.month,
+                day=candidate_date.day,
+            )
+            .astimezone(timezone.utc)
+            .astimezone(target_time.tzinfo)
+        )
+
+        if next_occurrence.astimezone(timezone.utc) <= from_time_utc:
+            next_date = candidate_date + timedelta(days=1)
+            next_occurrence = (
+                target_time.replace(
+                    year=next_date.year,
+                    month=next_date.month,
+                    day=next_date.day,
+                )
+                .astimezone(timezone.utc)
+                .astimezone(target_time.tzinfo)
+            )
+
+        return next_occurrence.astimezone(timezone.utc) - from_time_utc
 
     # Calculate next occurrence based on the target timezone's local date.
     next_occurrence = target_time.replace(
