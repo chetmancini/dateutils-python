@@ -71,6 +71,10 @@ format-check: ## Check if code is properly formatted
 	@echo "${BLUE}Checking code formatting...${NC}"
 	@uv run ruff format --check .
 
+validate-changelog: ## Validate CHANGELOG.md structure
+	@echo "${BLUE}Validating changelog structure...${NC}"
+	@uv run python scripts/update_changelog.py --validate
+
 typecheck: ## Run static type checking with ty
 	@echo "${BLUE}Running type checks...${NC}"
 	@uv run ty check dateutils tests
@@ -105,10 +109,11 @@ doctest: ## Run doctests to verify documentation examples
 	@echo "${GREEN}✓ Doctests passed${NC}"
 
 # Comprehensive Checks
-check: ## Run all checks (lint, format-check, typecheck, test, doctest)
+check: ## Run all checks (lint, format-check, validate-changelog, typecheck, test, doctest)
 	@echo "${BLUE}Running comprehensive checks...${NC}"
 	@$(MAKE) --no-print-directory lint
 	@$(MAKE) --no-print-directory format-check
+	@$(MAKE) --no-print-directory validate-changelog
 	@$(MAKE) --no-print-directory typecheck
 	@$(MAKE) --no-print-directory test
 	@$(MAKE) --no-print-directory doctest
@@ -204,4 +209,4 @@ version: ## Show current version information
 	@echo "UV version: $(UV_VERSION)"
 
 # Safety check for dangerous operations
-.PHONY: init deps install pre-commit pre-commit-run lint lint-fix format format-check typecheck test test-fast coverage coverage-html watch-test doctest check dev fix build build-check update-changelog version-patch version-minor version-major clean requirements version help
+.PHONY: init deps install pre-commit pre-commit-run lint lint-fix format format-check validate-changelog typecheck test test-fast coverage coverage-html watch-test doctest check dev fix build build-check update-changelog version-patch version-minor version-major clean requirements version help
