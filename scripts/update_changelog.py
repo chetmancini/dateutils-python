@@ -246,7 +246,6 @@ def update_changelog(version: str, date: str | None = None) -> None:
 
     # Read current changelog
     content = CHANGELOG_PATH.read_text(encoding="utf-8")
-    validate_changelog_content(content)
 
     # Create the new version entry
     new_version_entry = format_changelog_entry(version, date, changes)
@@ -265,12 +264,13 @@ def update_changelog(version: str, date: str | None = None) -> None:
         )
     else:
         # If no Unreleased section, add the new version at the top after the main header
-        header_pattern = rf"(# [^\n]+\n+(?:{re.escape(CHANGELOG_INTRO)}\n+)?)"
+        header_pattern = rf"\A(# [^\n]+\n+(?:{re.escape(CHANGELOG_INTRO)}\n+)?)"
         if re.search(header_pattern, content):
             content = re.sub(
                 header_pattern,
-                f"\\1{UNRELEASED_SECTION}{new_version_entry}",
+                lambda match: f"{match.group(1)}{UNRELEASED_SECTION}{new_version_entry}",
                 content,
+                count=1,
             )
         else:
             # Fallback: just prepend to the file

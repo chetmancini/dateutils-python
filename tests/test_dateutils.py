@@ -1744,6 +1744,17 @@ def test_time_until_next_occurrence_normalizes_dst_gap_forward() -> None:
     assert delta == datetime.timedelta(minutes=15)
 
 
+def test_time_until_next_occurrence_clears_inherited_fold_for_dst_gap() -> None:
+    """Spring-forward gap targets should ignore inherited fold=1 state."""
+    ny_tz = ZoneInfo("America/New_York")
+    from_time = datetime.datetime(2024, 3, 10, 0, 0, 0, tzinfo=ny_tz)
+    inherited_fold = datetime.datetime(2024, 11, 3, 1, 30, 0, tzinfo=ny_tz).replace(fold=1)
+    target = inherited_fold.replace(year=2024, month=1, day=1, hour=2, minute=30)
+
+    assert target.fold == 1
+    assert time_until_next_occurrence(target, from_time) == datetime.timedelta(hours=2, minutes=30)
+
+
 def test_time_until_next_occurrence_counts_fall_back_extra_hour() -> None:
     """Elapsed time should be computed on the UTC timeline across fall-back transitions."""
     ny_tz = ZoneInfo("America/New_York")

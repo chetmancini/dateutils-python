@@ -1528,29 +1528,41 @@ def time_until_next_occurrence(target_time: datetime, from_time: datetime | None
         from_time_utc = from_time_in_target_tz.astimezone(timezone.utc)
         candidate_date = from_time_in_target_tz.date()
 
+        def _normalize_occurrence(local_date: date) -> datetime:
+            candidate = target_time.replace(
+                year=local_date.year,
+                month=local_date.month,
+                day=local_date.day,
+            )
+            normalized = candidate.astimezone(timezone.utc).astimezone(target_time.tzinfo)
+            if (
+                normalized.year,
+                normalized.month,
+                normalized.day,
+                normalized.hour,
+                normalized.minute,
+                normalized.second,
+                normalized.microsecond,
+            ) != (
+                local_date.year,
+                local_date.month,
+                local_date.day,
+                target_time.hour,
+                target_time.minute,
+                target_time.second,
+                target_time.microsecond,
+            ):
+                candidate = candidate.replace(fold=0)
+                normalized = candidate.astimezone(timezone.utc).astimezone(target_time.tzinfo)
+            return normalized
+
         # Round-trip through UTC so nonexistent local times are normalized forward
         # and ambiguous times respect the `fold` carried by `target_time`.
-        next_occurrence = (
-            target_time.replace(
-                year=candidate_date.year,
-                month=candidate_date.month,
-                day=candidate_date.day,
-            )
-            .astimezone(timezone.utc)
-            .astimezone(target_time.tzinfo)
-        )
+        next_occurrence = _normalize_occurrence(candidate_date)
 
         if next_occurrence.astimezone(timezone.utc) <= from_time_utc:
             next_date = candidate_date + timedelta(days=1)
-            next_occurrence = (
-                target_time.replace(
-                    year=next_date.year,
-                    month=next_date.month,
-                    day=next_date.day,
-                )
-                .astimezone(timezone.utc)
-                .astimezone(target_time.tzinfo)
-            )
+            next_occurrence = _normalize_occurrence(next_date)
 
         return next_occurrence.astimezone(timezone.utc) - from_time_utc
 
