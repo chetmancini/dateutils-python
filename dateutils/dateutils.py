@@ -699,6 +699,24 @@ def _observed_us_federal_holiday(holiday_date: date) -> date:
     return holiday_date
 
 
+_JUNETEENTH_FIRST_FEDERAL_YEAR = 2021
+_US_FEDERAL_HOLIDAY_TYPES = frozenset(
+    {
+        "CHRISTMAS",
+        "COLUMBUS_DAY",
+        "INDEPENDENCE_DAY",
+        "JUNETEENTH",
+        "LABOR_DAY",
+        "MEMORIAL_DAY",
+        "MLK_DAY",
+        "NEW_YEARS_DAY",
+        "PRESIDENTS_DAY",
+        "THANKSGIVING",
+        "VETERANS_DAY",
+    }
+)
+
+
 def get_us_federal_holidays(
     year: int, holiday_types: tuple[str, ...] | None = None, observed: bool = False
 ) -> list[date]:
@@ -708,7 +726,7 @@ def get_us_federal_holidays(
     Includes:
     Fixed holidays:
     - New Year's Day (Jan 1)
-    - Juneteenth National Independence Day (Jun 19)
+    - Juneteenth National Independence Day (Jun 19; federal holiday since 2021)
     - Independence Day (Jul 4)
     - Veterans Day (Nov 11)
     - Christmas Day (Dec 25)
@@ -724,6 +742,7 @@ def get_us_federal_holidays(
     Args:
         year: The year for which to get the holidays.
         holiday_types: Optional tuple of holiday types to include. If None, all holidays are included.
+                      Historically inactive holiday types are valid but omitted for years before they existed.
                       Valid values: "NEW_YEARS_DAY", "MLK_DAY", "PRESIDENTS_DAY", "MEMORIAL_DAY",
                       "JUNETEENTH", "INDEPENDENCE_DAY", "LABOR_DAY", "COLUMBUS_DAY",
                       "VETERANS_DAY", "THANKSGIVING", "CHRISTMAS"
@@ -757,6 +776,9 @@ def get_us_federal_holidays(
         >>> date(2024, 1, 15) in fixed_holidays  # MLK Day (floating)
         False
 
+        >>> get_us_federal_holidays(2020, ("JUNETEENTH",))
+        []
+
     Note:
         The returned list is a copy of the cached holiday data, so modifying it
         will not affect future calls or pollute the cache.
@@ -783,11 +805,13 @@ def _get_us_federal_holidays_cached(
     fixed_holidays: dict[str, date] = {
         # Fixed holidays
         "NEW_YEARS_DAY": date(year, 1, 1),
-        "JUNETEENTH": date(year, 6, 19),
         "INDEPENDENCE_DAY": date(year, 7, 4),
         "VETERANS_DAY": date(year, 11, 11),
         "CHRISTMAS": date(year, 12, 25),
     }
+    if year >= _JUNETEENTH_FIRST_FEDERAL_YEAR:
+        fixed_holidays["JUNETEENTH"] = date(year, 6, 19)
+
     if observed:
         fixed_holidays = {
             holiday_name: _observed_us_federal_holiday(holiday_date)
@@ -838,15 +862,17 @@ def _get_us_federal_holidays_cached(
         return tuple(sorted(all_holiday_types.values()))
 
     invalid_holiday_types = sorted(
-        {holiday_type for holiday_type in holiday_types if holiday_type not in all_holiday_types}
+        {holiday_type for holiday_type in holiday_types if holiday_type not in _US_FEDERAL_HOLIDAY_TYPES}
     )
     if invalid_holiday_types:
         invalid_types = ", ".join(invalid_holiday_types)
-        valid_types = ", ".join(sorted(all_holiday_types))
+        valid_types = ", ".join(sorted(_US_FEDERAL_HOLIDAY_TYPES))
         raise ValueError(f"Invalid holiday type(s): {invalid_types}. Valid values: {valid_types}")
 
     # Deduplicate by date in case duplicate types are requested.
-    return tuple(sorted({all_holiday_types[holiday_type] for holiday_type in holiday_types}))
+    return tuple(
+        sorted({all_holiday_types[holiday_type] for holiday_type in holiday_types if holiday_type in all_holiday_types})
+    )
 
 
 def get_us_federal_holidays_list(

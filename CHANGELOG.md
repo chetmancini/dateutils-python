@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
 -
 
 ### Fixed
--
+- Make Juneteenth federal holiday calculations historically accurate before 2021.
 
 ## [0.6.0] - 2026-02-22
 
