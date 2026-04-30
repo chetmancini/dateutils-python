@@ -38,6 +38,9 @@ jobs:
       - name: Run format check
         run: make format-check
 
+      - name: Validate changelog
+        run: make validate-changelog
+
       - name: Run typecheck
         run: make typecheck
 
