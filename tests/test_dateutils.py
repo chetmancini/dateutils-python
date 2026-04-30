@@ -1115,6 +1115,26 @@ def test_get_us_federal_holidays_all_2025() -> None:
     assert datetime.date(2025, 12, 25) in holidays_2025
 
 
+def test_get_us_federal_holidays_excludes_juneteenth_before_2021() -> None:
+    """Juneteenth was not a US federal holiday before 2021."""
+    holidays_2020 = get_us_federal_holidays(2020)
+
+    assert len(holidays_2020) == 10
+    assert datetime.date(2020, 6, 19) not in holidays_2020
+
+
+def test_get_us_federal_holidays_juneteenth_filter_is_empty_before_2021() -> None:
+    """JUNETEENTH remains a valid filter but is inactive before 2021."""
+    assert get_us_federal_holidays(2020, holiday_types=("JUNETEENTH",)) == []
+    assert get_us_federal_holidays(2020, holiday_types=("JUNETEENTH",), observed=True) == []
+
+
+def test_get_us_federal_holidays_includes_juneteenth_starting_2021() -> None:
+    """Juneteenth starts appearing in the federal holiday set in 2021."""
+    assert datetime.date(2021, 6, 19) in get_us_federal_holidays(2021)
+    assert get_us_federal_holidays(2021, holiday_types=("JUNETEENTH",), observed=True) == [datetime.date(2021, 6, 18)]
+
+
 def test_get_us_federal_holidays_filter_fixed() -> None:
     """Test filtering for only fixed holidays."""
     fixed_types = ("NEW_YEARS_DAY", "JUNETEENTH", "INDEPENDENCE_DAY", "VETERANS_DAY", "CHRISTMAS")
