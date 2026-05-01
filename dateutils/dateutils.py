@@ -296,6 +296,17 @@ def end_of_quarter(year: int, q: int) -> datetime:
     return datetime(year, month, days_in_month, 23, 59, 59, 999999)
 
 
+def _walk_inclusive(start: int, target: int) -> Generator[int, None, None]:
+    """Yield every integer from start to target, including both endpoints."""
+    step = 1 if target >= start else -1
+    current = start
+    while True:
+        yield current
+        if current == target:
+            return
+        current += step
+
+
 def generate_quarters(
     until_year: int = 1970,
     until_q: int = 1,
@@ -336,20 +347,7 @@ def generate_quarters(
         quarter = idx % QUARTERS_IN_YEAR + 1
         return quarter, year
 
-    direction = 0
-    if target_idx > start_idx:
-        direction = 1
-    elif target_idx < start_idx:
-        direction = -1
-
-    idx = start_idx
-    yield _idx_to_tuple(idx)
-    if idx == target_idx:
-        return
-
-    step = 1 if direction > 0 else -1
-    while idx != target_idx:
-        idx += step
+    for idx in _walk_inclusive(start_idx, target_idx):
         yield _idx_to_tuple(idx)
 
 
@@ -396,15 +394,7 @@ def generate_years(until: int = 1970, *, start_year: int | None = None) -> Gener
         int: Years from the start toward the target, moving forward or backward.
     """
     start = date.today().year if start_year is None else start_year
-    current = start
-    yield current
-    if current == until:
-        return
-
-    step = 1 if until > start else -1
-    while current != until:
-        current += step
-        yield current
+    yield from _walk_inclusive(start, until)
 
 
 def is_leap_year(year: int) -> bool:
@@ -500,20 +490,8 @@ def generate_months(
         month = idx % 12 + 1
         return month, year
 
-    direction = 0
-    if target_idx > current_idx:
-        direction = 1
-    elif target_idx < current_idx:
-        direction = -1
-
-    yield _idx_to_tuple(current_idx)
-    if current_idx == target_idx:
-        return
-
-    step = 1 if direction > 0 else -1
-    while current_idx != target_idx:
-        current_idx += step
-        yield _idx_to_tuple(current_idx)
+    for idx in _walk_inclusive(current_idx, target_idx):
+        yield _idx_to_tuple(idx)
 
 
 def get_days_in_month(year: int, month: int) -> int:
