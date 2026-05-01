@@ -44,7 +44,7 @@ print(workdays)
 import calendar
 import importlib
 from collections.abc import Generator, Iterable
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from email.utils import format_datetime as _format_http_datetime
 from functools import lru_cache
 from typing import Any, cast
@@ -1461,6 +1461,38 @@ def age_in_years(birth_date: date, as_of_date: date | None = None) -> int:
     return years
 
 
+def _round_trip_through_utc(occurrence: datetime) -> datetime:
+    """Normalize an aware local datetime by converting through the UTC timeline."""
+    return occurrence.astimezone(timezone.utc).astimezone(occurrence.tzinfo)
+
+
+def _matches_requested_occurrence(normalized: datetime, local_date: date, target_time_of_day: time) -> bool:
+    """Return whether normalization preserved the requested local date and time-of-day."""
+    return (
+        normalized.date() == local_date
+        and normalized.hour == target_time_of_day.hour
+        and normalized.minute == target_time_of_day.minute
+        and normalized.second == target_time_of_day.second
+        and normalized.microsecond == target_time_of_day.microsecond
+    )
+
+
+def _aware_occurrence_on_date(local_date: date, target_time_of_day: time) -> datetime:
+    """
+    Build the aware occurrence for a local date, applying the library's DST policy.
+
+    Nonexistent spring-forward target times roll forward to the next valid local
+    time. Ambiguous fall-back target times honor `target_time_of_day.fold`.
+    """
+    candidate = datetime.combine(local_date, target_time_of_day)
+    normalized = _round_trip_through_utc(candidate)
+
+    if not _matches_requested_occurrence(normalized, local_date, target_time_of_day):
+        normalized = _round_trip_through_utc(candidate.replace(fold=0))
+
+    return normalized
+
+
 def time_until_next_occurrence(target_time: datetime, from_time: datetime | None = None) -> timedelta:
     """
     Calculate the time remaining until the next daily occurrence of a specific time-of-day.
@@ -1531,42 +1563,15 @@ def time_until_next_occurrence(target_time: datetime, from_time: datetime | None
     if target_time.tzinfo is not None:
         from_time_utc = from_time_in_target_tz.astimezone(timezone.utc)
         candidate_date = from_time_in_target_tz.date()
-
-        def _normalize_occurrence(local_date: date) -> datetime:
-            candidate = target_time.replace(
-                year=local_date.year,
-                month=local_date.month,
-                day=local_date.day,
-            )
-            normalized = candidate.astimezone(timezone.utc).astimezone(target_time.tzinfo)
-            if (
-                normalized.year,
-                normalized.month,
-                normalized.day,
-                normalized.hour,
-                normalized.minute,
-                normalized.second,
-                normalized.microsecond,
-            ) != (
-                local_date.year,
-                local_date.month,
-                local_date.day,
-                target_time.hour,
-                target_time.minute,
-                target_time.second,
-                target_time.microsecond,
-            ):
-                candidate = candidate.replace(fold=0)
-                normalized = candidate.astimezone(timezone.utc).astimezone(target_time.tzinfo)
-            return normalized
+        target_time_of_day = target_time.timetz()
 
         # Round-trip through UTC so nonexistent local times are normalized forward
         # and ambiguous times respect the `fold` carried by `target_time`.
-        next_occurrence = _normalize_occurrence(candidate_date)
+        next_occurrence = _aware_occurrence_on_date(candidate_date, target_time_of_day)
 
         if next_occurrence.astimezone(timezone.utc) <= from_time_utc:
             next_date = candidate_date + timedelta(days=1)
-            next_occurrence = _normalize_occurrence(next_date)
+            next_occurrence = _aware_occurrence_on_date(next_date, target_time_of_day)
 
         return next_occurrence.astimezone(timezone.utc) - from_time_utc
 
