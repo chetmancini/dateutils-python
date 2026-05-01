@@ -65,7 +65,7 @@ pip install dateutils-python
 ### UTC and Timestamp Operations
 
 ```python
-from dateutils.dateutils import utc_now_seconds, utc_today, epoch_s
+from dateutils import utc_now_seconds, utc_today, epoch_s
 
 # Get current UTC timestamp
 timestamp = utc_now_seconds()  # e.g., 1717682345
@@ -82,7 +82,7 @@ ts = epoch_s(dt)  # e.g., 1717682345
 ### Business Day Calculations
 
 ```python
-from dateutils.dateutils import (
+from dateutils import (
     workdays_between, add_business_days, next_business_day,
     previous_business_day, is_business_day
 )
@@ -114,7 +114,7 @@ prev_bday = previous_business_day(date(2024, 6, 3))  # Monday -> Friday
 ### Holiday Support
 
 ```python
-from dateutils.dateutils import get_us_federal_holidays, get_us_federal_holidays_list
+from dateutils import get_us_federal_holidays, get_us_federal_holidays_list
 
 # Get all US federal holidays for a year (cached for performance)
 holidays_2024 = get_us_federal_holidays(2024)  # Returns 11 holidays
@@ -132,7 +132,7 @@ workdays = workdays_between(start, end, holidays=holidays_2024)
 ### Date Parsing and Formatting
 
 ```python
-from dateutils.dateutils import ParseError, parse_date, parse_datetime, parse_iso8601, to_iso8601
+from dateutils import ParseError, parse_date, parse_datetime, parse_iso8601, to_iso8601
 
 # Parse a date string (tries multiple formats, raises ParseError on failure)
 dt = parse_date("2024-06-06")  # Returns date object
@@ -156,7 +156,7 @@ iso_str = to_iso8601(dt)  # e.g., "2024-06-06T12:30:45+00:00"
 ### Timezone Handling
 
 ```python
-from dateutils.dateutils import (
+from dateutils import (
     now_in_timezone, convert_timezone, get_available_timezones,
     get_timezone_offset, format_timezone_offset
 )
@@ -180,7 +180,7 @@ offset_str = format_timezone_offset("America/New_York")  # Returns "-05:00" or "
 ### Quarter and Month Operations
 
 ```python
-from dateutils.dateutils import (
+from dateutils import (
     date_to_quarter, date_to_start_of_quarter, get_quarter_start_end,
     start_of_quarter, end_of_quarter, start_of_month, end_of_month
 )
@@ -204,7 +204,7 @@ q_end = end_of_quarter(2024, 2)      # 2024-06-30 23:59:59
 ### Additional Utility Functions
 
 ```python
-from dateutils.dateutils import (
+from dateutils import (
     age_in_years, days_until_weekend, days_since_weekend,
     get_week_number, time_until_next_occurrence
 )
@@ -230,7 +230,7 @@ time_delta = time_until_next_occurrence(target_time)  # Time until next 3:30 PM
 ### Memory-Efficient Date Ranges
 
 ```python
-from dateutils.dateutils import date_range, date_range_generator
+from dateutils import date_range, date_range_generator
 from datetime import date
 
 # Standard date range (good for small ranges)
@@ -252,7 +252,7 @@ for dt in date_gen:
 ### Human-readable Dates
 
 ```python
-from dateutils.dateutils import pretty_date
+from dateutils import pretty_date
 from datetime import datetime, timedelta
 
 # Format a datetime as a human-readable string
@@ -272,7 +272,7 @@ The library now includes comprehensive input validation with helpful error messa
 from datetime import date
 from zoneinfo import ZoneInfoNotFoundError
 
-from dateutils.dateutils import ParseError, now_in_timezone, parse_date, start_of_quarter, workdays_between
+from dateutils import ParseError, now_in_timezone, parse_date, start_of_quarter, workdays_between
 
 # Invalid quarter raises ValueError
 try:

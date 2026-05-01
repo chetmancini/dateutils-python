@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from dateutils.dateutils import (
+from dateutils import (
     ParseError,
     format_date,
     format_datetime,
