@@ -9,7 +9,7 @@ import pytest
 from freezegun import freeze_time
 
 import dateutils
-from dateutils.dateutils import (
+from dateutils import (
     add_business_days,
     age_in_years,
     date_range,
@@ -104,7 +104,7 @@ def test_resolve_version_returns_unknown_when_no_sources(monkeypatch: pytest.Mon
 @freeze_time("2024-03-27")
 def test_utc_today() -> None:
     """Test that utc_today returns the current UTC date."""
-    from dateutils.dateutils import utc_today
+    from dateutils import utc_today
 
     assert utc_today() == datetime.date(2024, 3, 27)
 
@@ -112,7 +112,7 @@ def test_utc_today() -> None:
 @freeze_time("2024-03-27 14:30:45", tz_offset=0)
 def test_utc_now_seconds() -> None:
     """Test that utc_now_seconds returns the correct Unix timestamp."""
-    from dateutils.dateutils import utc_now_seconds
+    from dateutils import utc_now_seconds
 
     expected_timestamp = 1711549845
     assert utc_now_seconds() == expected_timestamp
@@ -120,7 +120,7 @@ def test_utc_now_seconds() -> None:
 
 def test_utc_truncate_epoch_day() -> None:
     """Test truncating a timestamp to the start of the day in UTC."""
-    from dateutils.dateutils import utc_truncate_epoch_day
+    from dateutils import utc_truncate_epoch_day
 
     # Timestamp for 2024-03-28 15:30:45 UTC
     ts = 1711639845
@@ -137,7 +137,7 @@ def test_epoch_s() -> None:
 
 def test_utc_from_timestamp() -> None:
     """Test converting a timestamp to a datetime in UTC timezone."""
-    from dateutils.dateutils import utc_from_timestamp
+    from dateutils import utc_from_timestamp
 
     # Timestamp for 2024-03-28 15:30:45 UTC
     ts = 1711639845
@@ -441,7 +441,7 @@ def test_start_of_quarter() -> None:
 
 def test_end_of_quarter() -> None:
     """Test getting the end of a quarter."""
-    from dateutils.dateutils import end_of_quarter
+    from dateutils import end_of_quarter
 
     # Q1 should end on March 31
     assert end_of_quarter(2024, 1) == datetime.datetime(2024, 3, 31, 23, 59, 59, 999999)
@@ -464,7 +464,7 @@ def test_end_of_quarter() -> None:
 
 def test_start_of_month() -> None:
     """Test getting the start of a month."""
-    from dateutils.dateutils import start_of_month
+    from dateutils import start_of_month
 
     assert start_of_month(2024, 2) == datetime.datetime(2024, 2, 1)
     assert start_of_month(2023, 12) == datetime.datetime(2023, 12, 1)
@@ -472,7 +472,7 @@ def test_start_of_month() -> None:
 
 def test_end_of_month() -> None:
     """Test getting the end of a month."""
-    from dateutils.dateutils import end_of_month
+    from dateutils import end_of_month
 
     assert end_of_month(2024, 2) == datetime.datetime(2024, 2, 29, 23, 59, 59, 999999)  # Leap year
     assert end_of_month(2023, 2) == datetime.datetime(2023, 2, 28, 23, 59, 59, 999999)  # Non-leap year
@@ -482,7 +482,7 @@ def test_end_of_month() -> None:
 
 def test_get_days_in_month() -> None:
     """Test getting the number of days in a month."""
-    from dateutils.dateutils import get_days_in_month
+    from dateutils import get_days_in_month
 
     assert get_days_in_month(2024, 2) == 29  # Leap year
     assert get_days_in_month(2023, 2) == 28  # Non-leap year
@@ -492,7 +492,7 @@ def test_get_days_in_month() -> None:
 
 def test_date_range() -> None:
     """Test generating a range of dates."""
-    from dateutils.dateutils import date_range
+    from dateutils import date_range
 
     start = datetime.date(2024, 3, 1)
     end = datetime.date(2024, 3, 5)
@@ -510,7 +510,7 @@ def test_date_range() -> None:
 
 def test_workdays_between() -> None:
     """Test counting workdays between dates."""
-    from dateutils.dateutils import workdays_between
+    from dateutils import workdays_between
 
     # Monday to Friday (5 workdays)
     start = datetime.date(2024, 3, 25)  # Monday
@@ -550,7 +550,7 @@ def test_workdays_between() -> None:
 
 def test_add_business_days() -> None:
     """Test adding business days to a date."""
-    from dateutils.dateutils import add_business_days
+    from dateutils import add_business_days
 
     # Add 5 business days from Monday (should be next Monday)
     start = datetime.date(2024, 3, 25)  # Monday
@@ -568,7 +568,7 @@ def test_add_business_days() -> None:
 @freeze_time("2024-03-27 12:00:00")
 def test_pretty_date() -> None:
     """Test pretty date formatting."""
-    from dateutils.dateutils import pretty_date
+    from dateutils import pretty_date
 
     # Test "just now"
     now = datetime.datetime(2024, 3, 27, 12, 0, 0)
@@ -598,7 +598,7 @@ def test_pretty_date() -> None:
 @freeze_time("2024-03-27 12:00:00")
 def test_pretty_date_future() -> None:
     """Test pretty date formatting for future dates."""
-    from dateutils.dateutils import pretty_date
+    from dateutils import pretty_date
 
     # Test "just now" for very near future
     almost_now = datetime.datetime(2024, 3, 27, 12, 0, 5)
@@ -631,7 +631,7 @@ def test_pretty_date_future() -> None:
 
 def test_pretty_date_with_now_override_and_timestamp() -> None:
     """Test pretty_date with now_override and integer timestamp."""
-    from dateutils.dateutils import pretty_date
+    from dateutils import pretty_date
 
     # Test with now_override and integer timestamp
     now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
@@ -642,7 +642,7 @@ def test_pretty_date_with_now_override_and_timestamp() -> None:
 
 def test_pretty_date_with_none_timestamp() -> None:
     """Test pretty_date with None timestamp."""
-    from dateutils.dateutils import pretty_date
+    from dateutils import pretty_date
 
     # None timestamp should return "just now"
     assert pretty_date(None) == "just now"
@@ -650,7 +650,7 @@ def test_pretty_date_with_none_timestamp() -> None:
 
 def test_pretty_date_with_invalid_timestamp() -> None:
     """Test pretty_date with invalid integer timestamp."""
-    from dateutils.dateutils import pretty_date
+    from dateutils import pretty_date
 
     # Very large invalid timestamp should raise ValueError
     invalid_ts = 2**63
@@ -660,7 +660,7 @@ def test_pretty_date_with_invalid_timestamp() -> None:
 
 def test_pretty_date_with_invalid_now_override() -> None:
     """Test pretty_date with invalid now_override timestamp."""
-    from dateutils.dateutils import pretty_date
+    from dateutils import pretty_date
 
     invalid_now = 2**63
     with pytest.raises(ValueError, match=f"Invalid now_override timestamp: {invalid_now}"):
@@ -669,7 +669,7 @@ def test_pretty_date_with_invalid_now_override() -> None:
 
 def test_pretty_date_naive_datetime() -> None:
     """Test pretty_date with naive datetime (no tzinfo)."""
-    from dateutils.dateutils import pretty_date
+    from dateutils import pretty_date
 
     # Test with naive datetime - should be treated as UTC
     now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
@@ -680,7 +680,7 @@ def test_pretty_date_naive_datetime() -> None:
 
 def test_pretty_date_future_extended() -> None:
     """Test pretty_date for extended future date ranges."""
-    from dateutils.dateutils import pretty_date
+    from dateutils import pretty_date
 
     now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
 
@@ -715,7 +715,7 @@ def test_pretty_date_future_extended() -> None:
 
 def test_pretty_date_past_extended() -> None:
     """Test pretty_date for extended past date ranges."""
-    from dateutils.dateutils import pretty_date
+    from dateutils import pretty_date
 
     now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
 
@@ -1244,7 +1244,7 @@ def test_get_us_federal_holidays_returns_copy() -> None:
 )
 def test_date_add_business_days_properties(date_input: datetime.date) -> None:
     """Test mathematical properties of adding business days."""
-    from dateutils.dateutils import add_business_days
+    from dateutils import add_business_days
 
     # Property 1: Adding 0 business days returns the same date (if it's a business day)
     if not is_weekend(date_input):
@@ -1270,7 +1270,7 @@ def test_date_add_business_days_properties(date_input: datetime.date) -> None:
 )
 def test_is_leap_year_properties(year: int, expected: bool) -> None:
     """Test mathematical properties of leap year calculations."""
-    from dateutils.dateutils import get_days_in_month, is_leap_year
+    from dateutils import get_days_in_month, is_leap_year
 
     assert is_leap_year(year) == expected
 
@@ -1294,7 +1294,7 @@ def test_is_leap_year_properties(year: int, expected: bool) -> None:
 )
 def test_workdays_between_properties(date1: datetime.date, date2: datetime.date, expected_days: int) -> None:
     """Test mathematical properties of counting business days."""
-    from dateutils.dateutils import workdays_between
+    from dateutils import workdays_between
 
     # Property 1: Valid date order should work
     if date1 <= date2:
@@ -1307,7 +1307,7 @@ def test_workdays_between_properties(date1: datetime.date, date2: datetime.date,
 
     # Property 3: Consistency with next_business_day
     if date1 < date2 and workdays_between(date1, date2) > 0:
-        from dateutils.dateutils import next_business_day
+        from dateutils import next_business_day
 
         # The next business day from date1 should be included in the count
         next_day = next_business_day(date1)

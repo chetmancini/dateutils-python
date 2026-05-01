@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import pytest
 from freezegun import freeze_time
 
-from dateutils.dateutils import (
+from dateutils import (
     convert_timezone,
     datetime_to_utc,
     format_timezone_offset,
@@ -220,7 +220,7 @@ def test_dst_transitions() -> None:
     post_dst = datetime.datetime(2024, 3, 10, 3, 1, 0, tzinfo=ZoneInfo("America/New_York"))
 
     # Convert both to UTC
-    from dateutils.dateutils import datetime_to_utc
+    from dateutils import datetime_to_utc
 
     pre_dst_utc = datetime_to_utc(pre_dst)
     post_dst_utc = datetime_to_utc(post_dst)
@@ -251,7 +251,7 @@ def test_dst_transitions() -> None:
 
     # Test getting current time in a timezone around DST transition
     with freeze_time("2024-03-10 06:30:00", tz_offset=0):  # UTC time during US DST spring forward
-        from dateutils.dateutils import now_in_timezone
+        from dateutils import now_in_timezone
 
         ny_time = now_in_timezone("America/New_York")
         # 6:30 UTC = 1:30 EST (before transition)
@@ -266,7 +266,7 @@ def test_dst_midnight_boundary() -> None:
 
     This tests edge cases where date boundaries and DST transitions interact.
     """
-    from dateutils.dateutils import convert_timezone, now_in_timezone, today_in_timezone
+    from dateutils import convert_timezone, now_in_timezone, today_in_timezone
 
     # === Spring forward: March 10, 2024, 2:00 AM -> 3:00 AM in US Eastern ===
 
@@ -323,7 +323,7 @@ def test_convert_timezone_dst_nonexistent_time() -> None:
     During spring forward (2:00 AM -> 3:00 AM), times like 2:30 AM don't exist.
     Python's ZoneInfo handles this by "folding" forward.
     """
-    from dateutils.dateutils import convert_timezone
+    from dateutils import convert_timezone
 
     # Create a UTC time that would be 2:30 AM EST (which doesn't exist on March 10, 2024)
     # 2:30 AM EST would be 7:30 UTC, but 7:30 UTC on March 10 is actually 3:30 AM EDT
