@@ -1493,21 +1493,22 @@ def _aware_occurrence_on_date(local_date: date, target_time_of_day: time) -> dat
     return normalized
 
 
-def time_until_next_occurrence(target_time: datetime, from_time: datetime | None = None) -> timedelta:
+def time_until_next_occurrence(target_time: datetime | time, from_time: datetime | None = None) -> timedelta:
     """
     Calculate the time remaining until the next daily occurrence of a specific time-of-day.
 
     This function extracts the time-of-day (hour, minute, second, microsecond) from
     `target_time` and calculates how long until that time occurs next, relative to
-    `from_time`. The date portion of `target_time` is ignored - only the time-of-day
-    matters.
+    `from_time`. If `target_time` is a datetime, its date portion is ignored - only
+    the time-of-day matters.
 
     This is useful for scheduling scenarios like "how long until 3:00 PM?" or
     "time remaining until the daily backup at 02:00".
 
     Args:
-        target_time: A datetime whose time-of-day (HH:MM:SS) represents the target.
-            The date portion is ignored. Can be timezone-aware or naive.
+        target_time: A datetime or time whose time-of-day (HH:MM:SS) represents
+            the target. If a datetime is provided, the date portion is ignored. Can
+            be timezone-aware or naive.
         from_time: The reference datetime to calculate from. Defaults to the current
             time in `target_time`'s timezone (or local time if `target_time` is naive).
 
@@ -1546,24 +1547,27 @@ def time_until_next_occurrence(target_time: datetime, from_time: datetime | None
         >>> job_time = datetime(2024, 1, 1, 2, 0, 0, tzinfo=timezone.utc)
         >>> delta = time_until_next_occurrence(job_time)  # Uses current time as reference
     """
+    target_time_of_day = target_time.timetz() if isinstance(target_time, datetime) else target_time
+
     if from_time is None:
-        if target_time.tzinfo is not None:
-            from_time = datetime.now(target_time.tzinfo)
+        if target_time_of_day.tzinfo is not None:
+            from_time = datetime.now(target_time_of_day.tzinfo)
         else:
             from_time = datetime.now()
 
     # Ensure both have the same timezone handling
-    if target_time.tzinfo is None and from_time.tzinfo is not None:
-        target_time = target_time.replace(tzinfo=from_time.tzinfo)
-    elif target_time.tzinfo is not None and from_time.tzinfo is None:
-        from_time = from_time.replace(tzinfo=target_time.tzinfo)
+    if target_time_of_day.tzinfo is None and from_time.tzinfo is not None:
+        target_time_of_day = target_time_of_day.replace(tzinfo=from_time.tzinfo)
+    elif target_time_of_day.tzinfo is not None and from_time.tzinfo is None:
+        from_time = from_time.replace(tzinfo=target_time_of_day.tzinfo)
 
-    from_time_in_target_tz = from_time.astimezone(target_time.tzinfo) if target_time.tzinfo is not None else from_time
+    from_time_in_target_tz = (
+        from_time.astimezone(target_time_of_day.tzinfo) if target_time_of_day.tzinfo is not None else from_time
+    )
 
-    if target_time.tzinfo is not None:
+    if target_time_of_day.tzinfo is not None:
         from_time_utc = from_time_in_target_tz.astimezone(timezone.utc)
         candidate_date = from_time_in_target_tz.date()
-        target_time_of_day = target_time.timetz()
 
         # Round-trip through UTC so nonexistent local times are normalized forward
         # and ambiguous times respect the `fold` carried by `target_time`.
@@ -1576,11 +1580,7 @@ def time_until_next_occurrence(target_time: datetime, from_time: datetime | None
         return next_occurrence.astimezone(timezone.utc) - from_time_utc
 
     # Calculate next occurrence based on the target timezone's local date.
-    next_occurrence = target_time.replace(
-        year=from_time_in_target_tz.year,
-        month=from_time_in_target_tz.month,
-        day=from_time_in_target_tz.day,
-    )
+    next_occurrence = datetime.combine(from_time_in_target_tz.date(), target_time_of_day)
 
     if next_occurrence <= from_time_in_target_tz:
         # Target time has already passed today, move to next day

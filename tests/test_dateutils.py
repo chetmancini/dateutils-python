@@ -1745,6 +1745,17 @@ def test_time_until_next_occurrence_timezone_branches() -> None:
     assert delta == datetime.timedelta(hours=4)
 
 
+def test_time_until_next_occurrence_accepts_time_objects() -> None:
+    """A time object should be accepted directly when only the time-of-day matters."""
+    from_time = datetime.datetime(2024, 7, 22, 10, 0, 0)
+
+    delta = time_until_next_occurrence(datetime.time(14, 0, 0), from_time)
+    assert delta == datetime.timedelta(hours=4)
+
+    past_delta = time_until_next_occurrence(datetime.time(8, 0, 0), from_time)
+    assert past_delta == datetime.timedelta(hours=22)
+
+
 def test_time_until_next_occurrence_across_timezones() -> None:
     """Cross-timezone comparisons should never produce negative durations."""
     target_auckland = datetime.datetime(2023, 6, 1, 9, 30, 0, tzinfo=ZoneInfo("Pacific/Auckland"))
@@ -1752,6 +1763,9 @@ def test_time_until_next_occurrence_across_timezones() -> None:
 
     delta = time_until_next_occurrence(target_auckland, from_utc)
     assert delta == datetime.timedelta(hours=23, minutes=30)
+
+    time_delta = time_until_next_occurrence(target_auckland.timetz(), from_utc)
+    assert time_delta == datetime.timedelta(hours=23, minutes=30)
 
 
 def test_time_until_next_occurrence_normalizes_dst_gap_forward() -> None:
