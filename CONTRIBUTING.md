@@ -98,46 +98,48 @@ Pre-commit hooks automatically run these checks on every commit. The `make fix` 
 
 **Note:** This section is for maintainers who have push access to the repository.
 
-We use automated semantic versioning and GitHub Actions for releases. The process is streamlined with Make targets:
+We use automated semantic versioning and GitHub Actions for releases. The
+current release flow is driven by the `version-*` Make targets.
 
 ### Quick Release Commands
 
 ```bash
 # For bug fixes and patches
-make release-patch  # 0.1.0 → 0.1.1
+make version-patch  # 0.1.0 -> 0.1.1
 
 # For new features (backward compatible)
-make release-minor  # 0.1.0 → 0.2.0
+make version-minor  # 0.1.0 -> 0.2.0
 
 # For breaking changes
-make release-major  # 0.1.0 → 1.0.0
+make version-major  # 0.1.0 -> 1.0.0
 ```
 
 ### What Happens During Release
 
-1. **Quality checks** - Runs full test suite and builds package
-2. **Version bump** - Updates version in `pyproject.toml` and `dateutils/__init__.py`
-3. **Git operations** - Creates commit, tags with version, and pushes
-4. **GitHub Actions** - Automatically builds, tests, and publishes to PyPI
-5. **GitHub Release** - Creates release with auto-generated notes
+Run `make check` before starting a release. The `version-*` target itself
+commits, tags, and pushes; GitHub Actions runs the full release validation after
+the tag is pushed.
+
+1. **Version bump** - Updates version in `pyproject.toml` and `dateutils/__init__.py`
+2. **Changelog update** - Updates `CHANGELOG.md` and refreshes `uv.lock`
+3. **Git operations** - Stages all changes, creates a commit, tags the version, and pushes the branch and tag
+4. **GitHub Actions** - Runs `make check`, builds the package, and creates a draft GitHub release
+5. **PyPI publish** - Publishing the draft GitHub release triggers the PyPI publish workflow
 
 ### Manual Steps (if needed)
 
 ```bash
-# Check if ready for release
-make release-check
+# Verify locally before release
+make check
 
-# Bump version only (without pushing)
-make version-patch   # or version-minor, version-major
+# Update changelog only
+make update-changelog VERSION=x.y.z
 
-# Test publish to TestPyPI first
-make publish-test
-
-# Manual publish to PyPI (if needed)
-make publish
+# Build and check distribution artifacts locally
+make build-check
 ```
 
-The automated workflow handles everything from testing to PyPI publication when you push a version tag.
+See `docs/RELEASE_PROCESS.md` for the full operational release checklist.
 
 ## Getting Help
 
