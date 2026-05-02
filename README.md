@@ -198,7 +198,7 @@ start, end = get_quarter_start_end(2024, 2)  # Q2 2024: (2024-04-01, 2024-06-30)
 
 # Get precise quarter boundaries
 q_start = start_of_quarter(2024, 2)  # 2024-04-01 00:00:00
-q_end = end_of_quarter(2024, 2)      # 2024-06-30 23:59:59
+q_end = end_of_quarter(2024, 2)      # 2024-06-30 23:59:59.999999
 ```
 
 ### Additional Utility Functions
@@ -312,9 +312,7 @@ except ZoneInfoNotFoundError as e:
 ```sh
 make init # ensures uv is installed
 make deps
-make test
-make lint
-make format
+make check
 ```
 
 ## License
