@@ -206,6 +206,11 @@ def datetime_start_of_day(day: date) -> datetime:
     return datetime.combine(day, datetime.min.time())
 
 
+def _datetime_at_end_of_day(day: date) -> datetime:
+    """Return a datetime at the last representable microsecond of the given day."""
+    return datetime.combine(day, time.max)
+
+
 def datetime_end_of_day(day: date) -> datetime:
     """
     Get the end of the day for a specific date.
@@ -221,7 +226,7 @@ def datetime_end_of_day(day: date) -> datetime:
         >>> datetime_end_of_day(date(2024, 7, 22))
         datetime.datetime(2024, 7, 22, 23, 59, 59, 999999)
     """
-    return datetime_start_of_day(day) + timedelta(days=1) - timedelta(microseconds=1)
+    return _datetime_at_end_of_day(day)
 
 
 ##################
@@ -289,11 +294,9 @@ def end_of_quarter(year: int, q: int) -> datetime:
     """
     if not 1 <= q <= QUARTERS_IN_YEAR:
         raise ValueError(f"Quarter must be between 1 and 4, got {q}")
-    # Calculate the month at the end of the quarter
     month = q * 3
-    # Get the last day of that month
     days_in_month = calendar.monthrange(year, month)[1]
-    return datetime(year, month, days_in_month, 23, 59, 59, 999999)
+    return _datetime_at_end_of_day(date(year, month, days_in_month))
 
 
 def _walk_inclusive(start: int, target: int) -> Generator[int, None, None]:
@@ -379,7 +382,7 @@ def end_of_year(year: int) -> datetime:
     Returns:
         datetime: Datetime at 23:59:59.999999
     """
-    return datetime(year, 12, 31, 23, 59, 59, 999999)
+    return _datetime_at_end_of_day(date(year, MONTHS_IN_YEAR, DAYS_IN_MONTH_MAX))
 
 
 def generate_years(until: int = 1970, *, start_year: int | None = None) -> Generator[int, None, None]:
@@ -455,7 +458,7 @@ def end_of_month(year: int, month: int) -> datetime:
     """
     _validate_year_month(year, month)
     days_in_month = calendar.monthrange(year, month)[1]
-    return datetime(year, month, days_in_month, 23, 59, 59, 999999)
+    return _datetime_at_end_of_day(date(year, month, days_in_month))
 
 
 def generate_months(
@@ -695,6 +698,23 @@ _US_FEDERAL_HOLIDAY_TYPES = frozenset(
 )
 
 
+def _nth_weekday_in_month(year: int, month: int, weekday: int, n: int, *, from_end: bool = False) -> date:
+    """Find the nth occurrence of a weekday in a month, optionally counting from the end."""
+    if from_end:
+        current = date(year, month, calendar.monthrange(year, month)[1])
+        step = -1
+    else:
+        current = date(year, month, 1)
+        step = 1
+
+    while current.weekday() != weekday:
+        current += timedelta(days=step)
+
+    if not from_end:
+        current += timedelta(days=DAYS_IN_WEEK * (n - 1))
+    return current
+
+
 def get_us_federal_holidays(
     year: int, holiday_types: tuple[str, ...] | None = None, observed: bool = False
 ) -> list[date]:
@@ -799,41 +819,23 @@ def _get_us_federal_holidays_cached(
     # Define all possible holiday types
     all_holiday_types: dict[str, date] = dict(fixed_holidays)
 
-    # Calculate floating holidays more efficiently
-    def find_nth_weekday(year: int, month: int, weekday: int, n: int, from_end: bool = False) -> date:
-        """Find the nth occurrence of a weekday in a month."""
-        if from_end:
-            # Start from the last day of the month
-            last_day = calendar.monthrange(year, month)[1]
-            d = date(year, month, last_day)
-            while d.weekday() != weekday:
-                d -= timedelta(days=1)
-            return d
-        # Start from the first day of the month
-        d = date(year, month, 1)
-        while d.weekday() != weekday:
-            d += timedelta(days=1)
-        # Move to the nth occurrence
-        d += timedelta(days=7 * (n - 1))
-        return d
-
     # 3rd Monday in January (Martin Luther King Jr. Day)
-    all_holiday_types["MLK_DAY"] = find_nth_weekday(year, 1, 0, 3)  # Monday = 0
+    all_holiday_types["MLK_DAY"] = _nth_weekday_in_month(year, 1, calendar.MONDAY, 3)
 
     # 3rd Monday in February (Presidents Day)
-    all_holiday_types["PRESIDENTS_DAY"] = find_nth_weekday(year, 2, 0, 3)
+    all_holiday_types["PRESIDENTS_DAY"] = _nth_weekday_in_month(year, 2, calendar.MONDAY, 3)
 
     # Last Monday in May (Memorial Day)
-    all_holiday_types["MEMORIAL_DAY"] = find_nth_weekday(year, 5, 0, 1, from_end=True)
+    all_holiday_types["MEMORIAL_DAY"] = _nth_weekday_in_month(year, 5, calendar.MONDAY, 1, from_end=True)
 
     # 1st Monday in September (Labor Day)
-    all_holiday_types["LABOR_DAY"] = find_nth_weekday(year, 9, 0, 1)
+    all_holiday_types["LABOR_DAY"] = _nth_weekday_in_month(year, 9, calendar.MONDAY, 1)
 
     # 2nd Monday in October (Columbus Day)
-    all_holiday_types["COLUMBUS_DAY"] = find_nth_weekday(year, 10, 0, 2)
+    all_holiday_types["COLUMBUS_DAY"] = _nth_weekday_in_month(year, 10, calendar.MONDAY, 2)
 
     # 4th Thursday in November (Thanksgiving Day)
-    all_holiday_types["THANKSGIVING"] = find_nth_weekday(year, 11, 3, 4)  # Thursday = 3
+    all_holiday_types["THANKSGIVING"] = _nth_weekday_in_month(year, 11, calendar.THURSDAY, 4)
 
     # If holiday_types is None, return all holidays in chronological order
     if holiday_types is None:
