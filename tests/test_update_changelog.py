@@ -18,6 +18,33 @@ def _load_update_changelog_module() -> Any:
 update_changelog_script = _load_update_changelog_module()
 
 
+def test_parse_commit_line_returns_commit_metadata() -> None:
+    commit = update_changelog_script._parse_commit_line("abc123\x1ffeat: add parser\x1fBody text")
+
+    assert commit == update_changelog_script.Commit(
+        hash="abc123",
+        subject="feat: add parser",
+        body="Body text",
+    )
+
+
+def test_parse_commit_line_allows_pipe_characters_in_subject_and_body() -> None:
+    commit = update_changelog_script._parse_commit_line("abc123\x1ffix: keep a | b\x1fBody | details")
+
+    assert commit == update_changelog_script.Commit(
+        hash="abc123",
+        subject="fix: keep a | b",
+        body="Body | details",
+    )
+
+
+def test_parse_commit_line_rejects_malformed_lines() -> None:
+    assert update_changelog_script._parse_commit_line("") is None
+    assert update_changelog_script._parse_commit_line("abc123\x1fmissing body") is None
+    assert update_changelog_script._parse_commit_line("\x1fmissing hash\x1fBody") is None
+    assert update_changelog_script._parse_commit_line("abc123\x1f\x1fBody") is None
+
+
 def test_validate_changelog_content_rejects_duplicate_versions() -> None:
     with pytest.raises(ValueError, match="duplicate release sections: 0.1.0"):
         update_changelog_script.validate_changelog_content(

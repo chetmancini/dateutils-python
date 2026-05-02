@@ -12,10 +12,21 @@ import subprocess
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
+from typing import NamedTuple
 
 CHANGELOG_PATH = Path("CHANGELOG.md")
 CHANGELOG_INTRO = "All notable changes to this project will be documented in this file."
 UNRELEASED_SECTION = "## [Unreleased]\n\n### Added\n-\n\n### Changed\n-\n\n### Fixed\n-\n\n"
+COMMIT_LOG_DELIMITER = "\x1f"
+COMMIT_LOG_FIELD_COUNT = 3
+
+
+class Commit(NamedTuple):
+    """Git commit metadata used for changelog generation."""
+
+    hash: str
+    subject: str
+    body: str
 
 
 def run_git_command(cmd: list[str]) -> str:
@@ -39,26 +50,33 @@ def get_latest_tag() -> str:
     return ""
 
 
-def get_commits_since_tag(tag: str) -> list[dict[str, str]]:
+def _parse_commit_line(line: str) -> Commit | None:
+    """Parse one git log line into commit metadata."""
+    parts = line.split(COMMIT_LOG_DELIMITER, maxsplit=2)
+    if len(parts) != COMMIT_LOG_FIELD_COUNT:
+        return None
+
+    commit_hash, subject, body = parts
+    if not commit_hash or not subject:
+        return None
+
+    return Commit(hash=commit_hash, subject=subject, body=body)
+
+
+def get_commits_since_tag(tag: str) -> list[Commit]:
     """Get commit messages and metadata since the given tag."""
+    pretty_format = "%H%x1f%s%x1f%b"
     if not tag:
         # If no tags, get all commits
-        cmd = ["log", "--pretty=format:%H|%s|%b", "--no-merges"]
+        cmd = ["log", f"--pretty=format:{pretty_format}", "--no-merges"]
     else:
-        cmd = ["log", f"{tag}..HEAD", "--pretty=format:%H|%s|%b", "--no-merges"]
+        cmd = ["log", f"{tag}..HEAD", f"--pretty=format:{pretty_format}", "--no-merges"]
 
     output = run_git_command(cmd)
     if not output:
         return []
 
-    commits = []
-    for line in output.split("\n"):
-        if "|" in line:
-            parts = line.split("|", 2)
-            if len(parts) >= 2:  # noqa: PLR2004
-                commits.append({"hash": parts[0], "subject": parts[1], "body": parts[2] if len(parts) > 2 else ""})  # noqa: PLR2004
-
-    return commits
+    return [commit for line in output.split("\n") if (commit := _parse_commit_line(line)) is not None]
 
 
 def get_changed_files(tag: str) -> set[str]:
@@ -123,14 +141,14 @@ def _analyze_file_changes(changed_files: set[str]) -> list[str]:
     return []
 
 
-def categorize_changes(commits: list[dict[str, str]], changed_files: set[str]) -> dict[str, list[str]]:
+def categorize_changes(commits: list[Commit], changed_files: set[str]) -> dict[str, list[str]]:
     """Categorize changes into Added/Changed/Fixed based on commits and files."""
     changes = {"added": [], "changed": [], "fixed": []}
     patterns = _get_commit_patterns()
 
     # Process commits
     for commit in commits:
-        subject = commit["subject"].strip()
+        subject = commit.subject.strip()
         category, desc = _categorize_by_pattern(subject, patterns)
 
         if category and desc and desc not in changes[category]:
