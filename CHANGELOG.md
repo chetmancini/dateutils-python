@@ -11,7 +11,31 @@ All notable changes to this project will be documented in this file.
 -
 
 ### Fixed
-- Make Juneteenth federal holiday calculations historically accurate before 2021.
+-
+
+## [0.6.1] - 2026-05-01
+
+### Added
+- Add time support to next occurence (#55).
+- Add changelog validation to CI (#50).
+
+### Changed
+- Preserve datetime calendar parse errors (#57).
+- Use top-level dateutils imports (#54).
+- Extract DST occurrence normalization (#53).
+- Extract inclusive walk helper (#52).
+- Normalize changelog and validate headings (#48).
+- Handle DST in daily occurrence helper (#47).
+- Ci: bump actions/download-artifact from 7 to 8 (#43).
+- Ci: bump actions/upload-artifact from 6 to 7 (#44).
+- Update locked test dependency: pytest-cov 7.1.0 (#45).
+- Bump versions (#42).
+- Split parsing/timezone code and tests into modules (#41).
+
+### Fixed
+- Fix release process docs (#56).
+- Fix historical Juneteenth holiday handling (#51).
+- Fix DST fold and changelog fallback (#49).
 
 ## [0.6.0] - 2026-02-22
 
