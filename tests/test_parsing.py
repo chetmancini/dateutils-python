@@ -265,6 +265,17 @@ def test_parse_datetime() -> None:
         parse_datetime("2024-03-27T14:30:45+25:00")  # Invalid timezone offset
 
 
+def test_parse_datetime_invalid_calendar_date_preserves_reason() -> None:
+    """Invalid but recognizable datetime calendar dates should raise a specific ParseError."""
+    with pytest.raises(ParseError) as exc_info:
+        parse_datetime("2024-02-30 12:00:00")
+
+    err = _parse_error(exc_info)
+    assert err.parser == "datetime"
+    assert err.value == "2024-02-30 12:00:00"
+    assert "invalid calendar date" in err.reason
+
+
 def test_parse_datetime_errors_include_details() -> None:
     """Datetime parsing should raise ParseError with format details on failure."""
     assert parse_datetime("2024-03-27T14:30:45Z") == datetime.datetime(
