@@ -286,8 +286,11 @@ def _resolve_datetime_formats(formats: list[str] | None, dayfirst: bool) -> tupl
     return tuple(formats)
 
 
-def _parse_datetime_from_formats(datetime_str: str, parse_formats: Iterable[str]) -> datetime | None:
+def _parse_datetime_from_formats(
+    datetime_str: str, parse_formats: Iterable[str]
+) -> tuple[datetime | None, ValueError | None]:
     """Attempt to parse a datetime against the provided formats."""
+    calendar_error: ValueError | None = None
     # Exception-driven parsing is expected here while trying multiple datetime layouts.
     for fmt in parse_formats:
         try:
@@ -295,10 +298,12 @@ def _parse_datetime_from_formats(datetime_str: str, parse_formats: Iterable[str]
             # Handle ISO 8601 format with timezone designator
             if datetime_str.endswith("Z"):
                 dt = dt.replace(tzinfo=timezone.utc)
-            return dt
-        except ValueError:  # noqa: PERF203
+            return dt, None
+        except ValueError as e:  # noqa: PERF203
+            if calendar_error is None and _is_calendar_date_value_error(e):
+                calendar_error = e
             continue
-    return None
+    return None, calendar_error
 
 
 def parse_datetime(datetime_str: str, formats: list[str] | None = None, dayfirst: bool = False) -> datetime:
@@ -330,9 +335,16 @@ def parse_datetime(datetime_str: str, formats: list[str] | None = None, dayfirst
     if not parse_formats:
         raise ParseError(parser="datetime", value=datetime_str, reason="no formats were provided")
 
-    parsed = _parse_datetime_from_formats(datetime_str, parse_formats)
+    parsed, calendar_error = _parse_datetime_from_formats(datetime_str, parse_formats)
     if parsed is not None:
         return parsed
+    if calendar_error is not None:
+        raise ParseError(
+            parser="datetime",
+            value=datetime_str,
+            reason=f"invalid calendar date ({calendar_error})",
+            attempted_formats=parse_formats,
+        ) from calendar_error
 
     raise ParseError(
         parser="datetime",
