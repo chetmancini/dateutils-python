@@ -47,7 +47,7 @@ from collections.abc import Generator, Iterable
 from datetime import date, datetime, time, timedelta, timezone
 from email.utils import format_datetime as _format_http_datetime
 from functools import lru_cache
-from typing import Any, cast
+from typing import Any, NamedTuple, cast
 
 try:
     from . import parsing as _parsing
@@ -681,21 +681,32 @@ def _observed_us_federal_holiday(holiday_date: date) -> date:
 
 
 _JUNETEENTH_FIRST_FEDERAL_YEAR = 2021
-_US_FEDERAL_HOLIDAY_TYPES = frozenset(
-    {
-        "CHRISTMAS",
-        "COLUMBUS_DAY",
-        "INDEPENDENCE_DAY",
-        "JUNETEENTH",
-        "LABOR_DAY",
-        "MEMORIAL_DAY",
-        "MLK_DAY",
-        "NEW_YEARS_DAY",
-        "PRESIDENTS_DAY",
-        "THANKSGIVING",
-        "VETERANS_DAY",
-    }
+
+
+class _HolidayRule(NamedTuple):
+    holiday_type: str
+    month: int
+    day: int | None = None
+    weekday: int | None = None
+    occurrence: int | None = None
+    from_end: bool = False
+    first_year: int | None = None
+
+
+_US_FEDERAL_HOLIDAY_RULES: tuple[_HolidayRule, ...] = (
+    _HolidayRule("NEW_YEARS_DAY", 1, day=1),
+    _HolidayRule("MLK_DAY", 1, weekday=calendar.MONDAY, occurrence=3),
+    _HolidayRule("PRESIDENTS_DAY", 2, weekday=calendar.MONDAY, occurrence=3),
+    _HolidayRule("MEMORIAL_DAY", 5, weekday=calendar.MONDAY, occurrence=1, from_end=True),
+    _HolidayRule("JUNETEENTH", 6, day=19, first_year=_JUNETEENTH_FIRST_FEDERAL_YEAR),
+    _HolidayRule("INDEPENDENCE_DAY", 7, day=4),
+    _HolidayRule("LABOR_DAY", 9, weekday=calendar.MONDAY, occurrence=1),
+    _HolidayRule("COLUMBUS_DAY", 10, weekday=calendar.MONDAY, occurrence=2),
+    _HolidayRule("VETERANS_DAY", 11, day=11),
+    _HolidayRule("THANKSGIVING", 11, weekday=calendar.THURSDAY, occurrence=4),
+    _HolidayRule("CHRISTMAS", 12, day=25),
 )
+_US_FEDERAL_HOLIDAY_TYPES = frozenset(rule.holiday_type for rule in _US_FEDERAL_HOLIDAY_RULES)
 
 
 def _nth_weekday_in_month(year: int, month: int, weekday: int, n: int, *, from_end: bool = False) -> date:
@@ -713,6 +724,22 @@ def _nth_weekday_in_month(year: int, month: int, weekday: int, n: int, *, from_e
     if not from_end:
         current += timedelta(days=DAYS_IN_WEEK * (n - 1))
     return current
+
+
+def _date_from_holiday_rule(year: int, rule: _HolidayRule, *, observed: bool = False) -> date | None:
+    """Resolve a US federal holiday rule for a year, omitting inactive historical rules."""
+    if rule.first_year is not None and year < rule.first_year:
+        return None
+
+    if rule.day is not None:
+        holiday_date = date(year, rule.month, rule.day)
+        if observed:
+            return _observed_us_federal_holiday(holiday_date)
+        return holiday_date
+
+    if rule.weekday is None or rule.occurrence is None:  # pragma: no cover
+        raise ValueError(f"Invalid holiday rule for {rule.holiday_type}")
+    return _nth_weekday_in_month(year, rule.month, rule.weekday, rule.occurrence, from_end=rule.from_end)
 
 
 def get_us_federal_holidays(
@@ -800,42 +827,11 @@ def _get_us_federal_holidays_cached(
     year: int, holiday_types: tuple[str, ...] | None = None, observed: bool = False
 ) -> tuple[date, ...]:
     """Internal helper that stores immutable tuples for caching purposes."""
-    fixed_holidays: dict[str, date] = {
-        # Fixed holidays
-        "NEW_YEARS_DAY": date(year, 1, 1),
-        "INDEPENDENCE_DAY": date(year, 7, 4),
-        "VETERANS_DAY": date(year, 11, 11),
-        "CHRISTMAS": date(year, 12, 25),
+    all_holiday_types = {
+        rule.holiday_type: holiday_date
+        for rule in _US_FEDERAL_HOLIDAY_RULES
+        if (holiday_date := _date_from_holiday_rule(year, rule, observed=observed)) is not None
     }
-    if year >= _JUNETEENTH_FIRST_FEDERAL_YEAR:
-        fixed_holidays["JUNETEENTH"] = date(year, 6, 19)
-
-    if observed:
-        fixed_holidays = {
-            holiday_name: _observed_us_federal_holiday(holiday_date)
-            for holiday_name, holiday_date in fixed_holidays.items()
-        }
-
-    # Define all possible holiday types
-    all_holiday_types: dict[str, date] = dict(fixed_holidays)
-
-    # 3rd Monday in January (Martin Luther King Jr. Day)
-    all_holiday_types["MLK_DAY"] = _nth_weekday_in_month(year, 1, calendar.MONDAY, 3)
-
-    # 3rd Monday in February (Presidents Day)
-    all_holiday_types["PRESIDENTS_DAY"] = _nth_weekday_in_month(year, 2, calendar.MONDAY, 3)
-
-    # Last Monday in May (Memorial Day)
-    all_holiday_types["MEMORIAL_DAY"] = _nth_weekday_in_month(year, 5, calendar.MONDAY, 1, from_end=True)
-
-    # 1st Monday in September (Labor Day)
-    all_holiday_types["LABOR_DAY"] = _nth_weekday_in_month(year, 9, calendar.MONDAY, 1)
-
-    # 2nd Monday in October (Columbus Day)
-    all_holiday_types["COLUMBUS_DAY"] = _nth_weekday_in_month(year, 10, calendar.MONDAY, 2)
-
-    # 4th Thursday in November (Thanksgiving Day)
-    all_holiday_types["THANKSGIVING"] = _nth_weekday_in_month(year, 11, calendar.THURSDAY, 4)
 
     # If holiday_types is None, return all holidays in chronological order
     if holiday_types is None:
