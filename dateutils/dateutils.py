@@ -310,6 +310,18 @@ def _walk_inclusive(start: int, target: int) -> Generator[int, None, None]:
         current += step
 
 
+def _quarter_index(year: int, quarter: int) -> int:
+    """Return a linear index for a year/quarter pair."""
+    return year * QUARTERS_IN_YEAR + (quarter - 1)
+
+
+def _quarter_from_index(index: int) -> tuple[int, int]:
+    """Return a (quarter, year) pair from a linear quarter index."""
+    year = index // QUARTERS_IN_YEAR
+    quarter = index % QUARTERS_IN_YEAR + 1
+    return quarter, year
+
+
 def generate_quarters(
     until_year: int = 1970,
     until_q: int = 1,
@@ -342,16 +354,8 @@ def generate_quarters(
     if not 1 <= start_q <= QUARTERS_IN_YEAR:
         raise ValueError(f"start_quarter must be between 1 and 4, got {start_q}")
 
-    start_idx = start_y * QUARTERS_IN_YEAR + (start_q - 1)
-    target_idx = until_year * QUARTERS_IN_YEAR + (until_q - 1)
-
-    def _idx_to_tuple(idx: int) -> tuple[int, int]:
-        year = idx // QUARTERS_IN_YEAR
-        quarter = idx % QUARTERS_IN_YEAR + 1
-        return quarter, year
-
-    for idx in _walk_inclusive(start_idx, target_idx):
-        yield _idx_to_tuple(idx)
+    for idx in _walk_inclusive(_quarter_index(start_y, start_q), _quarter_index(until_year, until_q)):
+        yield _quarter_from_index(idx)
 
 
 ##################
@@ -424,6 +428,18 @@ def _validate_year_month(year: int, month: int) -> None:
         raise ValueError(f"Month must be between 1 and 12, got {month}")
 
 
+def _month_index(year: int, month: int) -> int:
+    """Return a linear index for a year/month pair."""
+    return year * MONTHS_IN_YEAR + (month - 1)
+
+
+def _month_from_index(index: int) -> tuple[int, int]:
+    """Return a (month, year) pair from a linear month index."""
+    year = index // MONTHS_IN_YEAR
+    month = index % MONTHS_IN_YEAR + 1
+    return month, year
+
+
 def start_of_month(year: int, month: int) -> datetime:
     """
     Get the start of the month
@@ -485,16 +501,8 @@ def generate_months(
         raise ValueError(f"until_m must be between 1 and 12, got {until_m}")
 
     anchor = start_date or date.today()
-    current_idx = anchor.year * 12 + (anchor.month - 1)
-    target_idx = until_year * 12 + (until_m - 1)
-
-    def _idx_to_tuple(idx: int) -> tuple[int, int]:
-        year = idx // 12
-        month = idx % 12 + 1
-        return month, year
-
-    for idx in _walk_inclusive(current_idx, target_idx):
-        yield _idx_to_tuple(idx)
+    for idx in _walk_inclusive(_month_index(anchor.year, anchor.month), _month_index(until_year, until_m)):
+        yield _month_from_index(idx)
 
 
 def get_days_in_month(year: int, month: int) -> int:
