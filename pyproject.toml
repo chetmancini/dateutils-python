@@ -42,12 +42,12 @@ Documentation = "https://github.com/chetmancini/dateutils-python#readme"
 [dependency-groups]
 dev = [
     "freezegun>=1.5.5",
-    "pytest>=9.0.2",
-    "ruff>=0.15.4",
-    "pytest-cov>=7.0.0",
-    "ty>=0.0.19",
-    "build>=1.4.0",
-    "pre-commit>=4.5.1",
+    "pytest>=9.0.3",
+    "ruff>=0.15.12",
+    "pytest-cov>=7.1.0",
+    "ty>=0.0.34",
+    "build>=1.5.0",
+    "pre-commit>=4.6.0",
     "bump2version>=1.0.1",
     "twine>=6.2.0",
 ]
@@ -79,7 +79,7 @@ target-version = "py310"
 line-length = 120
 
 [tool.ruff.lint]
-select = [
+extend-select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
     "F",   # pyflakes
@@ -90,8 +90,11 @@ select = [
     "N",   # pep8-naming
     "PL",  # pylint
     "RUF", # ruff-specific rules
+    "S",
+    "PT",
+    "RET",
+    "PERF",
 ]
-extend-select = ["S", "PT", "RET", "PERF"]
 ignore = [
     "E501",  # line length violations
     "PLR0913", # too many arguments
