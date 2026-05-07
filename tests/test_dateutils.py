@@ -920,7 +920,7 @@ def test_business_day_functions_with_datetime_holidays() -> None:
 def test_business_day_functions_invalid_holiday_input_type() -> None:
     """Non-date holiday values should raise TypeError."""
     with pytest.raises(TypeError, match="holidays must contain date or datetime values"):
-        workdays_between(datetime.date(2024, 7, 1), datetime.date(2024, 7, 5), holidays=["2024-07-04"])  # type: ignore[list-item]
+        workdays_between(datetime.date(2024, 7, 1), datetime.date(2024, 7, 5), holidays=["2024-07-04"])  # ty: ignore[invalid-argument-type]
 
 
 def test_add_business_days_empty_holiday_generator_uses_fast_path() -> None:
