@@ -45,11 +45,16 @@ dev = [
     "pytest>=9.0.3",
     "ruff>=0.15.12",
     "pytest-cov>=7.1.0",
-    "ty>=0.0.34",
+    "ty>=0.0.35",
     "build>=1.5.0",
     "pre-commit>=4.6.0",
     "bump2version>=1.0.1",
     "twine>=6.2.0",
+]
+
+[tool.uv]
+constraint-dependencies = [
+    "urllib3>=2.7.0",
 ]
 
 [tool.pytest.ini_options]
