@@ -51,7 +51,9 @@ GitHub release containing the built files.
 
 After the draft release exists, review the release notes and artifacts in
 GitHub. Publishing that draft release starts `.github/workflows/publish.yml`,
-which downloads the release assets and publishes them to PyPI.
+which checks out the release tag, rebuilds and validates the distribution, and
+publishes it to PyPI. This keeps publishing independent of the timing of
+release-asset uploads.
 
 ## Important Behavior
 
