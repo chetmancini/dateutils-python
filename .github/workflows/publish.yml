@@ -17,21 +17,24 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
       - name: Validate release tag
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: python3 scripts/validate_release_tag.py "$RELEASE_TAG"
 
-      - name: Download release assets
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      - name: Build distribution packages from the release tag
         run: |
-          mkdir -p dist
-          gh release download '${{ github.event.release.tag_name }}' \
-            --pattern '*.whl' \
-            --pattern '*.tar.gz' \
-            --dir dist/
+          uv sync --all-extras --dev
+          make build-check
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
