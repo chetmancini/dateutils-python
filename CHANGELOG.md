@@ -5,15 +5,30 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- Validate release tags against the package version and smoke-test built wheels in an isolated environment.
+-
 
 ### Changed
-- Normalize `datetime` inputs to plain local calendar dates across date-domain APIs.
-- Require a clean release tree, run checks before committing, stage only release files, and push the branch and tag atomically.
+-
 
 ### Fixed
-- Compute epoch seconds exactly for fractional pre-epoch and maximum datetimes.
-- Normalize nonexistent source times forward during same-zone and cross-zone conversions.
+-
+
+## [0.7.0] - 2026-07-10
+
+### Added
+-
+
+### Changed
+- Harden date handling and releases (#65).
+- Update dependencies and constrain urllib3 (#63).
+- Update development dependencies (#62).
+- Make US federal holidays data-driven (#61).
+- Extract month and quarter index helpers (#60).
+- Tighten README and changelog flow (#59).
+- Simplify date boundary helpers (#58).
+
+### Fixed
+-
 
 ## [0.6.1] - 2026-05-01
 
