@@ -5,10 +5,10 @@ and GitHub Actions workflows.
 
 ## Prerequisites
 
-1. **Clean, reviewed working tree**: `make version-*` stages every changed file
-   with `git add -A`, commits the version bump, creates a tag, and pushes both
-   the branch and tag.
-2. **Local quality gate**: run the full check before starting a release:
+1. **Clean, reviewed working tree**: `make version-*` refuses to start when
+   tracked or untracked changes are present.
+2. **Local quality gate**: the target runs the full check before committing;
+   you can also run it before starting a release:
    ```bash
    make check
    ```
@@ -33,18 +33,21 @@ make version-major  # 0.2.1 -> 1.0.0
 The selected `version-*` target:
 
 - Reads the current version from `pyproject.toml`
-- Runs `bump2version --allow-dirty` for the selected bump type
+- Runs `bump2version` for the selected bump type
 - Updates `CHANGELOG.md` with `make update-changelog VERSION=<new-version>`
 - Refreshes `uv.lock`
-- Stages all changes with `git add -A`
+- Validates that `v<new-version>` matches the version in `pyproject.toml`
+- Runs `make check` before creating the release commit
+- Stages only `.bumpversion.cfg`, `pyproject.toml`, `CHANGELOG.md`, and `uv.lock`
 - Commits the release changes with a `Bump version: <old> -> <new>` message
 - Creates a local `v<new-version>` git tag
-- Pushes the current branch to `origin`
-- Pushes the new tag to `origin`
+- Atomically pushes the current branch and new tag to `origin`
 
 Pushing the tag starts `.github/workflows/release.yml`, which runs `make check`,
-builds and verifies the distribution with `make build-check`, uploads the
-artifacts, and creates a **draft** GitHub release containing the built files.
+revalidates the tag, builds and verifies the distribution with
+`make build-check`, installs the wheel in an isolated environment, smoke-tests
+its public API and typing marker, uploads the artifacts, and creates a **draft**
+GitHub release containing the built files.
 
 After the draft release exists, review the release notes and artifacts in
 GitHub. Publishing that draft release starts `.github/workflows/publish.yml`,
@@ -56,18 +59,18 @@ which downloads the release assets and publishes them to PyPI.
   `make release-patch`, `make release-minor`, or `make release-major` targets.
 - `make version-*` is not a local-only preparation step. It commits, tags, and
   pushes.
-- `make version-*` does not run `make check` before committing locally. Run
-  `make check` yourself before invoking it; the release workflow also runs
-  `make check` after the tag is pushed.
-- Because `make version-*` uses `git add -A`, review unrelated local changes
-  before starting a release.
+- `make version-*` runs `make check` before committing locally, and the release
+  workflow repeats it after the tag is pushed.
+- The version command fails before changing files if the working tree is dirty.
+- Branch and tag updates are sent with one atomic push, so GitHub accepts both
+  refs or neither ref.
 
 ## Example Workflow
 
 ```bash
 # 1. Finish code and documentation changes.
 
-# 2. Verify locally.
+# 2. Verify locally (the release target repeats this gate).
 make check
 
 # 3. Review the working tree so only intended files are present.

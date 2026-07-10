@@ -26,7 +26,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Build and Distribution
 - `make build` - Build the package for distribution
-- `make build-check` - Build and check the package with twine
+- `make build-check` - Build, install/smoke-test the wheel in isolation, and check the distributions with twine
 
 ### Versioning
 - `make version-patch` - Bump patch version and push tag

@@ -336,6 +336,30 @@ def test_convert_timezone_dst_nonexistent_time() -> None:
     assert ny_time.tzname() == "EDT"
 
 
+@pytest.mark.parametrize("fold", [0, 1])
+def test_convert_timezone_normalizes_nonexistent_source_time_forward(fold: int) -> None:
+    """Gap times normalize forward even for same-zone conversions or inherited fold state."""
+    ny_tz = ZoneInfo("America/New_York")
+    nonexistent = datetime.datetime(2024, 3, 10, 2, 30, tzinfo=ny_tz).replace(fold=fold)
+
+    normalized = convert_timezone(nonexistent, "America/New_York")
+    assert normalized == datetime.datetime(2024, 3, 10, 3, 30, tzinfo=ny_tz)
+    assert normalized.fold == 0
+
+    as_utc = convert_timezone(nonexistent, "UTC")
+    assert as_utc == datetime.datetime(2024, 3, 10, 7, 30, tzinfo=datetime.timezone.utc)
+
+
+def test_convert_timezone_preserves_ambiguous_source_fold() -> None:
+    """Valid repeated wall times should remain distinct on the UTC timeline."""
+    ny_tz = ZoneInfo("America/New_York")
+    first = datetime.datetime(2024, 11, 3, 1, 30, tzinfo=ny_tz)
+    second = first.replace(fold=1)
+
+    assert convert_timezone(first, "UTC") == datetime.datetime(2024, 11, 3, 5, 30, tzinfo=datetime.timezone.utc)
+    assert convert_timezone(second, "UTC") == datetime.datetime(2024, 11, 3, 6, 30, tzinfo=datetime.timezone.utc)
+
+
 def test_timezone_error_handling() -> None:
     """Test that timezone functions handle invalid timezone names."""
     # Valid timezone should work

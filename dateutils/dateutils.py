@@ -14,6 +14,10 @@ and timezones in Python. It includes functions for:
 The utilities aim to simplify common date and time operations while providing
 consistent handling of timezone information.
 
+Functions operating on calendar dates normalize `datetime` inputs to their
+plain local `date` before doing date arithmetic. Timezone-aware values are not
+converted to a different timezone during that normalization.
+
 **Note on Holidays:** Basic support for US federal holidays is included
 via `get_us_federal_holidays()`. For comprehensive, region-specific,
 or rule-based holiday calculations (e.g., Easter or region-specific bank
@@ -77,6 +81,7 @@ WEEKDAYS_IN_WEEK = 5
 _FEBRUARY = 2
 _LEAP_DAY = 29
 _FEB_28 = 28
+_UNIX_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 ParseError = _parsing.ParseError
 parse_date = _parsing.parse_date
@@ -94,6 +99,11 @@ convert_timezone = _timezones.convert_timezone
 datetime_to_utc = _timezones.datetime_to_utc
 get_timezone_offset = _timezones.get_timezone_offset
 format_timezone_offset = _timezones.format_timezone_offset
+
+
+def _as_date(value: date) -> date:
+    """Return the local calendar date represented by a date or datetime value."""
+    return value.date() if isinstance(value, datetime) else value
 
 
 ##################
@@ -161,7 +171,7 @@ def utc_from_timestamp(ts: int) -> datetime:
 
 def epoch_s(dt: datetime) -> int:
     """
-    Convert a datetime object to a Unix timestamp (seconds since epoch).
+    Convert a datetime object to whole Unix seconds, flooring fractional seconds.
 
     Note: Timezone-aware datetimes are converted to UTC before calculating
           the timestamp. Naive datetimes are assumed to be in UTC.
@@ -190,7 +200,11 @@ def epoch_s(dt: datetime) -> int:
     if dt.tzinfo is None:
         # Assume naive datetime is in UTC (documented behavior)
         dt = dt.replace(tzinfo=timezone.utc)
-    return int(dt.timestamp())
+    else:
+        dt = dt.astimezone(timezone.utc)
+
+    delta = dt - _UNIX_EPOCH
+    return delta.days * SECONDS_IN_DAY + delta.seconds
 
 
 def datetime_start_of_day(day: date) -> datetime:
@@ -203,12 +217,12 @@ def datetime_start_of_day(day: date) -> datetime:
     Returns:
         datetime: Datetime at midnight (00:00:00)
     """
-    return datetime.combine(day, datetime.min.time())
+    return datetime.combine(_as_date(day), datetime.min.time())
 
 
 def _datetime_at_end_of_day(day: date) -> datetime:
     """Return a datetime at the last representable microsecond of the given day."""
-    return datetime.combine(day, time.max)
+    return datetime.combine(_as_date(day), time.max)
 
 
 def datetime_end_of_day(day: date) -> datetime:
@@ -242,6 +256,7 @@ def date_to_quarter(dt: date) -> int:
     Returns:
         int: Quarter of the year (1-4)
     """
+    dt = _as_date(dt)
     return ((dt.month - 1) // 3) + 1
 
 
@@ -255,6 +270,7 @@ def date_to_start_of_quarter(dt: date) -> date:
     Returns:
         date: Date at the start of the quarter
     """
+    dt = _as_date(dt)
     new_month = (((dt.month - 1) // 3) * 3) + 1
     return dt.replace(day=1, month=new_month)
 
@@ -500,7 +516,7 @@ def generate_months(
     if not 1 <= until_m <= MONTHS_IN_YEAR:
         raise ValueError(f"until_m must be between 1 and 12, got {until_m}")
 
-    anchor = start_date or date.today()
+    anchor = _as_date(start_date) if start_date is not None else date.today()
     for idx in _walk_inclusive(_month_index(anchor.year, anchor.month), _month_index(until_year, until_m)):
         yield _month_from_index(idx)
 
@@ -563,19 +579,18 @@ def generate_weeks(
         days_since_start = (today.weekday() - desired_start) % 7
         return today - timedelta(days=days_since_start)
 
-    anchor = start_date or date.today()
+    anchor = _as_date(start_date) if start_date is not None else date.today()
+    target = _as_date(until_date) if until_date is not None else None
     week_start = _week_start(anchor)
 
-    if until_date is None:
+    if target is None:
         direction = -1
     else:
-        direction = int(until_date > anchor) - int(until_date < anchor)
+        direction = int(target > anchor) - int(target < anchor)
 
     for _ in range(count):
         week_end = week_start + timedelta(days=6)
-        if until_date is not None and (
-            (direction > 0 and week_start > until_date) or (direction < 0 and week_end < until_date)
-        ):
+        if target is not None and ((direction > 0 and week_start > target) or (direction < 0 and week_end < target)):
             break
         yield week_start, week_end
         if direction == 0:
@@ -603,6 +618,9 @@ def date_range(start_date: date, end_date: date) -> list[date]:
     Raises:
         ValueError: If start_date is after end_date or if the range is too large (>10 years)
     """
+    start_date = _as_date(start_date)
+    end_date = _as_date(end_date)
+
     if start_date > end_date:
         raise ValueError(f"start_date ({start_date}) must be <= end_date ({end_date})")
 
@@ -629,6 +647,9 @@ def date_range_generator(start_date: date, end_date: date) -> Generator[date, No
     Raises:
         ValueError: If start_date is after end_date
     """
+    start_date = _as_date(start_date)
+    end_date = _as_date(end_date)
+
     if start_date > end_date:
         raise ValueError(f"start_date ({start_date}) must be <= end_date ({end_date})")
 
@@ -660,7 +681,7 @@ def is_weekend(dt: date) -> bool:
         >>> is_weekend(date(2024, 7, 22)) # Monday
         False
     """
-    return dt.weekday() >= calendar.SATURDAY  # 5 = Saturday, 6 = Sunday
+    return _as_date(dt).weekday() >= calendar.SATURDAY  # 5 = Saturday, 6 = Sunday
 
 
 def _normalize_holiday_dates(holidays: Iterable[date | datetime] | None) -> set[date]:
@@ -934,6 +955,9 @@ def workdays_between(start_date: date, end_date: date, holidays: Iterable[date |
         >>> workdays_between(start, end)  # ~25 years, computed in O(1)
         6522
     """
+    start_date = _as_date(start_date)
+    end_date = _as_date(end_date)
+
     if start_date > end_date:
         raise ValueError(f"start_date ({start_date}) must be <= end_date ({end_date})")
 
@@ -1009,6 +1033,8 @@ def add_business_days(dt: date, num_days: int, holidays: Iterable[date | datetim
         >>> add_business_days(end_date, -2, holidays=us_holidays)
         datetime.date(2024, 7, 3)
     """
+    dt = _as_date(dt)
+
     if not -10000 <= num_days <= 10000:  # noqa: PLR2004
         raise ValueError(f"num_days must be between -10000 and 10000, got {num_days}")
 
@@ -1355,6 +1381,7 @@ def is_business_day(dt: date, holidays: Iterable[date | datetime] | None = None)
         >>> is_business_day(date(2024, 7, 4), holidays=holiday_set)
         False
     """
+    dt = _as_date(dt)
     if dt.weekday() >= calendar.SATURDAY:
         return False
     if holidays is None:
@@ -1374,6 +1401,7 @@ def days_until_weekend(dt: date) -> int:
     Returns:
         int: Number of days until Saturday (0 if already weekend)
     """
+    dt = _as_date(dt)
     if dt.weekday() >= calendar.SATURDAY:  # Already weekend
         return 0
     return calendar.SATURDAY - dt.weekday()
@@ -1389,6 +1417,7 @@ def days_since_weekend(dt: date) -> int:
     Returns:
         int: Number of days since Sunday (0 if currently weekend)
     """
+    dt = _as_date(dt)
     if dt.weekday() >= calendar.SATURDAY:  # Currently weekend
         return 0
     return dt.weekday() + 1  # Monday = 1 day since Sunday
@@ -1404,7 +1433,7 @@ def get_week_number(dt: date) -> int:
     Returns:
         int: ISO week number (1-53)
     """
-    return dt.isocalendar()[1]
+    return _as_date(dt).isocalendar()[1]
 
 
 def get_quarter_start_end(year: int, quarter: int) -> tuple[date, date]:
@@ -1446,8 +1475,11 @@ def age_in_years(birth_date: date, as_of_date: date | None = None) -> int:
     Raises:
         ValueError: If birth_date is in the future
     """
+    birth_date = _as_date(birth_date)
     if as_of_date is None:
         as_of_date = date.today()
+    else:
+        as_of_date = _as_date(as_of_date)
 
     if birth_date > as_of_date:
         raise ValueError("Birth date cannot be in the future")

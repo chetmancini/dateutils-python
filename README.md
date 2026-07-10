@@ -76,7 +76,7 @@ today = utc_today()  # e.g., datetime.date(2024, 6, 6)
 # Convert a datetime to timestamp
 from datetime import datetime
 dt = datetime(2024, 6, 6, 12, 30, 0)
-ts = epoch_s(dt)  # e.g., 1717682345
+ts = epoch_s(dt)  # 1717677000
 ```
 
 ### Business Day Calculations
@@ -267,6 +267,10 @@ pretty_date(a_day_ago)    # "Yesterday"
 ### Error Handling and Validation
 
 The library now includes comprehensive input validation with helpful error messages:
+
+Functions whose parameters and return values are dates treat a `datetime` input
+as its local calendar date (`value.date()`). They return plain `date` values and
+do not convert timezone-aware inputs to another timezone first.
 
 ```python
 from datetime import date
