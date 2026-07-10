@@ -5,13 +5,15 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
--
+- Validate release tags against the package version and smoke-test built wheels in an isolated environment.
 
 ### Changed
--
+- Normalize `datetime` inputs to plain local calendar dates across date-domain APIs.
+- Require a clean release tree, run checks before committing, stage only release files, and push the branch and tag atomically.
 
 ### Fixed
--
+- Compute epoch seconds exactly for fractional pre-epoch and maximum datetimes.
+- Normalize nonexistent source times forward during same-zone and cross-zone conversions.
 
 ## [0.6.1] - 2026-05-01
 

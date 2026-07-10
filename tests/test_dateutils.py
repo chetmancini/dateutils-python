@@ -135,6 +135,19 @@ def test_epoch_s() -> None:
     assert 1397488604 == epoch_s(datetime.datetime(2014, 4, 14, 15, 16, 44))
 
 
+def test_epoch_s_handles_fractional_seconds_without_float_rounding() -> None:
+    """Whole epoch seconds should floor exactly on both sides of the epoch."""
+    just_before_epoch = datetime.datetime(1969, 12, 31, 23, 59, 59, 999999, tzinfo=datetime.timezone.utc)
+    assert epoch_s(just_before_epoch) == -1
+
+    latest = datetime.datetime.max.replace(tzinfo=datetime.timezone.utc)
+    latest_whole_second = 253402300799
+    assert epoch_s(latest) == latest_whole_second
+    assert utc_from_timestamp(latest_whole_second) == datetime.datetime(
+        9999, 12, 31, 23, 59, 59, tzinfo=datetime.timezone.utc
+    )
+
+
 def test_utc_from_timestamp() -> None:
     """Test converting a timestamp to a datetime in UTC timezone."""
     from dateutils import utc_from_timestamp
@@ -414,25 +427,36 @@ def test_date_to_quarter() -> None:
 
 
 def test_date_to_start_of_quarter() -> None:
-    def to_date(m: int, d: int) -> datetime.datetime:
-        return datetime.datetime(2018, m, d)
+    def to_datetime(m: int, d: int) -> datetime.datetime:
+        return datetime.datetime(2018, m, d, 12, 34, 56, tzinfo=datetime.timezone.utc)
 
-    q1 = to_date(1, 1)
-    q2 = to_date(4, 1)
-    q3 = to_date(7, 1)
-    q4 = to_date(10, 1)
+    assert datetime.date(2018, 1, 1) == date_to_start_of_quarter(to_datetime(1, 6))
+    assert datetime.date(2018, 1, 1) == date_to_start_of_quarter(to_datetime(3, 31))
+    assert datetime.date(2018, 4, 1) == date_to_start_of_quarter(to_datetime(4, 1))
+    assert datetime.date(2018, 4, 1) == date_to_start_of_quarter(to_datetime(6, 30))
+    assert datetime.date(2018, 7, 1) == date_to_start_of_quarter(to_datetime(7, 30))
+    assert datetime.date(2018, 7, 1) == date_to_start_of_quarter(to_datetime(9, 3))
+    assert datetime.date(2018, 10, 1) == date_to_start_of_quarter(to_datetime(10, 1))
+    assert datetime.date(2018, 10, 1) == date_to_start_of_quarter(to_datetime(12, 31))
 
-    assert q1 == date_to_start_of_quarter(to_date(1, 6))
-    assert q1 == date_to_start_of_quarter(to_date(3, 31))
 
-    assert q2 == date_to_start_of_quarter(to_date(4, 1))
-    assert q2 == date_to_start_of_quarter(to_date(6, 30))
+def test_date_only_apis_normalize_datetime_inputs() -> None:
+    """Date-domain functions should use and return plain local calendar dates."""
+    start = datetime.datetime(2024, 7, 3, 23, 30, tzinfo=ZoneInfo("America/New_York"))
+    end = datetime.datetime(2024, 7, 5, 0, 30, tzinfo=ZoneInfo("America/New_York"))
+    july_fourth = datetime.date(2024, 7, 4)
 
-    assert q3 == date_to_start_of_quarter(to_date(7, 30))
-    assert q3 == date_to_start_of_quarter(to_date(9, 3))
-
-    assert q4 == date_to_start_of_quarter(to_date(10, 1))
-    assert q4 == date_to_start_of_quarter(to_date(12, 31))
+    assert date_range(start, end) == [
+        datetime.date(2024, 7, 3),
+        datetime.date(2024, 7, 4),
+        datetime.date(2024, 7, 5),
+    ]
+    assert list(date_range_generator(start, end)) == date_range(start, end)
+    assert workdays_between(start, end, holidays=[july_fourth]) == 2
+    assert add_business_days(start, 1, holidays=[july_fourth]) == datetime.date(2024, 7, 5)
+    assert next_business_day(start, holidays=[july_fourth]) == datetime.date(2024, 7, 5)
+    assert previous_business_day(end, holidays=[july_fourth]) == datetime.date(2024, 7, 3)
+    assert not is_business_day(datetime.datetime(2024, 7, 4, 12, tzinfo=datetime.timezone.utc), holidays=[july_fourth])
 
 
 def test_start_of_quarter() -> None:

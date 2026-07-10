@@ -116,15 +116,16 @@ make version-major  # 0.1.0 -> 1.0.0
 
 ### What Happens During Release
 
-Run `make check` before starting a release. The `version-*` target itself
-commits, tags, and pushes; GitHub Actions runs the full release validation after
-the tag is pushed.
+The `version-*` target requires a clean working tree, runs `make check`, commits,
+tags, and atomically pushes the branch and tag. GitHub Actions repeats the full
+release validation after the tag is pushed.
 
-1. **Version bump** - Updates version in `pyproject.toml` and `dateutils/__init__.py`
+1. **Version bump** - Updates the version in `pyproject.toml` and `.bumpversion.cfg`
 2. **Changelog update** - Updates `CHANGELOG.md` and refreshes `uv.lock`
-3. **Git operations** - Stages all changes, creates a commit, tags the version, and pushes the branch and tag
-4. **GitHub Actions** - Runs `make check`, builds the package, and creates a draft GitHub release
-5. **PyPI publish** - Publishing the draft GitHub release triggers the PyPI publish workflow
+3. **Local validation** - Verifies the release tag and runs `make check`
+4. **Git operations** - Stages only release metadata, creates a commit and tag, and atomically pushes both
+5. **GitHub Actions** - Revalidates the tag, runs `make check`, builds and smoke-tests the wheel, and creates a draft GitHub release
+6. **PyPI publish** - Publishing the draft GitHub release triggers the PyPI publish workflow
 
 ### Manual Steps (if needed)
 

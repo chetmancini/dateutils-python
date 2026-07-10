@@ -109,12 +109,21 @@ def convert_timezone(dt: datetime, to_tz: str) -> datetime:
         ...     print(e)
         Input datetime must include timezone information
     """
-    if dt.tzinfo is None:
+    if dt.tzinfo is None or dt.utcoffset() is None:
         raise ValueError("Input datetime must include timezone information")
 
     try:
         target_tz = ZoneInfo(to_tz)
-        return dt.astimezone(target_tz)
+        source_utc = dt.astimezone(timezone.utc)
+        source_round_trip = source_utc.astimezone(dt.tzinfo)
+
+        # A mismatched wall time means the source was inside a spring-forward
+        # gap. Normalize with fold=0 so inherited fold state cannot move the
+        # nonexistent time backward.
+        if source_round_trip.replace(tzinfo=None) != dt.replace(tzinfo=None):
+            source_utc = dt.replace(fold=0).astimezone(timezone.utc)
+
+        return source_utc.astimezone(target_tz)
     except ZoneInfoNotFoundError as e:
         raise ValueError(f"Invalid timezone name '{to_tz}'. Use get_available_timezones() to see valid options.") from e
 

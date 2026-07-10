@@ -139,10 +139,24 @@ fix: ## Fix common issues (format + lint-fix)
 # Build and Distribution
 build: ## Build the package for distribution
 	@echo "${BLUE}Building package...${NC}"
+	@rm -rf build/ dist/ *.egg-info/
 	@uv run python -m build
 	@echo "${GREEN}✓ Package built in dist/${NC}"
 
-build-check: build ## Build and check the package
+smoke-test-dist: build ## Install and smoke-test the built wheel outside the source checkout
+	@echo "${BLUE}Smoke-testing built wheel...${NC}"
+	@set -eu; \
+		tmp_dir=$$(mktemp -d); \
+		trap 'rm -rf "$$tmp_dir"' EXIT; \
+		wheel=$$(find dist -maxdepth 1 -type f -name '*.whl' -print -quit); \
+		if [ -z "$$wheel" ]; then echo "${RED}Error: no wheel found in dist/${NC}"; exit 1; fi; \
+		uv venv --clear "$$tmp_dir/venv" >/dev/null; \
+		uv pip install --python "$$tmp_dir/venv/bin/python" "$$wheel" >/dev/null; \
+		cd "$$tmp_dir"; \
+		"$$tmp_dir/venv/bin/python" "$(CURDIR)/scripts/smoke_test_installed_package.py"
+	@echo "${GREEN}✓ Built wheel smoke test completed${NC}"
+
+build-check: smoke-test-dist ## Build, smoke-test, and check the package
 	@echo "${BLUE}Checking built package...${NC}"
 	@uv run python -m twine check dist/*
 	@echo "${GREEN}✓ Package check completed${NC}"
@@ -154,20 +168,26 @@ update-changelog: ## Update CHANGELOG.md with new version info
 	@uv run python scripts/update_changelog.py $(VERSION)
 	@echo "${GREEN}✓ CHANGELOG.md updated${NC}"
 
-bump-version = @echo "${BLUE}Bumping $(1) version...${NC}"; \
+bump-version = @set -eu; \
+	if [ -n "$$(git status --porcelain)" ]; then \
+		echo "${RED}Error: release requires a clean working tree.${NC}"; \
+		git status --short; \
+		exit 1; \
+	fi; \
+	echo "${BLUE}Bumping $(1) version...${NC}"; \
 	OLD_VERSION=$$(grep '^version = ' pyproject.toml | cut -d'"' -f2); \
-	uv run bump2version --allow-dirty --current-version $$OLD_VERSION $(1); \
+	uv run bump2version --current-version $$OLD_VERSION $(1); \
 	NEW_VERSION=$$(grep '^version = ' pyproject.toml | cut -d'"' -f2); \
 	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
 	uv lock; \
-	echo "${BLUE}Staging all changes...${NC}"; \
-	git add -A; \
-	git commit --no-verify -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
+	uv run python scripts/validate_release_tag.py "v$$NEW_VERSION"; \
+	$(MAKE) --no-print-directory check; \
+	echo "${BLUE}Staging release files...${NC}"; \
+	git add .bumpversion.cfg pyproject.toml CHANGELOG.md uv.lock; \
+	git commit -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"; \
-	echo "${BLUE}Pushing changes to GitHub...${NC}"; \
-	git push origin HEAD; \
-	echo "${BLUE}Pushing tag to GitHub...${NC}"; \
-	git push origin "v$$NEW_VERSION"; \
+	echo "${BLUE}Atomically pushing branch and tag to GitHub...${NC}"; \
+	git push --atomic origin HEAD "v$$NEW_VERSION"; \
 	echo "${GREEN}✓ $(1) version bumped and pushed${NC}"; \
 	echo "${YELLOW}Next steps:${NC}"; \
 	echo "  - GitHub Actions will build, test, and create a draft release"; \
@@ -209,4 +229,4 @@ version: ## Show current version information
 	@echo "UV version: $(UV_VERSION)"
 
 # Safety check for dangerous operations
-.PHONY: init deps install pre-commit pre-commit-run lint lint-fix format format-check validate-changelog typecheck test test-fast coverage coverage-html watch-test doctest check dev fix build build-check update-changelog version-patch version-minor version-major clean requirements version help
+.PHONY: init deps install pre-commit pre-commit-run lint lint-fix format format-check validate-changelog typecheck test test-fast coverage coverage-html watch-test doctest check dev fix build smoke-test-dist build-check update-changelog version-patch version-minor version-major clean requirements version help
