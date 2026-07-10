@@ -13,6 +13,17 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 -
 
+## [0.7.1] - 2026-07-10
+
+### Added
+-
+
+### Changed
+-
+
+### Fixed
+- Fix PyPI publish artifact dependency (#66).
+
 ## [0.7.0] - 2026-07-10
 
 ### Added
