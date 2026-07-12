@@ -129,6 +129,19 @@ def test_localize_datetime_accepts_tzinfo_instances() -> None:
     assert localized == datetime.datetime(2024, 7, 22, 10, 30, tzinfo=datetime.timezone.utc)
 
 
+def test_timezone_functions_accept_tzinfo_instances() -> None:
+    """All public timezone-parameter APIs accept tzinfo instances as well as names."""
+    fixed_offset = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+
+    assert now_in_timezone(datetime.timezone.utc).tzinfo == datetime.timezone.utc
+    assert today_in_timezone(datetime.timezone.utc) == datetime.datetime.now(datetime.timezone.utc).date()
+    assert convert_timezone(
+        datetime.datetime(2024, 7, 22, 10, 30, tzinfo=datetime.timezone.utc), fixed_offset
+    ) == datetime.datetime(2024, 7, 22, 16, 0, tzinfo=fixed_offset)
+    assert get_timezone_offset(fixed_offset) == datetime.timedelta(hours=5, minutes=30)
+    assert format_timezone_offset(fixed_offset) == "+05:30"
+
+
 def test_localize_datetime_rejects_aware_datetimes_and_invalid_timezones() -> None:
     """Localization only attaches a timezone to naive values."""
     with pytest.raises(ValueError, match="must be naive"):

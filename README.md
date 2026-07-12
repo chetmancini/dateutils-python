@@ -164,6 +164,9 @@ from dateutils import (
 # Get current time in a timezone
 nyc_now = now_in_timezone("America/New_York")
 
+# Timezone arguments also accept tzinfo instances
+utc_now = now_in_timezone(timezone.utc)
+
 # Convert between timezones
 from datetime import datetime, timezone
 utc_dt = datetime(2024, 6, 6, 12, 0, 0, tzinfo=timezone.utc)

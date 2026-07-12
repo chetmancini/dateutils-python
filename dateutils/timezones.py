@@ -42,37 +42,40 @@ def _resolve_timezone(tz: str | tzinfo) -> tzinfo:
     raise TypeError("tz must be a timezone name or datetime.tzinfo instance")
 
 
-def now_in_timezone(tz_name: str) -> datetime:
+def now_in_timezone(tz: str | tzinfo) -> datetime:
     """
     Get the current datetime in the specified timezone
 
     Args:
-        tz_name: Timezone name (e.g. "America/New_York", "Europe/London")
+        tz: IANA timezone name (e.g. "America/New_York") or a ``tzinfo``
+            instance.
 
     Returns:
         Current datetime in the specified timezone
 
     Raises:
-        zoneinfo.ZoneInfoNotFoundError: If timezone name is invalid
+        zoneinfo.ZoneInfoNotFoundError: If the timezone name is invalid.
+        TypeError: If ``tz`` is neither a timezone name nor a ``tzinfo`` instance.
     """
-    tz = ZoneInfo(tz_name)
-    return datetime.now(tz)
+    return datetime.now(ZoneInfo(tz) if isinstance(tz, str) else _resolve_timezone(tz))
 
 
-def today_in_timezone(tz_name: str) -> date:
+def today_in_timezone(tz: str | tzinfo) -> date:
     """
     Get the current date in the specified timezone
 
     Args:
-        tz_name: Timezone name (e.g. "America/New_York", "Europe/London")
+        tz: IANA timezone name (e.g. "America/New_York") or a ``tzinfo``
+            instance.
 
     Returns:
         Current date in the specified timezone
 
     Raises:
-        zoneinfo.ZoneInfoNotFoundError: If timezone name is invalid
+        zoneinfo.ZoneInfoNotFoundError: If the timezone name is invalid.
+        TypeError: If ``tz`` is neither a timezone name nor a ``tzinfo`` instance.
     """
-    return now_in_timezone(tz_name).date()
+    return now_in_timezone(tz).date()
 
 
 def localize_datetime(
@@ -150,14 +153,14 @@ def localize_datetime(
     return first
 
 
-def convert_timezone(dt: datetime, to_tz: str) -> datetime:
+def convert_timezone(dt: datetime, to_tz: str | tzinfo) -> datetime:
     """
     Convert a timezone-aware datetime object to another timezone.
 
     Args:
         dt: The datetime object to convert. Must have tzinfo set.
-        to_tz: Target timezone name (e.g., "America/New_York", "Europe/London").
-               See `get_available_timezones()` for options.
+        to_tz: Target IANA timezone name (e.g., "America/New_York") or a
+            ``tzinfo`` instance. See `get_available_timezones()` for names.
 
     Returns:
         datetime: A new datetime object representing the same point in time
@@ -165,7 +168,9 @@ def convert_timezone(dt: datetime, to_tz: str) -> datetime:
 
     Raises:
         ValueError: If the input datetime `dt` is naive (tzinfo is None) or if
-                   the timezone name is invalid.
+            the timezone name is invalid.
+        TypeError: If ``to_tz`` is neither a timezone name nor a ``tzinfo``
+            instance.
 
     Note on DST Transitions:
         During DST fall-back (e.g., Nov 3, 2024 at 2:00 AM in US Eastern),
@@ -202,20 +207,17 @@ def convert_timezone(dt: datetime, to_tz: str) -> datetime:
     if dt.tzinfo is None or dt.utcoffset() is None:
         raise ValueError("Input datetime must include timezone information")
 
-    try:
-        target_tz = ZoneInfo(to_tz)
-        source_utc = dt.astimezone(timezone.utc)
-        source_round_trip = source_utc.astimezone(dt.tzinfo)
+    target_tz = _resolve_timezone(to_tz)
+    source_utc = dt.astimezone(timezone.utc)
+    source_round_trip = source_utc.astimezone(dt.tzinfo)
 
-        # A mismatched wall time means the source was inside a spring-forward
-        # gap. Normalize with fold=0 so inherited fold state cannot move the
-        # nonexistent time backward.
-        if source_round_trip.replace(tzinfo=None) != dt.replace(tzinfo=None):
-            source_utc = dt.replace(fold=0).astimezone(timezone.utc)
+    # A mismatched wall time means the source was inside a spring-forward
+    # gap. Normalize with fold=0 so inherited fold state cannot move the
+    # nonexistent time backward.
+    if source_round_trip.replace(tzinfo=None) != dt.replace(tzinfo=None):
+        source_utc = dt.replace(fold=0).astimezone(timezone.utc)
 
-        return source_utc.astimezone(target_tz)
-    except ZoneInfoNotFoundError as e:
-        raise ValueError(f"Invalid timezone name '{to_tz}'. Use get_available_timezones() to see valid options.") from e
+    return source_utc.astimezone(target_tz)
 
 
 def datetime_to_utc(dt: datetime) -> datetime:
@@ -266,41 +268,37 @@ def datetime_to_utc(dt: datetime) -> datetime:
     return dt.astimezone(timezone.utc)
 
 
-def get_timezone_offset(tz_name: str) -> timedelta:
+def get_timezone_offset(tz: str | tzinfo) -> timedelta:
     """
     Get the current offset from UTC for a timezone
 
     Args:
-        tz_name: Timezone name
+        tz: IANA timezone name or a ``tzinfo`` instance.
 
     Returns:
         Timedelta representing the offset from UTC
 
     Raises:
         ValueError: If timezone name is invalid
+        TypeError: If ``tz`` is neither a timezone name nor a ``tzinfo`` instance.
     """
-    try:
-        tz = ZoneInfo(tz_name)
-        now = datetime.now(tz)
-        return now.utcoffset() or timedelta(0)
-    except ZoneInfoNotFoundError as e:
-        raise ValueError(
-            f"Invalid timezone name '{tz_name}'. Use get_available_timezones() to see valid options."
-        ) from e
+    now = datetime.now(_resolve_timezone(tz))
+    return now.utcoffset() or timedelta(0)
 
 
-def format_timezone_offset(tz_name: str) -> str:
+def format_timezone_offset(tz: str | tzinfo) -> str:
     """
     Get the current offset from UTC for a timezone as a formatted string.
 
     Args:
-        tz_name: Timezone name
+        tz: IANA timezone name or a ``tzinfo`` instance.
 
     Returns:
         String in format "+HH:MM" or "-HH:MM"
 
     Raises:
         ValueError: If timezone name is invalid
+        TypeError: If ``tz`` is neither a timezone name nor a ``tzinfo`` instance.
 
     Note:
         Returns the offset at the **current moment**. For DST zones, this varies
@@ -312,7 +310,7 @@ def format_timezone_offset(tz_name: str) -> str:
             dt = datetime(2024, 7, 15, tzinfo=ZoneInfo(tz_name))
             offset = dt.utcoffset()
     """
-    offset = get_timezone_offset(tz_name)
+    offset = get_timezone_offset(tz)
 
     # Convert timedelta to hours and minutes
     total_seconds = int(offset.total_seconds())
