@@ -13,6 +13,19 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 -
 
+## [0.8.0] - 2026-07-11
+
+### Added
+- Add explicit naive datetime localization (#69).
+
+### Changed
+- Expose next occurrence datetime API (#68).
+- Improve ambiguous numeric date parsing (#67).
+- Ci: bump actions/checkout from 6 to 7 (#64).
+
+### Fixed
+-
+
 ## [0.7.1] - 2026-07-10
 
 ### Added
