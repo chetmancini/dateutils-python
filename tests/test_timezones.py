@@ -1,4 +1,5 @@
 import datetime
+from typing import Any, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pytest
@@ -10,6 +11,7 @@ from dateutils import (
     format_timezone_offset,
     get_available_timezones,
     get_timezone_offset,
+    localize_datetime,
     now_in_timezone,
     today_in_timezone,
 )
@@ -108,6 +110,80 @@ def test_convert_timezone() -> None:
     # Test with empty timezone name
     with pytest.raises((ZoneInfoNotFoundError, ValueError)):
         convert_timezone(utc_dt, "")
+
+
+def test_localize_datetime() -> None:
+    """Naive datetimes can be safely localized outside DST transitions."""
+    naive = datetime.datetime(2024, 7, 22, 10, 30, 15, 123456)
+
+    localized = localize_datetime(naive, "America/New_York")
+
+    assert localized == datetime.datetime(2024, 7, 22, 10, 30, 15, 123456, tzinfo=ZoneInfo("America/New_York"))
+    assert localized.fold == 0
+
+
+def test_localize_datetime_accepts_tzinfo_instances() -> None:
+    """A tzinfo instance can be used instead of an IANA timezone name."""
+    localized = localize_datetime(datetime.datetime(2024, 7, 22, 10, 30), datetime.timezone.utc)
+
+    assert localized == datetime.datetime(2024, 7, 22, 10, 30, tzinfo=datetime.timezone.utc)
+
+
+def test_localize_datetime_rejects_aware_datetimes_and_invalid_timezones() -> None:
+    """Localization only attaches a timezone to naive values."""
+    with pytest.raises(ValueError, match="must be naive"):
+        localize_datetime(datetime.datetime(2024, 7, 22, 10, 30, tzinfo=datetime.timezone.utc), "America/New_York")
+
+    with pytest.raises(ValueError, match="Invalid timezone name"):
+        localize_datetime(datetime.datetime(2024, 7, 22, 10, 30), "Invalid/Timezone")
+
+    with pytest.raises(TypeError, match="timezone name or datetime.tzinfo"):
+        localize_datetime(datetime.datetime(2024, 7, 22, 10, 30), cast(Any, 42))
+
+
+def test_localize_datetime_requires_an_ambiguous_time_policy() -> None:
+    """Repeated DST wall times require an explicit earliest or latest choice."""
+    ambiguous = datetime.datetime(2024, 11, 3, 1, 30)
+
+    with pytest.raises(ValueError, match="is ambiguous"):
+        localize_datetime(ambiguous, "America/New_York")
+
+    earliest = localize_datetime(ambiguous, "America/New_York", ambiguous="earliest")
+    latest = localize_datetime(ambiguous, "America/New_York", ambiguous="latest")
+    assert earliest.fold == 0
+    assert latest.fold == 1
+    assert datetime_to_utc(earliest) == datetime.datetime(2024, 11, 3, 5, 30, tzinfo=datetime.timezone.utc)
+    assert datetime_to_utc(latest) == datetime.datetime(2024, 11, 3, 6, 30, tzinfo=datetime.timezone.utc)
+
+
+def test_localize_datetime_requires_a_nonexistent_time_policy() -> None:
+    """Missing DST wall times either raise or use convert_timezone's forward normalization."""
+    nonexistent = datetime.datetime(2024, 3, 10, 2, 30)
+
+    with pytest.raises(ValueError, match="does not exist"):
+        localize_datetime(nonexistent, "America/New_York")
+
+    normalized = localize_datetime(nonexistent, "America/New_York", nonexistent="shift_forward")
+    assert normalized == datetime.datetime(2024, 3, 10, 3, 30, tzinfo=ZoneInfo("America/New_York"))
+    assert normalized.fold == 0
+
+
+@pytest.mark.parametrize(
+    ("ambiguous", "nonexistent", "message"),
+    [
+        ("first", "raise", "ambiguous must be one of"),
+        ("raise", "forward", "nonexistent must be one of"),
+    ],
+)
+def test_localize_datetime_rejects_invalid_dst_policies(ambiguous: str, nonexistent: str, message: str) -> None:
+    """Policy names are validated even when the local time is unambiguous."""
+    with pytest.raises(ValueError, match=message):
+        localize_datetime(
+            datetime.datetime(2024, 7, 22, 10, 30),
+            "America/New_York",
+            ambiguous=cast(Any, ambiguous),
+            nonexistent=cast(Any, nonexistent),
+        )
 
 
 def test_datetime_to_utc() -> None:

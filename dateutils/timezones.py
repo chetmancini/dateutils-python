@@ -2,8 +2,9 @@
 Timezone utilities.
 """
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone, tzinfo
 from functools import lru_cache
+from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 _SECONDS_IN_MINUTE = 60
@@ -25,6 +26,20 @@ def get_available_timezones() -> list[str]:
     """
     # Return a new list so callers can mutate safely without affecting cache.
     return list(_get_available_timezones_cached())
+
+
+def _resolve_timezone(tz: str | tzinfo) -> tzinfo:
+    """Return a timezone object for a name or a supplied tzinfo instance."""
+    if isinstance(tz, str):
+        try:
+            return ZoneInfo(tz)
+        except ZoneInfoNotFoundError as e:
+            raise ValueError(
+                f"Invalid timezone name '{tz}'. Use get_available_timezones() to see valid options."
+            ) from e
+    if isinstance(tz, tzinfo):
+        return tz
+    raise TypeError("tz must be a timezone name or datetime.tzinfo instance")
 
 
 def now_in_timezone(tz_name: str) -> datetime:
@@ -58,6 +73,81 @@ def today_in_timezone(tz_name: str) -> date:
         zoneinfo.ZoneInfoNotFoundError: If timezone name is invalid
     """
     return now_in_timezone(tz_name).date()
+
+
+def localize_datetime(
+    dt: datetime,
+    tz: str | tzinfo,
+    *,
+    ambiguous: Literal["raise", "earliest", "latest"] = "raise",
+    nonexistent: Literal["raise", "shift_forward"] = "raise",
+) -> datetime:
+    """Attach a timezone to a naive datetime with explicit DST policies.
+
+    Use this when a naive value is a local wall time whose timezone is known.
+    :meth:`datetime.astimezone` instead converts an already-aware datetime that
+    represents a specific instant. Direct ``replace(tzinfo=...)`` skips DST
+    validation, so it can silently choose one occurrence of a repeated time or
+    create a nonexistent one.
+
+    Args:
+        dt: The naive local datetime to localize.
+        tz: An IANA timezone name (for example, ``"America/New_York"``) or a
+            :class:`datetime.tzinfo` instance such as :data:`datetime.timezone.utc`.
+        ambiguous: How to resolve a repeated wall time during a DST fall-back.
+            ``"earliest"`` selects the first occurrence (``fold=0``),
+            ``"latest"`` selects the second (``fold=1``), and ``"raise"``
+            rejects the ambiguous time.
+        nonexistent: How to resolve a missing wall time during a DST
+            spring-forward. ``"shift_forward"`` applies the same forward
+            normalization as :func:`convert_timezone`; ``"raise"`` rejects
+            the nonexistent time.
+
+    Returns:
+        An aware datetime in ``tz``.
+
+    Raises:
+        ValueError: If ``dt`` is already timezone-aware, the timezone name or a
+            policy is invalid, or a DST transition requires a policy that was
+            not selected.
+        TypeError: If ``tz`` is neither a timezone name nor a
+            :class:`datetime.tzinfo` instance.
+
+    Examples:
+        >>> from datetime import datetime
+        >>> localize_datetime(datetime(2024, 7, 22, 10, 30), "America/New_York")
+        datetime.datetime(2024, 7, 22, 10, 30, tzinfo=zoneinfo.ZoneInfo(key='America/New_York'))
+
+        >>> localize_datetime(
+        ...     datetime(2024, 11, 3, 1, 30), "America/New_York", ambiguous="latest"
+        ... ).fold
+        1
+    """
+    if dt.tzinfo is not None:
+        raise ValueError("Input datetime must be naive")
+    if ambiguous not in {"raise", "earliest", "latest"}:
+        raise ValueError("ambiguous must be one of: 'raise', 'earliest', 'latest'")
+    if nonexistent not in {"raise", "shift_forward"}:
+        raise ValueError("nonexistent must be one of: 'raise', 'shift_forward'")
+
+    target_tz = _resolve_timezone(tz)
+
+    first = dt.replace(tzinfo=target_tz, fold=0)
+    second = dt.replace(tzinfo=target_tz, fold=1)
+    first_round_trip = first.astimezone(timezone.utc).astimezone(target_tz).replace(tzinfo=None)
+    second_round_trip = second.astimezone(timezone.utc).astimezone(target_tz).replace(tzinfo=None)
+
+    if dt not in (first_round_trip, second_round_trip):
+        if nonexistent == "raise":
+            raise ValueError(f"Local time {dt!s} does not exist in timezone {tz!r}")
+        return first.astimezone(timezone.utc).astimezone(target_tz)
+
+    if first.utcoffset() != second.utcoffset():
+        if ambiguous == "raise":
+            raise ValueError(f"Local time {dt!s} is ambiguous in timezone {tz!r}")
+        return first if ambiguous == "earliest" else second
+
+    return first
 
 
 def convert_timezone(dt: datetime, to_tz: str) -> datetime:

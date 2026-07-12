@@ -95,6 +95,7 @@ _get_available_timezones_cached = _timezones._get_available_timezones_cached
 get_available_timezones = _timezones.get_available_timezones
 now_in_timezone = _timezones.now_in_timezone
 today_in_timezone = _timezones.today_in_timezone
+localize_datetime = _timezones.localize_datetime
 convert_timezone = _timezones.convert_timezone
 datetime_to_utc = _timezones.datetime_to_utc
 get_timezone_offset = _timezones.get_timezone_offset
