@@ -38,6 +38,7 @@ from dateutils import (
     is_leap_year,
     is_weekend,
     next_business_day,
+    next_occurrence,
     previous_business_day,
     start_of_month,
     start_of_quarter,
@@ -1741,6 +1742,30 @@ def test_time_until_next_occurrence() -> None:
     past_target = datetime.datetime(2024, 7, 22, 8, 0, 0)
     delta = time_until_next_occurrence(past_target)
     assert delta == datetime.timedelta(hours=22)  # Next day at 8:00
+
+
+def test_next_occurrence_returns_the_next_naive_datetime() -> None:
+    """The datetime API should preserve the time-until function's strictly-future policy."""
+    from_time = datetime.datetime(2024, 7, 22, 10, 0, 0)
+
+    assert next_occurrence(datetime.time(14, 0), from_time) == datetime.datetime(2024, 7, 22, 14, 0)
+    assert next_occurrence(datetime.datetime(2024, 1, 1, 10, 0), from_time) == datetime.datetime(2024, 7, 23, 10, 0)
+
+
+def test_next_occurrence_applies_dst_policy() -> None:
+    """The datetime API should return the same normalized DST occurrence used for durations."""
+    ny_tz = ZoneInfo("America/New_York")
+    from_time = datetime.datetime(2024, 3, 10, 3, 15, 0, tzinfo=ny_tz)
+    gap_target = datetime.datetime(2024, 1, 1, 2, 30, 0, tzinfo=ny_tz)
+
+    assert next_occurrence(gap_target, from_time) == datetime.datetime(2024, 3, 10, 3, 30, 0, tzinfo=ny_tz)
+
+    fall_back_from = datetime.datetime(2024, 11, 3, 0, 30, 0, tzinfo=ny_tz)
+    second_occurrence = datetime.datetime(2024, 1, 1, 1, 30, 0, tzinfo=ny_tz).replace(fold=1)
+    result = next_occurrence(second_occurrence, fall_back_from)
+
+    assert result == datetime.datetime(2024, 11, 3, 1, 30, 0, tzinfo=ny_tz).replace(fold=1)
+    assert result.fold == 1
 
 
 def test_time_until_next_occurrence_timezone_branches() -> None:
