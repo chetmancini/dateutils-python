@@ -139,6 +139,11 @@ dt = parse_date("2024-06-06")  # Returns date object
 dt = parse_date("06/06/2024")  # Also works
 dt = parse_date("June 6, 2024")  # Also works
 
+# Ambiguous numeric dates follow the current locale by default. Use explicit
+# ordering or reject ambiguous imports when the input source is untrusted.
+dt = parse_date("03/04/2024", dayfirst=False)
+dt = parse_date("03/04/2024", ambiguous="reject")  # Raises ParseError
+
 # Parse ISO 8601 datetime
 dt = parse_iso8601("2024-06-06T12:30:45Z")  # With timezone
 dt = parse_iso8601("2024-06-06")  # Date only

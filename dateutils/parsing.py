@@ -2,12 +2,15 @@
 Date parsing and formatting helpers.
 """
 
+import locale
 import re
 from collections.abc import Iterable
 from datetime import date, datetime, timedelta, timezone
+from typing import Literal, cast
 
 _MAX_TZ_OFFSET_HOURS = 23
 _MAX_TZ_OFFSET_MINUTES = 59
+_MAX_MONTH_NUMBER = 12
 
 # Compiled regex for ISO 8601 parsing (verbose mode for readability)
 _ISO8601_PATTERN = re.compile(
@@ -71,6 +74,9 @@ _AMBIGUOUS_DATE_FORMATS = {
     True: ("%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y", "%m-%d-%Y"),
     False: ("%m/%d/%Y", "%d/%m/%Y", "%m-%d-%Y", "%d-%m-%Y"),
 }
+_AMBIGUOUS_NUMERIC_DATE_PATTERN = re.compile(
+    r"^(?P<first>\d{1,2})(?P<separator>[/-])(?P<second>\d{1,2})(?P=separator)\d{4}(?:\s|$)"
+)
 
 
 def _build_default_date_formats(dayfirst: bool) -> tuple[str, ...]:
@@ -104,6 +110,39 @@ _DEFAULT_DATETIME_FORMATS = {
 }
 
 
+def _locale_dayfirst() -> bool:
+    """Infer date ordering from the current locale, falling back to month-first."""
+    try:
+        date_format = locale.nl_langinfo(locale.D_FMT)
+    except (AttributeError, ValueError):
+        return False
+
+    directives = re.finditer(r"%[-_0^#]*(?:E|O)?([dm])", date_format)
+    for directive in directives:
+        return directive.group(1) == "d"
+    return False
+
+
+def _resolve_dayfirst(dayfirst: bool | None) -> bool:
+    """Use an explicit preference or infer one from the current locale."""
+    return _locale_dayfirst() if dayfirst is None else dayfirst
+
+
+def _is_ambiguous_numeric_date(value: str) -> bool:
+    """Return whether a numeric date has valid month/day values in either order."""
+    match = _AMBIGUOUS_NUMERIC_DATE_PATTERN.match(value)
+    if match is None:
+        return False
+    return all(1 <= int(match.group(field)) <= _MAX_MONTH_NUMBER for field in ("first", "second"))
+
+
+def _validate_ambiguous_mode(ambiguous: str) -> Literal["locale", "reject"]:
+    """Validate the requested handling for ambiguous numeric dates."""
+    if ambiguous not in {"locale", "reject"}:
+        raise ValueError("ambiguous must be either 'locale' or 'reject'")
+    return cast(Literal["locale", "reject"], ambiguous)
+
+
 class ParseError(ValueError):
     """Raised when strict parsing functions cannot parse an input value."""
 
@@ -126,10 +165,10 @@ class ParseError(ValueError):
         super().__init__(details)
 
 
-def _resolve_date_formats(formats: list[str] | None, dayfirst: bool) -> tuple[tuple[str, ...], bool]:
+def _resolve_date_formats(formats: list[str] | None, dayfirst: bool | None) -> tuple[tuple[str, ...], bool]:
     """Return date formats and whether defaults are being used."""
     if formats is None:
-        return _DEFAULT_DATE_FORMATS[dayfirst], True
+        return _DEFAULT_DATE_FORMATS[_resolve_dayfirst(dayfirst)], True
     return tuple(formats), False
 
 
@@ -157,23 +196,28 @@ def parse_date(
     date_str: str,
     formats: list[str] | None = None,
     *,
-    dayfirst: bool = False,
+    dayfirst: bool | None = None,
+    ambiguous: str = "locale",
 ) -> date:
     """
     Parse a date string using multiple possible formats.
 
     Tries a list of common formats if `formats` is not provided.
-    For ambiguous dates like "03/04/2024", the `dayfirst` parameter controls
-    interpretation: False (default) treats it as March 4th (US style),
-    True treats it as April 3rd (European style).
+    For ambiguous dates like "03/04/2024", the current locale determines the
+    default interpretation. Pass `dayfirst` to set the order explicitly, or
+    `ambiguous="reject"` to reject numeric dates that could use either order.
 
     Args:
         date_str: The date string to parse.
         formats: Optional list of format strings (e.g., "%Y/%m/%d") to try.
-            If provided, `dayfirst` is ignored.
+            If provided, `dayfirst` and `ambiguous` are ignored.
         dayfirst: If True, ambiguous dates are parsed as day/month/year (European).
-            If False (default), ambiguous dates are parsed as month/day/year (US).
+            If False, they are parsed as month/day/year (US). If None (default),
+            the current locale determines the order, falling back to month/day/year.
             Only applies when `formats` is None.
+        ambiguous: `"locale"` (default) accepts ambiguous numeric dates using the
+            selected order. `"reject"` raises ParseError for those dates. Only
+            applies when `formats` is None.
 
     Returns:
         A parsed date object.
@@ -186,18 +230,23 @@ def parse_date(
         >>> parse_date("2024-07-22")
         datetime.date(2024, 7, 22)
 
-        >>> parse_date("07/22/2024")  # US format (default)
+        >>> parse_date("07/22/2024", dayfirst=False)  # US format
         datetime.date(2024, 7, 22)
 
         >>> parse_date("22/07/2024", dayfirst=True)  # European format
         datetime.date(2024, 7, 22)
 
         >>> # Ambiguous date: 03/04/2024
-        >>> parse_date("03/04/2024")  # Default: March 4th
+        >>> parse_date("03/04/2024", dayfirst=False)  # US: March 4th
         datetime.date(2024, 3, 4)
 
         >>> parse_date("03/04/2024", dayfirst=True)  # European: April 3rd
         datetime.date(2024, 4, 3)
+
+        >>> parse_date("03/04/2024", ambiguous="reject")
+        Traceback (most recent call last):
+        ...
+        dateutils.parsing.ParseError: ...
 
         >>> parse_date("22 Jul 2024")
         datetime.date(2024, 7, 22)
@@ -220,9 +269,12 @@ def parse_date(
     """
     date_str = date_str.strip()
 
+    ambiguous_mode = _validate_ambiguous_mode(ambiguous) if formats is None else "locale"
     parse_formats, default_formats = _resolve_date_formats(formats, dayfirst)
     if not parse_formats:
         raise ParseError(parser="date", value=date_str, reason="no formats were provided")
+    if default_formats and ambiguous_mode == "reject" and _is_ambiguous_numeric_date(date_str):
+        raise ParseError(parser="date", value=date_str, reason="ambiguous numeric date")
 
     parsed, calendar_error = _parse_date_from_formats(date_str, parse_formats)
     if parsed is not None:
@@ -279,10 +331,10 @@ def _parse_english_textual_date(date_str: str) -> date | None:
     return None
 
 
-def _resolve_datetime_formats(formats: list[str] | None, dayfirst: bool) -> tuple[str, ...]:
+def _resolve_datetime_formats(formats: list[str] | None, dayfirst: bool | None) -> tuple[str, ...]:
     """Return datetime formats."""
     if formats is None:
-        return _DEFAULT_DATETIME_FORMATS[dayfirst]
+        return _DEFAULT_DATETIME_FORMATS[_resolve_dayfirst(dayfirst)]
     return tuple(formats)
 
 
@@ -306,7 +358,13 @@ def _parse_datetime_from_formats(
     return None, calendar_error
 
 
-def parse_datetime(datetime_str: str, formats: list[str] | None = None, dayfirst: bool = False) -> datetime:
+def parse_datetime(
+    datetime_str: str,
+    formats: list[str] | None = None,
+    dayfirst: bool | None = None,
+    *,
+    ambiguous: str = "locale",
+) -> datetime:
     """
     Parse a datetime string using multiple possible formats.
 
@@ -317,10 +375,14 @@ def parse_datetime(datetime_str: str, formats: list[str] | None = None, dayfirst
     Args:
         datetime_str: The datetime string to parse
         formats: List of format strings to try (if None, uses common formats).
-            If provided, `dayfirst` is ignored.
+            If provided, `dayfirst` and `ambiguous` are ignored.
         dayfirst: If True, ambiguous dates are parsed as day/month/year (European).
-            If False (default), ambiguous dates are parsed as month/day/year (US).
+            If False, they are parsed as month/day/year (US). If None (default),
+            the current locale determines the order, falling back to month/day/year.
             Only applies when `formats` is None.
+        ambiguous: `"locale"` (default) accepts ambiguous numeric dates using the
+            selected order. `"reject"` raises ParseError for those dates. Only
+            applies when `formats` is None.
 
     Returns:
         A parsed datetime object.
@@ -330,10 +392,13 @@ def parse_datetime(datetime_str: str, formats: list[str] | None = None, dayfirst
     """
     datetime_str = datetime_str.strip()
 
+    ambiguous_mode = _validate_ambiguous_mode(ambiguous) if formats is None else "locale"
     parse_formats = _resolve_datetime_formats(formats, dayfirst)
 
     if not parse_formats:
         raise ParseError(parser="datetime", value=datetime_str, reason="no formats were provided")
+    if formats is None and ambiguous_mode == "reject" and _is_ambiguous_numeric_date(datetime_str):
+        raise ParseError(parser="datetime", value=datetime_str, reason="ambiguous numeric date")
 
     parsed, calendar_error = _parse_datetime_from_formats(datetime_str, parse_formats)
     if parsed is not None:
