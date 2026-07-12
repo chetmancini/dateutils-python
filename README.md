@@ -206,7 +206,7 @@ q_end = end_of_quarter(2024, 2)      # 2024-06-30 23:59:59.999999
 ```python
 from dateutils import (
     age_in_years, days_until_weekend, days_since_weekend,
-    get_week_number, time_until_next_occurrence
+    get_week_number, next_occurrence, time_until_next_occurrence
 )
 from datetime import date, datetime
 
@@ -225,6 +225,7 @@ week_num = get_week_number(date(2024, 6, 6))  # Week number (1-53)
 # Calculate time until next occurrence
 target_time = datetime(2024, 6, 6, 15, 30, 0)  # 3:30 PM today/tomorrow
 time_delta = time_until_next_occurrence(target_time)  # Time until next 3:30 PM
+next_run = next_occurrence(target_time)  # Datetime of the next 3:30 PM
 ```
 
 ### Memory-Efficient Date Ranges

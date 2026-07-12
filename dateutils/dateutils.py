@@ -1531,6 +1531,68 @@ def _aware_occurrence_on_date(local_date: date, target_time_of_day: time) -> dat
     return normalized
 
 
+def _next_occurrence_details(target_time: datetime | time, from_time: datetime | None) -> tuple[datetime, datetime]:
+    """Return the next occurrence and its reference point on the UTC timeline when aware."""
+    target_time_of_day = target_time.timetz() if isinstance(target_time, datetime) else target_time
+
+    if from_time is None:
+        if target_time_of_day.tzinfo is not None:
+            from_time = datetime.now(target_time_of_day.tzinfo)
+        else:
+            from_time = datetime.now()
+
+    # Ensure both have the same timezone handling.
+    if target_time_of_day.tzinfo is None and from_time.tzinfo is not None:
+        target_time_of_day = target_time_of_day.replace(tzinfo=from_time.tzinfo)
+    elif target_time_of_day.tzinfo is not None and from_time.tzinfo is None:
+        from_time = from_time.replace(tzinfo=target_time_of_day.tzinfo)
+
+    from_time_in_target_tz = (
+        from_time.astimezone(target_time_of_day.tzinfo) if target_time_of_day.tzinfo is not None else from_time
+    )
+
+    if target_time_of_day.tzinfo is not None:
+        from_time_utc = from_time_in_target_tz.astimezone(timezone.utc)
+        candidate_date = from_time_in_target_tz.date()
+        occurrence = _aware_occurrence_on_date(candidate_date, target_time_of_day)
+
+        if occurrence.astimezone(timezone.utc) <= from_time_utc:
+            occurrence = _aware_occurrence_on_date(candidate_date + timedelta(days=1), target_time_of_day)
+
+        return occurrence, from_time_utc
+
+    occurrence = datetime.combine(from_time_in_target_tz.date(), target_time_of_day)
+    if occurrence <= from_time_in_target_tz:
+        occurrence += timedelta(days=1)
+
+    return occurrence, from_time_in_target_tz
+
+
+def next_occurrence(target_time: datetime | time, from_time: datetime | None = None) -> datetime:
+    """
+    Return the next daily occurrence of a specific time-of-day.
+
+    The date portion of a datetime target is ignored. The returned datetime is
+    strictly after `from_time` (or the current time when omitted). Naive inputs
+    produce a naive result; aware inputs produce an occurrence in the target
+    timezone. When only one input is aware, the naive input is interpreted in
+    the aware input's timezone.
+
+    For aware times, nonexistent spring-forward times roll forward to the next
+    valid local time. Ambiguous fall-back times honor `target_time.fold`.
+
+    Args:
+        target_time: A datetime or time whose time-of-day represents the target.
+        from_time: The reference datetime. Defaults to the current time in the
+            target timezone, or local time for naive targets.
+
+    Returns:
+        datetime: The next occurrence of the target time-of-day.
+    """
+    occurrence, _ = _next_occurrence_details(target_time, from_time)
+    return occurrence
+
+
 def time_until_next_occurrence(target_time: datetime | time, from_time: datetime | None = None) -> timedelta:
     """
     Calculate the time remaining until the next daily occurrence of a specific time-of-day.
@@ -1585,43 +1647,7 @@ def time_until_next_occurrence(target_time: datetime | time, from_time: datetime
         >>> job_time = datetime(2024, 1, 1, 2, 0, 0, tzinfo=timezone.utc)
         >>> delta = time_until_next_occurrence(job_time)  # Uses current time as reference
     """
-    target_time_of_day = target_time.timetz() if isinstance(target_time, datetime) else target_time
-
-    if from_time is None:
-        if target_time_of_day.tzinfo is not None:
-            from_time = datetime.now(target_time_of_day.tzinfo)
-        else:
-            from_time = datetime.now()
-
-    # Ensure both have the same timezone handling
-    if target_time_of_day.tzinfo is None and from_time.tzinfo is not None:
-        target_time_of_day = target_time_of_day.replace(tzinfo=from_time.tzinfo)
-    elif target_time_of_day.tzinfo is not None and from_time.tzinfo is None:
-        from_time = from_time.replace(tzinfo=target_time_of_day.tzinfo)
-
-    from_time_in_target_tz = (
-        from_time.astimezone(target_time_of_day.tzinfo) if target_time_of_day.tzinfo is not None else from_time
-    )
-
-    if target_time_of_day.tzinfo is not None:
-        from_time_utc = from_time_in_target_tz.astimezone(timezone.utc)
-        candidate_date = from_time_in_target_tz.date()
-
-        # Round-trip through UTC so nonexistent local times are normalized forward
-        # and ambiguous times respect the `fold` carried by `target_time`.
-        next_occurrence = _aware_occurrence_on_date(candidate_date, target_time_of_day)
-
-        if next_occurrence.astimezone(timezone.utc) <= from_time_utc:
-            next_date = candidate_date + timedelta(days=1)
-            next_occurrence = _aware_occurrence_on_date(next_date, target_time_of_day)
-
-        return next_occurrence.astimezone(timezone.utc) - from_time_utc
-
-    # Calculate next occurrence based on the target timezone's local date.
-    next_occurrence = datetime.combine(from_time_in_target_tz.date(), target_time_of_day)
-
-    if next_occurrence <= from_time_in_target_tz:
-        # Target time has already passed today, move to next day
-        next_occurrence += timedelta(days=1)
-
-    return next_occurrence - from_time_in_target_tz
+    occurrence, reference_time = _next_occurrence_details(target_time, from_time)
+    if occurrence.tzinfo is not None:
+        return occurrence.astimezone(timezone.utc) - reference_time
+    return occurrence - reference_time
