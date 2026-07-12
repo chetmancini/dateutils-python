@@ -87,6 +87,38 @@ def test_parse_date_dayfirst() -> None:
     assert parse_date("2024|07|22", formats=["%Y|%m|%d"], dayfirst=True) == datetime.date(2024, 7, 22)
 
 
+def test_parse_date_uses_locale_order_when_dayfirst_is_not_specified(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Default numeric date parsing should follow the locale's date-order directive."""
+    monkeypatch.setattr(locale, "nl_langinfo", lambda _: "%d/%m/%Y")
+    assert parse_date("03/04/2024") == datetime.date(2024, 4, 3)
+
+    monkeypatch.setattr(locale, "nl_langinfo", lambda _: "%m/%d/%Y")
+    assert parse_date("03/04/2024") == datetime.date(2024, 3, 4)
+
+
+def test_parse_date_locale_falls_back_to_monthfirst(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Unknown locale formats retain the historic month-first behavior."""
+    monkeypatch.setattr(locale, "nl_langinfo", lambda _: "%Y.%j")
+    assert parse_date("03/04/2024") == datetime.date(2024, 3, 4)
+
+
+def test_parse_date_rejects_ambiguous_numeric_dates() -> None:
+    """Import callers can opt into rejecting dates valid in either numeric order."""
+    with pytest.raises(ParseError, match="ambiguous numeric date") as exc_info:
+        parse_date("03/04/2024", ambiguous="reject")
+    assert _parse_error(exc_info).reason == "ambiguous numeric date"
+
+    assert parse_date("22/07/2024", ambiguous="reject") == datetime.date(2024, 7, 22)
+    assert parse_date("03/04/2024", formats=["%m/%d/%Y"], ambiguous="reject") == datetime.date(2024, 3, 4)
+    assert parse_date("03/04/2024", formats=["%m/%d/%Y"], ambiguous="prefer-us") == datetime.date(2024, 3, 4)
+
+
+def test_parse_date_rejects_unknown_ambiguous_mode() -> None:
+    """Ambiguity handling must use a supported mode."""
+    with pytest.raises(ValueError, match="ambiguous must be"):
+        parse_date("03/04/2024", ambiguous="prefer-us")
+
+
 def test_parse_date_english_month_names_locale_independent() -> None:
     """English month-name parsing should not depend on process locale."""
     original_locale = locale.setlocale(locale.LC_TIME)
@@ -255,6 +287,11 @@ def test_parse_datetime() -> None:
     # Test dayfirst with dash separator
     assert parse_datetime("03-04-2024 12:00:00") == datetime.datetime(2024, 3, 4, 12, 0, 0)
     assert parse_datetime("03-04-2024 12:00:00", dayfirst=True) == datetime.datetime(2024, 4, 3, 12, 0, 0)
+
+    # Import callers can reject numeric dates that have valid values in either order.
+    with pytest.raises(ParseError, match="ambiguous numeric date"):
+        parse_datetime("03/04/2024 12:00:00", ambiguous="reject")
+    assert parse_datetime("22/07/2024 12:00:00", ambiguous="reject") == datetime.datetime(2024, 7, 22, 12, 0, 0)
 
     # Test invalid datetime
     with pytest.raises(ParseError):
