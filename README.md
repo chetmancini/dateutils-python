@@ -162,17 +162,23 @@ iso_str = to_iso8601(dt)  # e.g., "2024-06-06T12:30:45+00:00"
 
 ```python
 from dateutils import (
-    now_in_timezone, convert_timezone, get_available_timezones,
+    now_in_timezone, localize_datetime, convert_timezone, get_available_timezones,
     get_timezone_offset, format_timezone_offset
 )
 
 # Get current time in a timezone
 nyc_now = now_in_timezone("America/New_York")
 
+# Timezone arguments also accept tzinfo instances
+utc_now = now_in_timezone(timezone.utc)
+
 # Convert between timezones
 from datetime import datetime, timezone
 utc_dt = datetime(2024, 6, 6, 12, 0, 0, tzinfo=timezone.utc)
 tokyo_dt = convert_timezone(utc_dt, "Asia/Tokyo")
+
+# Attach a timezone to a naive local time. DST edge cases require a policy.
+meeting = localize_datetime(datetime(2024, 11, 3, 1, 30), "America/New_York", ambiguous="latest")
 
 # Get available timezones
 timezones = get_available_timezones()  # List of all available timezone names
