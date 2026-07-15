@@ -13,6 +13,20 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 -
 
+## [0.8.1] - 2026-07-15
+
+### Added
+-
+
+### Changed
+- Bound federal holiday rules historically (#73).
+- Pin GitHub Actions to immutable commits (#72).
+- Ci: consolidate quality and version matrix (#71).
+- Upgrade development tooling (#70).
+
+### Fixed
+-
+
 ## [0.8.0] - 2026-07-11
 
 ### Added
