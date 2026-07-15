@@ -143,7 +143,7 @@ build: ## Build the package for distribution
 	@uv run python -m build
 	@echo "${GREEN}✓ Package built in dist/${NC}"
 
-smoke-test-dist: build ## Install and smoke-test the built wheel outside the source checkout
+smoke-test-built-dist: ## Install and smoke-test an existing built wheel outside the source checkout
 	@echo "${BLUE}Smoke-testing built wheel...${NC}"
 	@set -eu; \
 		tmp_dir=$$(mktemp -d); \
@@ -155,6 +155,8 @@ smoke-test-dist: build ## Install and smoke-test the built wheel outside the sou
 		cd "$$tmp_dir"; \
 		"$$tmp_dir/venv/bin/python" "$(CURDIR)/scripts/smoke_test_installed_package.py"
 	@echo "${GREEN}✓ Built wheel smoke test completed${NC}"
+
+smoke-test-dist: build smoke-test-built-dist ## Build, install, and smoke-test the wheel outside the source checkout
 
 build-check: smoke-test-dist ## Build, smoke-test, and check the package
 	@echo "${BLUE}Checking built package...${NC}"
@@ -229,4 +231,4 @@ version: ## Show current version information
 	@echo "UV version: $(UV_VERSION)"
 
 # Safety check for dangerous operations
-.PHONY: init deps install pre-commit pre-commit-run lint lint-fix format format-check validate-changelog typecheck test test-fast coverage coverage-html watch-test doctest check dev fix build smoke-test-dist build-check update-changelog version-patch version-minor version-major clean requirements version help
+.PHONY: init deps install pre-commit pre-commit-run lint lint-fix format format-check validate-changelog typecheck test test-fast coverage coverage-html watch-test doctest check dev fix build smoke-test-built-dist smoke-test-dist build-check update-changelog version-patch version-minor version-major clean requirements version help
