@@ -13,6 +13,18 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 -
 
+## [0.8.2] - 2026-07-15
+
+### Added
+-
+
+### Changed
+- Normalize datetime awareness checks (#76).
+- Enforce documentation and coverage checks (#75).
+
+### Fixed
+- Fix date range boundary handling (#74).
+
 ## [0.8.1] - 2026-07-15
 
 ### Added
