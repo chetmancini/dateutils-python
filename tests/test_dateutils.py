@@ -1852,6 +1852,14 @@ def test_next_occurrence_treats_indeterminate_datetimes_as_naive() -> None:
     )
 
 
+def test_next_occurrence_treats_indeterminate_time_objects_as_naive() -> None:
+    """Time targets without an offset follow naive scheduling after date resolution."""
+    target = datetime.time(14, 0, tzinfo=_IndeterminateTimezone())
+    from_time = datetime.datetime(2024, 7, 22, 10, 0)
+
+    assert next_occurrence(target, from_time) == next_occurrence(target.replace(tzinfo=None), from_time)
+
+
 def test_next_occurrence_preserves_zoneinfo_time_support() -> None:
     """A standalone ZoneInfo time remains aware once combined with its reference date."""
     ny_tz = ZoneInfo("America/New_York")

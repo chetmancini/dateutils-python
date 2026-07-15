@@ -1556,19 +1556,31 @@ def _aware_occurrence_on_date(local_date: date, target_time_of_day: time) -> dat
     return normalized
 
 
-def _next_occurrence_details(target_time: datetime | time, from_time: datetime | None) -> tuple[datetime, datetime]:
-    """Return the next occurrence and its reference point on the UTC timeline when aware."""
+def _normalized_target_time_of_day(target_time: datetime | time, reference_date: date) -> time:
+    """Return a target time whose timezone is usable on the reference date."""
     target_time_of_day = target_time.timetz() if isinstance(target_time, datetime) else target_time
     if isinstance(target_time, datetime) and not _is_aware_datetime(target_time):
         target_time_of_day = target_time_of_day.replace(tzinfo=None)
+    if target_time_of_day.tzinfo is not None and not _is_aware_datetime(
+        datetime.combine(reference_date, target_time_of_day)
+    ):
+        return target_time_of_day.replace(tzinfo=None)
+    return target_time_of_day
+
+
+def _next_occurrence_details(target_time: datetime | time, from_time: datetime | None) -> tuple[datetime, datetime]:
+    """Return the next occurrence and its reference point on the UTC timeline when aware."""
+    if from_time is not None and not _is_aware_datetime(from_time):
+        from_time = from_time.replace(tzinfo=None)
+
+    reference_date = from_time.date() if from_time is not None else datetime.now().date()
+    target_time_of_day = _normalized_target_time_of_day(target_time, reference_date)
 
     if from_time is None:
         if target_time_of_day.tzinfo is not None:
             from_time = datetime.now(target_time_of_day.tzinfo)
         else:
             from_time = datetime.now()
-    elif not _is_aware_datetime(from_time):
-        from_time = from_time.replace(tzinfo=None)
 
     # Ensure both have the same timezone handling.
     if target_time_of_day.tzinfo is None and from_time.tzinfo is not None:
