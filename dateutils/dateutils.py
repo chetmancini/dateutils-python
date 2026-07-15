@@ -567,7 +567,8 @@ def generate_weeks(
 
     Yields:
         tuple[date, date]: Tuples of (week_start, week_end) representing the
-        inclusive week range.
+        inclusive week range. Weeks at the representable date boundaries are
+        clipped at date.min and date.max.
 
     Raises:
         ValueError: If `count` is negative.
@@ -575,14 +576,16 @@ def generate_weeks(
     if count < 0:
         raise ValueError(f"count must be >= 0, got {count}")
 
-    def _week_start(today: date) -> date:
-        desired_start = calendar.MONDAY if start_on_monday else calendar.SUNDAY
-        days_since_start = (today.weekday() - desired_start) % 7
-        return today - timedelta(days=days_since_start)
+    if count == 0:
+        return
 
     anchor = _as_date(start_date) if start_date is not None else date.today()
     target = _as_date(until_date) if until_date is not None else None
-    week_start = _week_start(anchor)
+    desired_start = calendar.MONDAY if start_on_monday else calendar.SUNDAY
+    days_since_start = (anchor.weekday() - desired_start) % 7
+    week_start_ordinal = anchor.toordinal() - days_since_start
+    min_ordinal = date.min.toordinal()
+    max_ordinal = date.max.toordinal()
 
     if target is None:
         direction = -1
@@ -590,14 +593,16 @@ def generate_weeks(
         direction = int(target > anchor) - int(target < anchor)
 
     for _ in range(count):
-        week_end = week_start + timedelta(days=6)
-        if target is not None and ((direction > 0 and week_start > target) or (direction < 0 and week_end < target)):
-            break
+        week_start = date.fromordinal(max(week_start_ordinal, min_ordinal))
+        week_end = date.fromordinal(min(week_start_ordinal + DAYS_IN_WEEK - 1, max_ordinal))
         yield week_start, week_end
-        if direction == 0:
+        if direction == 0 or (target is not None and week_start <= target <= week_end):
             break
         step = -7 if direction < 0 else 7
-        week_start += timedelta(days=step)
+        next_week_start_ordinal = week_start_ordinal + step
+        if next_week_start_ordinal > max_ordinal or next_week_start_ordinal + DAYS_IN_WEEK - 1 < min_ordinal:
+            return
+        week_start_ordinal = next_week_start_ordinal
 
 
 ##################
@@ -625,8 +630,16 @@ def date_range(start_date: date, end_date: date) -> list[date]:
     if start_date > end_date:
         raise ValueError(f"start_date ({start_date}) must be <= end_date ({end_date})")
 
+    boundary_year = start_date.year + 10
+    if boundary_year > date.max.year:
+        boundary = date.max
+    elif start_date.month == _FEBRUARY and start_date.day == _LEAP_DAY and not calendar.isleap(boundary_year):
+        boundary = date(boundary_year, 2, 28)
+    else:
+        boundary = date(boundary_year, start_date.month, start_date.day)
+
     days_diff = (end_date - start_date).days + 1
-    if days_diff > (10 * DAYS_IN_YEAR + 3):
+    if end_date > boundary:
         raise ValueError(f"Date range too large ({days_diff} days). Consider using a generator for large ranges.")
 
     return [start_date + timedelta(days=i) for i in range(days_diff)]
@@ -655,8 +668,10 @@ def date_range_generator(start_date: date, end_date: date) -> Generator[date, No
         raise ValueError(f"start_date ({start_date}) must be <= end_date ({end_date})")
 
     current = start_date
-    while current <= end_date:
+    while True:
         yield current
+        if current == end_date:
+            return
         current += timedelta(days=1)
 
 

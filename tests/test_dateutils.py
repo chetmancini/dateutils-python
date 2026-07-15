@@ -410,6 +410,40 @@ def test_generate_weeks_negative_count_validation() -> None:
         list(generate_weeks(count=-1))
 
 
+def test_generate_weeks_clips_unrepresentable_boundary_days() -> None:
+    """Weeks at the representable date boundaries include only valid dates."""
+    assert list(generate_weeks(count=0, start_date=datetime.date.min)) == []
+    assert list(generate_weeks(count=1, start_date=datetime.date.min)) == [(datetime.date.min, datetime.date(1, 1, 6))]
+    assert list(generate_weeks(count=1, start_date=datetime.date.max)) == [
+        (datetime.date(9999, 12, 26), datetime.date.max)
+    ]
+
+
+def test_generate_weeks_stops_at_lower_boundary() -> None:
+    """Backward Monday-based iteration stops after the one representable week."""
+    assert list(
+        generate_weeks(
+            count=3,
+            start_date=datetime.date.min,
+            start_on_monday=True,
+        )
+    ) == [(datetime.date.min, datetime.date(1, 1, 7))]
+
+
+def test_generate_weeks_yields_clipped_week_containing_lower_boundary_target() -> None:
+    """Backward Sunday-based iteration includes the clipped week containing date.min."""
+    assert list(
+        generate_weeks(
+            count=2,
+            start_date=datetime.date(1, 1, 7),
+            until_date=datetime.date.min,
+        )
+    ) == [
+        (datetime.date(1, 1, 7), datetime.date(1, 1, 13)),
+        (datetime.date.min, datetime.date(1, 1, 6)),
+    ]
+
+
 def test_date_to_quarter() -> None:
     def to_date(m: int, d: int) -> datetime.datetime:
         return datetime.datetime(2018, m, d)
@@ -1522,6 +1556,25 @@ def test_date_range_validation() -> None:
         date_range(start, large_end)
 
 
+def test_date_range_allows_ten_calendar_years() -> None:
+    """The list-range limit is ten calendar years, including leap-day handling."""
+    decade = date_range(datetime.date(2000, 1, 1), datetime.date(2010, 1, 1))
+    assert decade[0] == datetime.date(2000, 1, 1)
+    assert decade[-1] == datetime.date(2010, 1, 1)
+
+    with pytest.raises(ValueError, match="Date range too large"):
+        date_range(datetime.date(2000, 1, 1), datetime.date(2010, 1, 2))
+
+    leap_decade = date_range(datetime.date(2000, 2, 29), datetime.date(2010, 2, 28))
+    assert leap_decade[-1] == datetime.date(2010, 2, 28)
+
+    with pytest.raises(ValueError, match="Date range too large"):
+        date_range(datetime.date(2000, 2, 29), datetime.date(2010, 3, 1))
+
+    near_max = date_range(datetime.date(9990, 1, 1), datetime.date.max)
+    assert near_max[-1] == datetime.date.max
+
+
 ##################
 # New Utility Function Tests
 ##################
@@ -1914,6 +1967,11 @@ def test_date_range_generator() -> None:
     # Just getting the generator shouldn't raise or consume memory
     first_date = next(gen)
     assert first_date == start
+
+
+def test_date_range_generator_stops_at_date_max() -> None:
+    """The inclusive endpoint is yielded without stepping past date.max."""
+    assert list(date_range_generator(datetime.date.max, datetime.date.max)) == [datetime.date.max]
 
 
 def test_get_us_federal_holidays_list_wrapper() -> None:
