@@ -129,6 +129,11 @@ fixed_holidays = get_us_federal_holidays(2024, ("NEW_YEARS_DAY", "CHRISTMAS"))
 workdays = workdays_between(start, end, holidays=holidays_2024)
 ```
 
+US federal holiday calculations support 1971 and later. The calendar models rule
+changes within that range, including Veterans Day's fourth-Monday-in-October
+schedule from 1971 through 1977, MLK Day from 1986, and Juneteenth from 2021.
+Years before 1971 raise `ValueError` rather than projecting modern rules backward.
+
 ### Date Parsing and Formatting
 
 ```python

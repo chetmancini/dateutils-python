@@ -710,6 +710,8 @@ def _observed_us_federal_holiday(holiday_date: date) -> date:
     return holiday_date
 
 
+_US_FEDERAL_HOLIDAY_FIRST_SUPPORTED_YEAR = 1971
+_MLK_DAY_FIRST_FEDERAL_YEAR = 1986
 _JUNETEENTH_FIRST_FEDERAL_YEAR = 2021
 
 
@@ -721,20 +723,44 @@ class _HolidayRule(NamedTuple):
     occurrence: int | None = None
     from_end: bool = False
     first_year: int | None = None
+    last_year: int | None = None
 
 
 _US_FEDERAL_HOLIDAY_RULES: tuple[_HolidayRule, ...] = (
-    _HolidayRule("NEW_YEARS_DAY", 1, day=1),
-    _HolidayRule("MLK_DAY", 1, weekday=calendar.MONDAY, occurrence=3),
-    _HolidayRule("PRESIDENTS_DAY", 2, weekday=calendar.MONDAY, occurrence=3),
-    _HolidayRule("MEMORIAL_DAY", 5, weekday=calendar.MONDAY, occurrence=1, from_end=True),
+    _HolidayRule("NEW_YEARS_DAY", 1, day=1, first_year=_US_FEDERAL_HOLIDAY_FIRST_SUPPORTED_YEAR),
+    _HolidayRule("MLK_DAY", 1, weekday=calendar.MONDAY, occurrence=3, first_year=_MLK_DAY_FIRST_FEDERAL_YEAR),
+    _HolidayRule(
+        "PRESIDENTS_DAY", 2, weekday=calendar.MONDAY, occurrence=3, first_year=_US_FEDERAL_HOLIDAY_FIRST_SUPPORTED_YEAR
+    ),
+    _HolidayRule(
+        "MEMORIAL_DAY",
+        5,
+        weekday=calendar.MONDAY,
+        occurrence=1,
+        from_end=True,
+        first_year=_US_FEDERAL_HOLIDAY_FIRST_SUPPORTED_YEAR,
+    ),
     _HolidayRule("JUNETEENTH", 6, day=19, first_year=_JUNETEENTH_FIRST_FEDERAL_YEAR),
-    _HolidayRule("INDEPENDENCE_DAY", 7, day=4),
-    _HolidayRule("LABOR_DAY", 9, weekday=calendar.MONDAY, occurrence=1),
-    _HolidayRule("COLUMBUS_DAY", 10, weekday=calendar.MONDAY, occurrence=2),
-    _HolidayRule("VETERANS_DAY", 11, day=11),
-    _HolidayRule("THANKSGIVING", 11, weekday=calendar.THURSDAY, occurrence=4),
-    _HolidayRule("CHRISTMAS", 12, day=25),
+    _HolidayRule("INDEPENDENCE_DAY", 7, day=4, first_year=_US_FEDERAL_HOLIDAY_FIRST_SUPPORTED_YEAR),
+    _HolidayRule(
+        "LABOR_DAY", 9, weekday=calendar.MONDAY, occurrence=1, first_year=_US_FEDERAL_HOLIDAY_FIRST_SUPPORTED_YEAR
+    ),
+    _HolidayRule(
+        "COLUMBUS_DAY", 10, weekday=calendar.MONDAY, occurrence=2, first_year=_US_FEDERAL_HOLIDAY_FIRST_SUPPORTED_YEAR
+    ),
+    _HolidayRule(
+        "VETERANS_DAY",
+        10,
+        weekday=calendar.MONDAY,
+        occurrence=4,
+        first_year=_US_FEDERAL_HOLIDAY_FIRST_SUPPORTED_YEAR,
+        last_year=1977,
+    ),
+    _HolidayRule("VETERANS_DAY", 11, day=11, first_year=1978),
+    _HolidayRule(
+        "THANKSGIVING", 11, weekday=calendar.THURSDAY, occurrence=4, first_year=_US_FEDERAL_HOLIDAY_FIRST_SUPPORTED_YEAR
+    ),
+    _HolidayRule("CHRISTMAS", 12, day=25, first_year=_US_FEDERAL_HOLIDAY_FIRST_SUPPORTED_YEAR),
 )
 _US_FEDERAL_HOLIDAY_TYPES = frozenset(rule.holiday_type for rule in _US_FEDERAL_HOLIDAY_RULES)
 
@@ -758,7 +784,9 @@ def _nth_weekday_in_month(year: int, month: int, weekday: int, n: int, *, from_e
 
 def _date_from_holiday_rule(year: int, rule: _HolidayRule, *, observed: bool = False) -> date | None:
     """Resolve a US federal holiday rule for a year, omitting inactive historical rules."""
-    if rule.first_year is not None and year < rule.first_year:
+    if (rule.first_year is not None and year < rule.first_year) or (
+        rule.last_year is not None and year > rule.last_year
+    ):
         return None
 
     if rule.day is not None:
@@ -809,7 +837,7 @@ def get_us_federal_holidays(
         sorted in chronological order.
 
     Raises:
-        ValueError: If `holiday_types` contains unknown holiday names.
+        ValueError: If `year` is before 1971 or `holiday_types` contains unknown holiday names.
 
     Examples:
         >>> from datetime import date
@@ -857,11 +885,19 @@ def _get_us_federal_holidays_cached(
     year: int, holiday_types: tuple[str, ...] | None = None, observed: bool = False
 ) -> tuple[date, ...]:
     """Internal helper that stores immutable tuples for caching purposes."""
-    all_holiday_types = {
-        rule.holiday_type: holiday_date
-        for rule in _US_FEDERAL_HOLIDAY_RULES
-        if (holiday_date := _date_from_holiday_rule(year, rule, observed=observed)) is not None
-    }
+    if year < _US_FEDERAL_HOLIDAY_FIRST_SUPPORTED_YEAR:
+        raise ValueError(
+            f"US federal holidays are supported from {_US_FEDERAL_HOLIDAY_FIRST_SUPPORTED_YEAR} onward, got {year}"
+        )
+
+    all_holiday_types: dict[str, date] = {}
+    for rule in _US_FEDERAL_HOLIDAY_RULES:
+        holiday_date = _date_from_holiday_rule(year, rule, observed=observed)
+        if holiday_date is None:
+            continue
+        if rule.holiday_type in all_holiday_types:  # pragma: no cover
+            raise AssertionError(f"Overlapping US federal holiday rules for {rule.holiday_type} in {year}")
+        all_holiday_types[rule.holiday_type] = holiday_date
 
     # If holiday_types is None, return all holidays in chronological order
     if holiday_types is None:

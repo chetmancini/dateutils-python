@@ -1140,6 +1140,38 @@ def test_get_us_federal_holidays_all_2025() -> None:
     assert datetime.date(2025, 12, 25) in holidays_2025
 
 
+def test_get_us_federal_holidays_rejects_years_before_1971() -> None:
+    """Federal holiday rules are only supported from the Uniform Monday era onward."""
+    with pytest.raises(ValueError, match="1971"):
+        get_us_federal_holidays(1970)
+
+    with pytest.raises(ValueError, match="1971"):
+        get_us_federal_holidays_list(1970, observed=True)
+
+
+@pytest.mark.parametrize(
+    ("year", "expected_count"),
+    [(1971, 9), (1985, 9), (1986, 10), (2020, 10), (2021, 11)],
+)
+def test_get_us_federal_holidays_historical_era_counts(year: int, expected_count: int) -> None:
+    """The supported eras add MLK Day in 1986 and Juneteenth in 2021."""
+    assert len(get_us_federal_holidays(year)) == expected_count
+
+
+def test_get_us_federal_holidays_uses_historical_veterans_day_schedule() -> None:
+    """Veterans Day moved from October back to November in 1978."""
+    assert get_us_federal_holidays(1971, ("VETERANS_DAY",)) == [datetime.date(1971, 10, 25)]
+    assert get_us_federal_holidays(1977, ("VETERANS_DAY",)) == [datetime.date(1977, 10, 24)]
+    assert get_us_federal_holidays(1978, ("VETERANS_DAY",)) == [datetime.date(1978, 11, 11)]
+    assert get_us_federal_holidays(1978, ("VETERANS_DAY",), observed=True) == [datetime.date(1978, 11, 10)]
+
+
+def test_get_us_federal_holidays_omits_mlk_day_before_its_first_observance() -> None:
+    """Martin Luther King Jr. Day first appears in the federal calendar in 1986."""
+    assert get_us_federal_holidays(1985, ("MLK_DAY",)) == []
+    assert get_us_federal_holidays(1986, ("MLK_DAY",)) == [datetime.date(1986, 1, 20)]
+
+
 def test_get_us_federal_holidays_excludes_juneteenth_before_2021() -> None:
     """Juneteenth was not a US federal holiday before 2021."""
     holidays_2020 = get_us_federal_holidays(2020)
