@@ -114,7 +114,9 @@ prev_bday = previous_business_day(date(2024, 6, 3))  # Monday -> Friday
 ### Holiday Support
 
 ```python
-from dateutils import get_us_federal_holidays, get_us_federal_holidays_list
+from datetime import date
+
+from dateutils import get_us_federal_holidays, get_us_federal_holidays_list, workdays_between
 
 # Get all US federal holidays for a year (cached for performance)
 holidays_2024 = get_us_federal_holidays(2024)  # Returns 11 holidays
@@ -126,6 +128,8 @@ observed_2021 = get_us_federal_holidays(2021, observed=True)
 fixed_holidays = get_us_federal_holidays(2024, ("NEW_YEARS_DAY", "CHRISTMAS"))
 
 # Use with business day functions
+start = date(2024, 6, 1)
+end = date(2024, 6, 10)
 workdays = workdays_between(start, end, holidays=holidays_2024)
 ```
 
@@ -142,7 +146,10 @@ dt = parse_date("June 6, 2024")  # Also works
 # Ambiguous numeric dates follow the current locale by default. Use explicit
 # ordering or reject ambiguous imports when the input source is untrusted.
 dt = parse_date("03/04/2024", dayfirst=False)
-dt = parse_date("03/04/2024", ambiguous="reject")  # Raises ParseError
+try:
+    dt = parse_date("03/04/2024", ambiguous="reject")
+except ParseError:
+    pass  # Rejected because the numeric order is ambiguous.
 
 # Parse ISO 8601 datetime
 dt = parse_iso8601("2024-06-06T12:30:45Z")  # With timezone
@@ -165,6 +172,7 @@ from dateutils import (
     now_in_timezone, localize_datetime, convert_timezone, get_available_timezones,
     get_timezone_offset, format_timezone_offset
 )
+from datetime import datetime, timezone
 
 # Get current time in a timezone
 nyc_now = now_in_timezone("America/New_York")
@@ -173,7 +181,6 @@ nyc_now = now_in_timezone("America/New_York")
 utc_now = now_in_timezone(timezone.utc)
 
 # Convert between timezones
-from datetime import datetime, timezone
 utc_dt = datetime(2024, 6, 6, 12, 0, 0, tzinfo=timezone.utc)
 tokyo_dt = convert_timezone(utc_dt, "Asia/Tokyo")
 
