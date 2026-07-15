@@ -4,9 +4,32 @@ Date parsing and formatting helpers.
 
 import locale
 import re
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import date, datetime, timedelta, timezone
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
 from typing import Literal, cast
+
+try:
+    from ._datetime import is_aware_datetime as _package_is_aware_datetime
+except ImportError:  # pragma: no cover
+    pass
+
+
+def _load_direct_file_predicate() -> Callable[[datetime], bool]:  # pragma: no cover
+    spec = spec_from_file_location("_dateutils_private_datetime", Path(__file__).with_name("_datetime.py"))
+    if spec is None or spec.loader is None:
+        raise ImportError("Unable to load datetime awareness helper")
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return cast(Callable[[datetime], bool], module.is_aware_datetime)
+
+
+def _is_aware_datetime(value: datetime) -> bool:  # pragma: no cover
+    if __package__:  # pragma: no branch
+        return _package_is_aware_datetime(value)
+    return _load_direct_file_predicate()(value)
+
 
 _MAX_TZ_OFFSET_HOURS = 23
 _MAX_TZ_OFFSET_MINUTES = 59
@@ -541,8 +564,8 @@ def to_iso8601(dt: date | datetime) -> str:
         return dt.isoformat()
 
     # It's a datetime
-    if dt.tzinfo is None:
-        # Assume UTC for naive datetimes
+    if not _is_aware_datetime(dt):
+        # Assume UTC for datetimes without a usable UTC offset.
         dt = dt.replace(tzinfo=timezone.utc)
 
     return dt.isoformat()

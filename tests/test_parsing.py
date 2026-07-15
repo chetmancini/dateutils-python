@@ -20,6 +20,19 @@ from dateutils import (
 ##################
 
 
+class _IndeterminateTimezone(datetime.tzinfo):
+    """A tzinfo attached to a datetime that still has no UTC offset."""
+
+    def utcoffset(self, dt: datetime.datetime | None) -> None:
+        return None
+
+    def dst(self, dt: datetime.datetime | None) -> None:
+        return None
+
+    def tzname(self, dt: datetime.datetime | None) -> None:
+        return None
+
+
 def _parse_error(exc_info: pytest.ExceptionInfo[BaseException]) -> ParseError:
     return cast(ParseError, exc_info.value)
 
@@ -102,6 +115,16 @@ def test_parse_date_locale_falls_back_to_monthfirst(monkeypatch: pytest.MonkeyPa
     assert parse_date("03/04/2024") == datetime.date(2024, 3, 4)
 
 
+def test_parse_date_locale_errors_fall_back_to_monthfirst(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Locale lookup failures retain the historic month-first behavior."""
+
+    def _raise_value_error(_: int) -> str:
+        raise ValueError
+
+    monkeypatch.setattr(locale, "nl_langinfo", _raise_value_error)
+    assert parse_date("03/04/2024") == datetime.date(2024, 3, 4)
+
+
 def test_parse_date_rejects_ambiguous_numeric_dates() -> None:
     """Import callers can opt into rejecting dates valid in either numeric order."""
     with pytest.raises(ParseError, match="ambiguous numeric date") as exc_info:
@@ -109,6 +132,7 @@ def test_parse_date_rejects_ambiguous_numeric_dates() -> None:
     assert _parse_error(exc_info).reason == "ambiguous numeric date"
 
     assert parse_date("22/07/2024", ambiguous="reject") == datetime.date(2024, 7, 22)
+    assert parse_date("2024-03-04", ambiguous="reject") == datetime.date(2024, 3, 4)
     assert parse_date("03/04/2024", formats=["%m/%d/%Y"], ambiguous="reject") == datetime.date(2024, 3, 4)
     assert parse_date("03/04/2024", formats=["%m/%d/%Y"], ambiguous="prefer-us") == datetime.date(2024, 3, 4)
 
@@ -570,3 +594,10 @@ def test_to_iso8601() -> None:
     iso_ny = to_iso8601(ny_dt)
     assert "2024-03-27T10:30:45" in iso_ny
     assert "-04:00" in iso_ny or "-05:00" in iso_ny  # Depending on DST
+
+
+def test_to_iso8601_treats_indeterminate_timezones_as_naive_utc() -> None:
+    """A datetime without a usable offset gets the same UTC suffix as a naive value."""
+    indeterminate = datetime.datetime(2024, 3, 27, 14, 30, 45, tzinfo=_IndeterminateTimezone())
+
+    assert to_iso8601(indeterminate) == to_iso8601(indeterminate.replace(tzinfo=None))

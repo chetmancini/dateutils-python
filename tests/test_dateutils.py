@@ -50,6 +50,19 @@ from dateutils import (
 )
 
 
+class _IndeterminateTimezone(datetime.tzinfo):
+    """A tzinfo attached to a datetime that still has no UTC offset."""
+
+    def utcoffset(self, dt: datetime.datetime | None) -> None:
+        return None
+
+    def dst(self, dt: datetime.datetime | None) -> None:
+        return None
+
+    def tzname(self, dt: datetime.datetime | None) -> None:
+        return None
+
+
 def test_package_version_matches_pyproject() -> None:
     """Package __version__ should be derived from the pyproject source-of-truth."""
     pyproject_path = Path(__file__).resolve().parent.parent / "pyproject.toml"
@@ -147,6 +160,13 @@ def test_epoch_s_handles_fractional_seconds_without_float_rounding() -> None:
     assert utc_from_timestamp(latest_whole_second) == datetime.datetime(
         9999, 12, 31, 23, 59, 59, tzinfo=datetime.timezone.utc
     )
+
+
+def test_epoch_s_treats_indeterminate_timezones_as_naive_utc() -> None:
+    """A datetime without a usable offset must follow the naive UTC policy."""
+    indeterminate = datetime.datetime(2024, 1, 1, 12, 0, tzinfo=_IndeterminateTimezone())
+
+    assert epoch_s(indeterminate) == epoch_s(indeterminate.replace(tzinfo=None))
 
 
 def test_utc_from_timestamp() -> None:
@@ -703,6 +723,16 @@ def test_pretty_date_naive_datetime() -> None:
     assert result == "30 seconds ago"
 
 
+def test_pretty_date_treats_indeterminate_timezones_as_naive_utc() -> None:
+    """A datetime without a usable offset must not mix naive and aware values."""
+    from dateutils import pretty_date
+
+    indeterminate = datetime.datetime(2024, 3, 27, 11, 59, 30, tzinfo=_IndeterminateTimezone())
+    naive = indeterminate.replace(tzinfo=None)
+
+    assert pretty_date(indeterminate, now_override=1711540800) == pretty_date(naive, now_override=1711540800)
+
+
 def test_pretty_date_future_extended() -> None:
     """Test pretty_date for extended future date ranges."""
     from dateutils import pretty_date
@@ -790,6 +820,13 @@ def test_httpdate_with_naive_datetime() -> None:
     dt_naive = datetime.datetime(2025, 12, 31, 23, 59, 59)
     result = httpdate(dt_naive)
     assert result == "Wed, 31 Dec 2025 23:59:59 GMT"
+
+
+def test_httpdate_treats_indeterminate_timezones_as_naive_utc() -> None:
+    """HTTP dates from an indeterminate timezone use the documented naive UTC policy."""
+    indeterminate = datetime.datetime(2025, 12, 31, 23, 59, 59, tzinfo=_IndeterminateTimezone())
+
+    assert httpdate(indeterminate) == httpdate(indeterminate.replace(tzinfo=None))
 
 
 def test_httpdate_with_non_utc_timezone() -> None:
@@ -1803,6 +1840,25 @@ def test_time_until_next_occurrence_accepts_time_objects() -> None:
 
     past_delta = time_until_next_occurrence(datetime.time(8, 0, 0), from_time)
     assert past_delta == datetime.timedelta(hours=22)
+
+
+def test_next_occurrence_treats_indeterminate_datetimes_as_naive() -> None:
+    """Datetime targets and references without offsets follow naive scheduling behavior."""
+    target = datetime.datetime(2024, 1, 1, 14, 0, tzinfo=_IndeterminateTimezone())
+    from_time = datetime.datetime(2024, 7, 22, 10, 0, tzinfo=_IndeterminateTimezone())
+
+    assert next_occurrence(target, from_time) == next_occurrence(
+        target.replace(tzinfo=None), from_time.replace(tzinfo=None)
+    )
+
+
+def test_next_occurrence_preserves_zoneinfo_time_support() -> None:
+    """A standalone ZoneInfo time remains aware once combined with its reference date."""
+    ny_tz = ZoneInfo("America/New_York")
+    target = datetime.time(14, 0, tzinfo=ny_tz)
+    from_time = datetime.datetime(2024, 7, 22, 10, 0, tzinfo=ny_tz)
+
+    assert next_occurrence(target, from_time) == datetime.datetime(2024, 7, 22, 14, 0, tzinfo=ny_tz)
 
 
 def test_time_until_next_occurrence_across_timezones() -> None:
