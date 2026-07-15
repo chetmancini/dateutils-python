@@ -594,7 +594,7 @@ def generate_weeks(
 
     for _ in range(count):
         week_start = date.fromordinal(max(week_start_ordinal, min_ordinal))
-        week_end = date.fromordinal(min(week_start_ordinal + 6, max_ordinal))
+        week_end = date.fromordinal(min(week_start_ordinal + DAYS_IN_WEEK - 1, max_ordinal))
         if target is not None and ((direction > 0 and week_start > target) or (direction < 0 and week_end < target)):
             break
         yield week_start, week_end
@@ -602,7 +602,7 @@ def generate_weeks(
             break
         step = -7 if direction < 0 else 7
         next_week_start_ordinal = week_start_ordinal + step
-        if not min_ordinal <= next_week_start_ordinal <= max_ordinal:
+        if next_week_start_ordinal > max_ordinal or next_week_start_ordinal + DAYS_IN_WEEK - 1 < min_ordinal:
             return
         week_start_ordinal = next_week_start_ordinal
 

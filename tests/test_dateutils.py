@@ -430,6 +430,20 @@ def test_generate_weeks_stops_at_lower_boundary() -> None:
     ) == [(datetime.date.min, datetime.date(1, 1, 7))]
 
 
+def test_generate_weeks_yields_clipped_week_containing_lower_boundary_target() -> None:
+    """Backward Sunday-based iteration includes the clipped week containing date.min."""
+    assert list(
+        generate_weeks(
+            count=2,
+            start_date=datetime.date(1, 1, 7),
+            until_date=datetime.date.min,
+        )
+    ) == [
+        (datetime.date(1, 1, 7), datetime.date(1, 1, 13)),
+        (datetime.date.min, datetime.date(1, 1, 6)),
+    ]
+
+
 def test_date_to_quarter() -> None:
     def to_date(m: int, d: int) -> datetime.datetime:
         return datetime.datetime(2018, m, d)
