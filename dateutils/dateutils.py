@@ -47,10 +47,12 @@ print(workdays)
 
 import calendar
 import importlib
-from collections.abc import Generator, Iterable
+from collections.abc import Callable, Generator, Iterable
 from datetime import date, datetime, time, timedelta, timezone
 from email.utils import format_datetime as _format_http_datetime
 from functools import lru_cache
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
 from typing import Any, NamedTuple, cast
 
 try:
@@ -60,6 +62,27 @@ except ImportError:  # pragma: no cover
     # Support doctest's direct file import mode (no package context).
     _parsing = cast(Any, importlib.import_module("parsing"))
     _timezones = cast(Any, importlib.import_module("timezones"))
+
+try:
+    from ._datetime import is_aware_datetime as _package_is_aware_datetime
+except ImportError:  # pragma: no cover
+    pass
+
+
+def _load_direct_file_predicate() -> Callable[[datetime], bool]:  # pragma: no cover
+    spec = spec_from_file_location("_dateutils_private_datetime", Path(__file__).with_name("_datetime.py"))
+    if spec is None or spec.loader is None:
+        raise ImportError("Unable to load datetime awareness helper")
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return cast(Callable[[datetime], bool], module.is_aware_datetime)
+
+
+def _is_aware_datetime(value: datetime) -> bool:  # pragma: no cover
+    if __package__:  # pragma: no branch
+        return _package_is_aware_datetime(value)
+    return _load_direct_file_predicate()(value)
+
 
 ##################
 # Constants
@@ -174,8 +197,8 @@ def epoch_s(dt: datetime) -> int:
     """
     Convert a datetime object to whole Unix seconds, flooring fractional seconds.
 
-    Note: Timezone-aware datetimes are converted to UTC before calculating
-          the timestamp. Naive datetimes are assumed to be in UTC.
+    Note: Datetimes with a usable UTC offset are converted to UTC before
+          calculating the timestamp. Other datetimes are assumed to be in UTC.
 
     Args:
         dt: Datetime object to convert.
@@ -198,8 +221,8 @@ def epoch_s(dt: datetime) -> int:
         >>> epoch_s(dt_est) # Converted to UTC
         1698321600
     """
-    if dt.tzinfo is None:
-        # Assume naive datetime is in UTC (documented behavior)
+    if not _is_aware_datetime(dt):
+        # Assume datetimes without a usable UTC offset are in UTC.
         dt = dt.replace(tzinfo=timezone.utc)
     else:
         dt = dt.astimezone(timezone.utc)
@@ -1233,8 +1256,8 @@ def _ts_difference(timestamp: int | datetime | None = None, now_override: int | 
             raise ValueError(f"Invalid timestamp: {timestamp}") from e
         return now - ts_dt
     if isinstance(timestamp, datetime):
-        # Handle naive datetimes by assuming UTC
-        if timestamp.tzinfo is None:
+        # Handle datetimes without a usable UTC offset by assuming UTC.
+        if not _is_aware_datetime(timestamp):
             timestamp = timestamp.replace(tzinfo=timezone.utc)
         return now - timestamp
     # Runtime callers may still violate type hints.
@@ -1289,8 +1312,8 @@ def pretty_date(timestamp: int | datetime | None = None, now_override: int | Non
     Args:
         timestamp: The time to format. Accepts three types:
             - int: Unix timestamp (seconds since epoch). Interpreted as UTC.
-            - datetime: A datetime object. If naive (no tzinfo), assumed to be UTC.
-              If timezone-aware, converted to UTC for comparison.
+            - datetime: A datetime object. If it has no usable UTC offset, it is
+              assumed to be UTC. Otherwise it is converted to UTC for comparison.
             - None: Returns "just now".
         now_override: Optional Unix timestamp to use as the reference "now" time.
             Primarily useful for testing to ensure deterministic output.
@@ -1369,13 +1392,14 @@ def httpdate(date_time: datetime) -> str:
     """
     Convert a datetime object to an HTTP date string (RFC 7231 compliant).
 
-    The output is always in GMT/UTC as required by RFC 7231. Timezone-aware
-    datetimes are converted to UTC before formatting. Naive datetimes are
-    assumed to already be in UTC. The formatting uses `email.utils.format_datetime`
-    to avoid locale-dependent weekday/month names.
+    The output is always in GMT/UTC as required by RFC 7231. Datetimes with a
+    usable UTC offset are converted to UTC before formatting. Other datetimes
+    are assumed to already be in UTC. The formatting uses
+    `email.utils.format_datetime` to avoid locale-dependent weekday/month names.
 
     Args:
-        date_time: The datetime to format. If naive, assumed to be UTC.
+        date_time: The datetime to format. If it has no usable UTC offset,
+            assumed to be UTC.
 
     Returns:
         str: HTTP date string in format "Day, DD Mon YYYY HH:MM:SS GMT"
@@ -1392,7 +1416,7 @@ def httpdate(date_time: datetime) -> str:
         >>> httpdate(dt_ny)  # 10:30 EDT = 14:30 UTC
         'Mon, 22 Jul 2024 14:30:00 GMT'
     """
-    if date_time.tzinfo is None:
+    if not _is_aware_datetime(date_time):
         date_time = date_time.replace(tzinfo=timezone.utc)
     else:
         # Convert to UTC for consistent GMT output
@@ -1583,9 +1607,25 @@ def _aware_occurrence_on_date(local_date: date, target_time_of_day: time) -> dat
     return normalized
 
 
+def _normalized_target_time_of_day(target_time: datetime | time, reference_date: date) -> time:
+    """Return a target time whose timezone is usable on the reference date."""
+    target_time_of_day = target_time.timetz() if isinstance(target_time, datetime) else target_time
+    if isinstance(target_time, datetime) and not _is_aware_datetime(target_time):
+        target_time_of_day = target_time_of_day.replace(tzinfo=None)
+    if target_time_of_day.tzinfo is not None and not _is_aware_datetime(
+        datetime.combine(reference_date, target_time_of_day)
+    ):
+        return target_time_of_day.replace(tzinfo=None)
+    return target_time_of_day
+
+
 def _next_occurrence_details(target_time: datetime | time, from_time: datetime | None) -> tuple[datetime, datetime]:
     """Return the next occurrence and its reference point on the UTC timeline when aware."""
-    target_time_of_day = target_time.timetz() if isinstance(target_time, datetime) else target_time
+    if from_time is not None and not _is_aware_datetime(from_time):
+        from_time = from_time.replace(tzinfo=None)
+
+    reference_date = from_time.date() if from_time is not None else datetime.now().date()
+    target_time_of_day = _normalized_target_time_of_day(target_time, reference_date)
 
     if from_time is None:
         if target_time_of_day.tzinfo is not None:

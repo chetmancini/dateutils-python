@@ -21,6 +21,19 @@ from dateutils import (
 ##################
 
 
+class _IndeterminateTimezone(datetime.tzinfo):
+    """A tzinfo attached to a datetime that still has no UTC offset."""
+
+    def utcoffset(self, dt: datetime.datetime | None) -> None:
+        return None
+
+    def dst(self, dt: datetime.datetime | None) -> None:
+        return None
+
+    def tzname(self, dt: datetime.datetime | None) -> None:
+        return None
+
+
 def test_get_available_timezones() -> None:
     """Test that get_available_timezones returns a sorted list of timezone names."""
     timezones = get_available_timezones()
@@ -129,6 +142,15 @@ def test_localize_datetime_accepts_tzinfo_instances() -> None:
     assert localized == datetime.datetime(2024, 7, 22, 10, 30, tzinfo=datetime.timezone.utc)
 
 
+def test_localize_datetime_accepts_indeterminate_timezones() -> None:
+    """A datetime without a usable offset can still be localized as a wall time."""
+    indeterminate = datetime.datetime(2024, 7, 22, 10, 30, tzinfo=_IndeterminateTimezone())
+
+    assert localize_datetime(indeterminate, "America/New_York") == datetime.datetime(
+        2024, 7, 22, 10, 30, tzinfo=ZoneInfo("America/New_York")
+    )
+
+
 def test_timezone_functions_accept_tzinfo_instances() -> None:
     """All public timezone-parameter APIs accept tzinfo instances as well as names."""
     fixed_offset = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
@@ -212,6 +234,13 @@ def test_datetime_to_utc() -> None:
     result = datetime_to_utc(naive_dt)
     assert result.tzinfo == datetime.timezone.utc
     assert result.hour == 12  # Naive datetime assumed to be UTC, so hour unchanged
+
+
+def test_datetime_to_utc_treats_indeterminate_timezones_as_naive_utc() -> None:
+    """A datetime without a usable offset follows the naive UTC policy."""
+    indeterminate = datetime.datetime(2024, 3, 27, 12, 0, tzinfo=_IndeterminateTimezone())
+
+    assert datetime_to_utc(indeterminate) == datetime_to_utc(indeterminate.replace(tzinfo=None))
 
 
 def test_datetime_to_utc_dst_ambiguous_times() -> None:
@@ -485,3 +514,11 @@ def test_convert_timezone_validation() -> None:
     # Invalid timezone should raise ValueError
     with pytest.raises(ValueError, match="Invalid timezone name 'Invalid/Zone'"):
         convert_timezone(utc_dt, "Invalid/Zone")
+
+
+def test_convert_timezone_rejects_indeterminate_timezones() -> None:
+    """Conversion still requires a datetime with a usable UTC offset."""
+    indeterminate = datetime.datetime(2024, 1, 1, 12, 0, tzinfo=_IndeterminateTimezone())
+
+    with pytest.raises(ValueError, match="Input datetime must include timezone information"):
+        convert_timezone(indeterminate, "America/New_York")

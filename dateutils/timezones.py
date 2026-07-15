@@ -2,10 +2,34 @@
 Timezone utilities.
 """
 
+from collections.abc import Callable
 from datetime import date, datetime, timedelta, timezone, tzinfo
 from functools import lru_cache
-from typing import Literal
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
+from typing import Literal, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
+
+try:
+    from ._datetime import is_aware_datetime as _package_is_aware_datetime
+except ImportError:  # pragma: no cover
+    pass
+
+
+def _load_direct_file_predicate() -> Callable[[datetime], bool]:  # pragma: no cover
+    spec = spec_from_file_location("_dateutils_private_datetime", Path(__file__).with_name("_datetime.py"))
+    if spec is None or spec.loader is None:
+        raise ImportError("Unable to load datetime awareness helper")
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return cast(Callable[[datetime], bool], module.is_aware_datetime)
+
+
+def _is_aware_datetime(value: datetime) -> bool:  # pragma: no cover
+    if __package__:  # pragma: no branch
+        return _package_is_aware_datetime(value)
+    return _load_direct_file_predicate()(value)
+
 
 _SECONDS_IN_MINUTE = 60
 _SECONDS_IN_HOUR = 60 * _SECONDS_IN_MINUTE
@@ -85,16 +109,16 @@ def localize_datetime(
     ambiguous: Literal["raise", "earliest", "latest"] = "raise",
     nonexistent: Literal["raise", "shift_forward"] = "raise",
 ) -> datetime:
-    """Attach a timezone to a naive datetime with explicit DST policies.
+    """Attach a timezone to a datetime without a usable UTC offset.
 
-    Use this when a naive value is a local wall time whose timezone is known.
+    Use this when a value is a local wall time whose timezone is known.
     :meth:`datetime.astimezone` instead converts an already-aware datetime that
     represents a specific instant. Direct ``replace(tzinfo=...)`` skips DST
     validation, so it can silently choose one occurrence of a repeated time or
     create a nonexistent one.
 
     Args:
-        dt: The naive local datetime to localize.
+        dt: The local datetime to localize. It must not have a usable UTC offset.
         tz: An IANA timezone name (for example, ``"America/New_York"``) or a
             :class:`datetime.tzinfo` instance such as :data:`datetime.timezone.utc`.
         ambiguous: How to resolve a repeated wall time during a DST fall-back.
@@ -110,9 +134,9 @@ def localize_datetime(
         An aware datetime in ``tz``.
 
     Raises:
-        ValueError: If ``dt`` is already timezone-aware, the timezone name or a
-            policy is invalid, or a DST transition requires a policy that was
-            not selected.
+        ValueError: If ``dt`` already has a usable UTC offset, the timezone name
+            or a policy is invalid, or a DST transition requires a policy that
+            was not selected.
         TypeError: If ``tz`` is neither a timezone name nor a
             :class:`datetime.tzinfo` instance.
 
@@ -126,8 +150,9 @@ def localize_datetime(
         ... ).fold
         1
     """
-    if dt.tzinfo is not None:
+    if _is_aware_datetime(dt):
         raise ValueError("Input datetime must be naive")
+    dt = dt.replace(tzinfo=None)
     if ambiguous not in {"raise", "earliest", "latest"}:
         raise ValueError("ambiguous must be one of: 'raise', 'earliest', 'latest'")
     if nonexistent not in {"raise", "shift_forward"}:
@@ -158,7 +183,7 @@ def convert_timezone(dt: datetime, to_tz: str | tzinfo) -> datetime:
     Convert a timezone-aware datetime object to another timezone.
 
     Args:
-        dt: The datetime object to convert. Must have tzinfo set.
+        dt: The datetime object to convert. Must have a usable UTC offset.
         to_tz: Target IANA timezone name (e.g., "America/New_York") or a
             ``tzinfo`` instance. See `get_available_timezones()` for names.
 
@@ -167,7 +192,7 @@ def convert_timezone(dt: datetime, to_tz: str | tzinfo) -> datetime:
                   in the target timezone.
 
     Raises:
-        ValueError: If the input datetime `dt` is naive (tzinfo is None) or if
+        ValueError: If the input datetime `dt` has no usable UTC offset or if
             the timezone name is invalid.
         TypeError: If ``to_tz`` is neither a timezone name nor a ``tzinfo``
             instance.
@@ -204,7 +229,7 @@ def convert_timezone(dt: datetime, to_tz: str | tzinfo) -> datetime:
         ...     print(e)
         Input datetime must include timezone information
     """
-    if dt.tzinfo is None or dt.utcoffset() is None:
+    if not _is_aware_datetime(dt):
         raise ValueError("Input datetime must include timezone information")
 
     target_tz = _resolve_timezone(to_tz)
@@ -224,9 +249,9 @@ def datetime_to_utc(dt: datetime) -> datetime:
     """
     Convert a datetime to UTC.
 
-    Note: Naive datetimes are assumed to be in UTC (consistent with epoch_s()).
-    If you need to convert a naive datetime that represents local time, first
-    attach the appropriate timezone using datetime.replace(tzinfo=...) or
+    Note: Datetimes without a usable UTC offset are assumed to be in UTC
+    (consistent with epoch_s()). If you need to convert a local wall time,
+    first attach the appropriate timezone using datetime.replace(tzinfo=...) or
     datetime.astimezone().
 
     DST Ambiguity:
@@ -239,7 +264,8 @@ def datetime_to_utc(dt: datetime) -> datetime:
         ``dt.replace(fold=1)`` for the second occurrence.
 
     Args:
-        dt: The datetime to convert. If naive, assumed to be UTC.
+        dt: The datetime to convert. If it has no usable UTC offset, assumed to
+            be UTC.
 
     Returns:
         datetime: The datetime in UTC timezone.
@@ -261,8 +287,8 @@ def datetime_to_utc(dt: datetime) -> datetime:
         >>> result.tzinfo == timezone.utc
         True
     """
-    if dt.tzinfo is None:
-        # Assume UTC for naive datetimes (consistent with epoch_s)
+    if not _is_aware_datetime(dt):
+        # Assume UTC for datetimes without a usable offset (consistent with epoch_s).
         return dt.replace(tzinfo=timezone.utc)
 
     return dt.astimezone(timezone.utc)
