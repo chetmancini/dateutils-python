@@ -103,9 +103,9 @@ watch-test: ## Run tests in watch mode (requires entr)
 	@echo "${BLUE}Watching for changes and running tests...${NC}"
 	@find . -name "*.py" | entr -c uv run pytest
 
-doctest: ## Run doctests to verify documentation examples
+doctest: ## Run public module doctests and README Python examples
 	@echo "${BLUE}Running doctests...${NC}"
-	@uv run python -m doctest dateutils/dateutils.py -v
+	@uv run python scripts/validate_docs.py
 	@echo "${GREEN}✓ Doctests passed${NC}"
 
 # Comprehensive Checks

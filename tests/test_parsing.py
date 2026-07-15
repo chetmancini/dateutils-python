@@ -96,9 +96,22 @@ def test_parse_date_uses_locale_order_when_dayfirst_is_not_specified(monkeypatch
     assert parse_date("03/04/2024") == datetime.date(2024, 3, 4)
 
 
-def test_parse_date_locale_falls_back_to_monthfirst(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Unknown locale formats retain the historic month-first behavior."""
-    monkeypatch.setattr(locale, "nl_langinfo", lambda _: "%Y.%j")
+@pytest.mark.parametrize(
+    "locale_format",
+    ["%Y.%j", AttributeError, ValueError],
+)
+def test_parse_date_locale_falls_back_to_monthfirst(
+    monkeypatch: pytest.MonkeyPatch, locale_format: str | type[Exception]
+) -> None:
+    """Unknown or unavailable locale formats retain the historic month-first behavior."""
+    if isinstance(locale_format, str):
+        monkeypatch.setattr(locale, "nl_langinfo", lambda _: locale_format)
+    else:
+
+        def raise_locale_error(_: int) -> str:
+            raise locale_format()
+
+        monkeypatch.setattr(locale, "nl_langinfo", raise_locale_error)
     assert parse_date("03/04/2024") == datetime.date(2024, 3, 4)
 
 
@@ -111,6 +124,13 @@ def test_parse_date_rejects_ambiguous_numeric_dates() -> None:
     assert parse_date("22/07/2024", ambiguous="reject") == datetime.date(2024, 7, 22)
     assert parse_date("03/04/2024", formats=["%m/%d/%Y"], ambiguous="reject") == datetime.date(2024, 3, 4)
     assert parse_date("03/04/2024", formats=["%m/%d/%Y"], ambiguous="prefer-us") == datetime.date(2024, 3, 4)
+
+
+def test_parse_date_reject_mode_allows_nonmatching_values_to_raise_normal_parse_errors() -> None:
+    """Reject mode only changes handling for ambiguous numeric dates."""
+    with pytest.raises(ParseError) as exc_info:
+        parse_date("not a date", ambiguous="reject")
+    assert _parse_error(exc_info).reason != "ambiguous numeric date"
 
 
 def test_parse_date_rejects_unknown_ambiguous_mode() -> None:
