@@ -51,18 +51,31 @@ from collections.abc import Generator, Iterable
 from datetime import date, datetime, time, timedelta, timezone
 from email.utils import format_datetime as _format_http_datetime
 from functools import lru_cache
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
 from typing import Any, NamedTuple, cast
 
 try:
     from . import parsing as _parsing
     from . import timezones as _timezones
-    from ._awareness import is_aware_datetime as _is_aware_datetime
 except ImportError:  # pragma: no cover
     # Support doctest's direct file import mode (no package context), which
     # relies on the package directory being importable on sys.path.
     _parsing = cast(Any, importlib.import_module("parsing"))
     _timezones = cast(Any, importlib.import_module("timezones"))
-    _is_aware_datetime = importlib.import_module("_awareness").is_aware_datetime
+
+try:
+    from ._awareness import is_aware_datetime as _is_aware_datetime
+except ImportError:  # pragma: no cover - direct-file import mode (no package context)
+    # Load the sibling helper by path so this works even when the package
+    # directory is not on sys.path. A unique spec name avoids clashing with
+    # CPython's _datetime.
+    _spec = spec_from_file_location("_dateutils_awareness", Path(__file__).with_name("_awareness.py"))
+    if _spec is None or _spec.loader is None:
+        raise ImportError("Unable to load datetime awareness helper") from None
+    _module = module_from_spec(_spec)
+    _spec.loader.exec_module(_module)
+    _is_aware_datetime = _module.is_aware_datetime
 
 
 ##################

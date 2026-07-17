@@ -2,18 +2,25 @@
 Timezone utilities.
 """
 
-import importlib
 from datetime import date, datetime, timedelta, timezone, tzinfo
 from functools import lru_cache
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
 from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 try:
     from ._awareness import is_aware_datetime as _is_aware_datetime
-except ImportError:  # pragma: no cover
-    # Support doctest's direct file import mode (no package context), which
-    # relies on the package directory being importable on sys.path.
-    _is_aware_datetime = importlib.import_module("_awareness").is_aware_datetime
+except ImportError:  # pragma: no cover - direct-file import mode (no package context)
+    # Load the sibling helper by path so this works even when the package
+    # directory is not on sys.path (e.g. a doctest runner importing this file
+    # directly). A unique spec name avoids clashing with CPython's _datetime.
+    _spec = spec_from_file_location("_dateutils_awareness", Path(__file__).with_name("_awareness.py"))
+    if _spec is None or _spec.loader is None:
+        raise ImportError("Unable to load datetime awareness helper") from None
+    _module = module_from_spec(_spec)
+    _spec.loader.exec_module(_module)
+    _is_aware_datetime = _module.is_aware_datetime
 
 
 _SECONDS_IN_MINUTE = 60
