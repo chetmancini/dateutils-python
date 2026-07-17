@@ -2,33 +2,19 @@
 Date parsing and formatting helpers.
 """
 
+import importlib
 import locale
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from datetime import date, datetime, timedelta, timezone
-from importlib.util import module_from_spec, spec_from_file_location
-from pathlib import Path
 from typing import Literal, cast
 
 try:
-    from ._datetime import is_aware_datetime as _package_is_aware_datetime
+    from ._awareness import is_aware_datetime as _is_aware_datetime
 except ImportError:  # pragma: no cover
-    pass
-
-
-def _load_direct_file_predicate() -> Callable[[datetime], bool]:  # pragma: no cover
-    spec = spec_from_file_location("_dateutils_private_datetime", Path(__file__).with_name("_datetime.py"))
-    if spec is None or spec.loader is None:
-        raise ImportError("Unable to load datetime awareness helper")
-    module = module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return cast(Callable[[datetime], bool], module.is_aware_datetime)
-
-
-def _is_aware_datetime(value: datetime) -> bool:  # pragma: no cover
-    if __package__:  # pragma: no branch
-        return _package_is_aware_datetime(value)
-    return _load_direct_file_predicate()(value)
+    # Support doctest's direct file import mode (no package context), which
+    # relies on the package directory being importable on sys.path.
+    _is_aware_datetime = importlib.import_module("_awareness").is_aware_datetime
 
 
 _MAX_TZ_OFFSET_HOURS = 23

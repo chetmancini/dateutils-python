@@ -47,41 +47,22 @@ print(workdays)
 
 import calendar
 import importlib
-from collections.abc import Callable, Generator, Iterable
+from collections.abc import Generator, Iterable
 from datetime import date, datetime, time, timedelta, timezone
 from email.utils import format_datetime as _format_http_datetime
 from functools import lru_cache
-from importlib.util import module_from_spec, spec_from_file_location
-from pathlib import Path
 from typing import Any, NamedTuple, cast
 
 try:
     from . import parsing as _parsing
     from . import timezones as _timezones
+    from ._awareness import is_aware_datetime as _is_aware_datetime
 except ImportError:  # pragma: no cover
-    # Support doctest's direct file import mode (no package context).
+    # Support doctest's direct file import mode (no package context), which
+    # relies on the package directory being importable on sys.path.
     _parsing = cast(Any, importlib.import_module("parsing"))
     _timezones = cast(Any, importlib.import_module("timezones"))
-
-try:
-    from ._datetime import is_aware_datetime as _package_is_aware_datetime
-except ImportError:  # pragma: no cover
-    pass
-
-
-def _load_direct_file_predicate() -> Callable[[datetime], bool]:  # pragma: no cover
-    spec = spec_from_file_location("_dateutils_private_datetime", Path(__file__).with_name("_datetime.py"))
-    if spec is None or spec.loader is None:
-        raise ImportError("Unable to load datetime awareness helper")
-    module = module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return cast(Callable[[datetime], bool], module.is_aware_datetime)
-
-
-def _is_aware_datetime(value: datetime) -> bool:  # pragma: no cover
-    if __package__:  # pragma: no branch
-        return _package_is_aware_datetime(value)
-    return _load_direct_file_predicate()(value)
+    _is_aware_datetime = importlib.import_module("_awareness").is_aware_datetime
 
 
 ##################
@@ -221,13 +202,9 @@ def epoch_s(dt: datetime) -> int:
         >>> epoch_s(dt_est) # Converted to UTC
         1698321600
     """
-    if not _is_aware_datetime(dt):
-        # Assume datetimes without a usable UTC offset are in UTC.
-        dt = dt.replace(tzinfo=timezone.utc)
-    else:
-        dt = dt.astimezone(timezone.utc)
-
-    delta = dt - _UNIX_EPOCH
+    # datetime_to_utc assumes UTC for datetimes without a usable offset and
+    # converts aware datetimes to UTC.
+    delta = datetime_to_utc(dt) - _UNIX_EPOCH
     return delta.days * SECONDS_IN_DAY + delta.seconds
 
 
@@ -270,6 +247,12 @@ def datetime_end_of_day(day: date) -> datetime:
 ##################
 # Quarter operations
 ##################
+def _validate_quarter(quarter: int, *, name: str = "Quarter") -> None:
+    """Validate that a quarter value is between 1 and 4."""
+    if not 1 <= quarter <= QUARTERS_IN_YEAR:
+        raise ValueError(f"{name} must be between 1 and 4, got {quarter}")
+
+
 def date_to_quarter(dt: date) -> int:
     """
     Get the quarter of the year for a specific date
@@ -281,7 +264,7 @@ def date_to_quarter(dt: date) -> int:
         int: Quarter of the year (1-4)
     """
     dt = _as_date(dt)
-    return ((dt.month - 1) // 3) + 1
+    return ((dt.month - 1) // MONTHS_IN_QUARTER) + 1
 
 
 def date_to_start_of_quarter(dt: date) -> date:
@@ -295,7 +278,7 @@ def date_to_start_of_quarter(dt: date) -> date:
         date: Date at the start of the quarter
     """
     dt = _as_date(dt)
-    new_month = (((dt.month - 1) // 3) * 3) + 1
+    new_month = (((dt.month - 1) // MONTHS_IN_QUARTER) * MONTHS_IN_QUARTER) + 1
     return dt.replace(day=1, month=new_month)
 
 
@@ -313,9 +296,8 @@ def start_of_quarter(year: int, q: int) -> datetime:
     Raises:
         ValueError: If quarter is not between 1 and 4
     """
-    if not 1 <= q <= QUARTERS_IN_YEAR:
-        raise ValueError(f"Quarter must be between 1 and 4, got {q}")
-    return datetime(year, (q - 1) * 3 + 1, 1)
+    _validate_quarter(q)
+    return datetime(year, (q - 1) * MONTHS_IN_QUARTER + 1, 1)
 
 
 def end_of_quarter(year: int, q: int) -> datetime:
@@ -332,9 +314,8 @@ def end_of_quarter(year: int, q: int) -> datetime:
     Raises:
         ValueError: If quarter is not between 1 and 4
     """
-    if not 1 <= q <= QUARTERS_IN_YEAR:
-        raise ValueError(f"Quarter must be between 1 and 4, got {q}")
-    month = q * 3
+    _validate_quarter(q)
+    month = q * MONTHS_IN_QUARTER
     days_in_month = calendar.monthrange(year, month)[1]
     return _datetime_at_end_of_day(date(year, month, days_in_month))
 
@@ -384,15 +365,13 @@ def generate_quarters(
     Raises:
         ValueError: If start or until quarters are not between 1 and 4
     """
-    if not 1 <= until_q <= QUARTERS_IN_YEAR:
-        raise ValueError(f"until_q must be between 1 and 4, got {until_q}")
+    _validate_quarter(until_q, name="until_q")
 
     today = date.today()
     start_y = today.year if start_year is None else start_year
     start_q = date_to_quarter(today) if start_quarter is None else start_quarter
 
-    if not 1 <= start_q <= QUARTERS_IN_YEAR:
-        raise ValueError(f"start_quarter must be between 1 and 4, got {start_q}")
+    _validate_quarter(start_q, name="start_quarter")
 
     for idx in _walk_inclusive(_quarter_index(start_y, start_q), _quarter_index(until_year, until_q)):
         yield _quarter_from_index(idx)
@@ -1256,10 +1235,8 @@ def _ts_difference(timestamp: int | datetime | None = None, now_override: int | 
             raise ValueError(f"Invalid timestamp: {timestamp}") from e
         return now - ts_dt
     if isinstance(timestamp, datetime):
-        # Handle datetimes without a usable UTC offset by assuming UTC.
-        if not _is_aware_datetime(timestamp):
-            timestamp = timestamp.replace(tzinfo=timezone.utc)
-        return now - timestamp
+        # Assume UTC for datetimes without a usable offset (matches epoch_s).
+        return now - datetime_to_utc(timestamp)
     # Runtime callers may still violate type hints.
     raise TypeError(f"timestamp must be int, datetime, or None; got {type(timestamp).__name__}")  # pragma: no cover
 
@@ -1416,12 +1393,9 @@ def httpdate(date_time: datetime) -> str:
         >>> httpdate(dt_ny)  # 10:30 EDT = 14:30 UTC
         'Mon, 22 Jul 2024 14:30:00 GMT'
     """
-    if not _is_aware_datetime(date_time):
-        date_time = date_time.replace(tzinfo=timezone.utc)
-    else:
-        # Convert to UTC for consistent GMT output
-        date_time = date_time.astimezone(timezone.utc)
-    return _format_http_datetime(date_time, usegmt=True)
+    # Assume UTC for datetimes without a usable offset; convert aware values so
+    # the GMT output is consistent.
+    return _format_http_datetime(datetime_to_utc(date_time), usegmt=True)
 
 
 ##################
@@ -1526,8 +1500,7 @@ def get_quarter_start_end(year: int, quarter: int) -> tuple[date, date]:
     Raises:
         ValueError: If quarter is not between 1 and 4
     """
-    if not 1 <= quarter <= QUARTERS_IN_YEAR:
-        raise ValueError(f"Quarter must be between 1 and 4, got {quarter}")
+    _validate_quarter(quarter)
 
     start = start_of_quarter(year, quarter).date()
     end = end_of_quarter(year, quarter).date()
