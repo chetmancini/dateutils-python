@@ -62,8 +62,10 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 addopts = "--cov=dateutils --cov-report=term-missing"
 filterwarnings = [
-    "ignore::DeprecationWarning",
-    "ignore::UserWarning",
+    # Surface deprecations loudly, but only for code this repo owns: third-party
+    # dev tools may emit their own DeprecationWarnings we cannot fix here.
+    "error::DeprecationWarning:dateutils.*",
+    "error::UserWarning:dateutils.*",
 ]
 
 [tool.coverage.run]
