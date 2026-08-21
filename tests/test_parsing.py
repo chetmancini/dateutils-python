@@ -46,9 +46,9 @@ def test_parse_date() -> None:
 
     # Test various formats
     assert parse_date("27/03/2024") == datetime.date(2024, 3, 27)  # DD/MM/YYYY
-    assert parse_date("03/27/2024") == datetime.date(2024, 3, 27)  # MM/DD/YYYY
+    assert parse_date("03/27/2024", dayfirst=False) == datetime.date(2024, 3, 27)  # MM/DD/YYYY
     assert parse_date("27-03-2024") == datetime.date(2024, 3, 27)  # DD-MM-YYYY
-    assert parse_date("03-27-2024") == datetime.date(2024, 3, 27)  # MM-DD-YYYY
+    assert parse_date("03-27-2024", dayfirst=False) == datetime.date(2024, 3, 27)  # MM-DD-YYYY
     assert parse_date("27.03.2024") == datetime.date(2024, 3, 27)  # DD.MM.YYYY
     assert parse_date("2024/03/27") == datetime.date(2024, 3, 27)  # YYYY/MM/DD
 
@@ -76,14 +76,13 @@ def test_parse_date_dayfirst() -> None:
 
     # Ambiguous date: 03/04/2024 could be March 4th or April 3rd
     # Default (dayfirst=False): US style, month first -> March 4th
-    assert parse_date("03/04/2024") == datetime.date(2024, 3, 4)
     assert parse_date("03/04/2024", dayfirst=False) == datetime.date(2024, 3, 4)
 
     # dayfirst=True: European style, day first -> April 3rd
     assert parse_date("03/04/2024", dayfirst=True) == datetime.date(2024, 4, 3)
 
     # Same with dashes
-    assert parse_date("03-04-2024") == datetime.date(2024, 3, 4)  # US default
+    assert parse_date("03-04-2024", dayfirst=False) == datetime.date(2024, 3, 4)  # US default
     assert parse_date("03-04-2024", dayfirst=True) == datetime.date(2024, 4, 3)  # European
 
     # Unambiguous because day > 12 (must be day, not month)
@@ -107,6 +106,17 @@ def test_parse_date_uses_locale_order_when_dayfirst_is_not_specified(monkeypatch
 
     monkeypatch.setattr(locale, "nl_langinfo", lambda _: "%m/%d/%Y")
     assert parse_date("03/04/2024") == datetime.date(2024, 3, 4)
+
+
+def test_parse_datetime_uses_locale_order_when_dayfirst_is_not_specified(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Default numeric datetime parsing should follow the locale's date-order directive."""
+    monkeypatch.setattr(locale, "nl_langinfo", lambda _: "%d/%m/%Y")
+    assert parse_datetime("03/04/2024 12:00:00") == datetime.datetime(2024, 4, 3, 12, 0, 0)
+
+    monkeypatch.setattr(locale, "nl_langinfo", lambda _: "%m/%d/%Y")
+    assert parse_datetime("03/04/2024 12:00:00") == datetime.datetime(2024, 3, 4, 12, 0, 0)
 
 
 @pytest.mark.parametrize(
@@ -295,10 +305,12 @@ def test_parse_datetime() -> None:
 
     # Test other date formats with time
     assert parse_datetime("27/03/2024 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)  # DD/MM/YYYY
-    assert parse_datetime("03/27/2024 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)  # MM/DD/YYYY
+    assert parse_datetime("03/27/2024 14:30:45", dayfirst=False) == datetime.datetime(
+        2024, 3, 27, 14, 30, 45
+    )  # MM/DD/YYYY
     assert parse_datetime("27-03-2024 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)  # DD-MM-YYYY
     assert parse_datetime("2024/03/27 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)  # YYYY/MM/DD
-    assert parse_datetime("03/27/2024 14:30:45-0500") == datetime.datetime(
+    assert parse_datetime("03/27/2024 14:30:45-0500", dayfirst=False) == datetime.datetime(
         2024,
         3,
         27,
@@ -307,7 +319,7 @@ def test_parse_datetime() -> None:
         45,
         tzinfo=datetime.timezone(datetime.timedelta(hours=-5)),
     )
-    assert parse_datetime("03/27/2024 14:30:45 +02:00") == datetime.datetime(
+    assert parse_datetime("03/27/2024 14:30:45 +02:00", dayfirst=False) == datetime.datetime(
         2024,
         3,
         27,
@@ -323,13 +335,13 @@ def test_parse_datetime() -> None:
     )
 
     # Test ambiguous date defaults to US style (month first), consistent with parse_date
-    assert parse_datetime("03/04/2024 12:00:00") == datetime.datetime(2024, 3, 4, 12, 0, 0)
+    assert parse_datetime("03/04/2024 12:00:00", dayfirst=False) == datetime.datetime(2024, 3, 4, 12, 0, 0)
 
     # Test dayfirst=True interprets ambiguous date as European (day first)
     assert parse_datetime("03/04/2024 12:00:00", dayfirst=True) == datetime.datetime(2024, 4, 3, 12, 0, 0)
 
     # Test dayfirst with dash separator
-    assert parse_datetime("03-04-2024 12:00:00") == datetime.datetime(2024, 3, 4, 12, 0, 0)
+    assert parse_datetime("03-04-2024 12:00:00", dayfirst=False) == datetime.datetime(2024, 3, 4, 12, 0, 0)
     assert parse_datetime("03-04-2024 12:00:00", dayfirst=True) == datetime.datetime(2024, 4, 3, 12, 0, 0)
 
     # Import callers can reject numeric dates that have valid values in either order.

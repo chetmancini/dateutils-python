@@ -151,12 +151,13 @@ def test_localize_datetime_accepts_indeterminate_timezones() -> None:
     )
 
 
+@freeze_time("2024-07-22 12:00:00", tz_offset=0)  # UTC time
 def test_timezone_functions_accept_tzinfo_instances() -> None:
     """All public timezone-parameter APIs accept tzinfo instances as well as names."""
     fixed_offset = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
 
     assert now_in_timezone(datetime.timezone.utc).tzinfo == datetime.timezone.utc
-    assert today_in_timezone(datetime.timezone.utc) == datetime.datetime.now(datetime.timezone.utc).date()
+    assert today_in_timezone(datetime.timezone.utc) == datetime.date(2024, 7, 22)
     assert convert_timezone(
         datetime.datetime(2024, 7, 22, 10, 30, tzinfo=datetime.timezone.utc), fixed_offset
     ) == datetime.datetime(2024, 7, 22, 16, 0, tzinfo=fixed_offset)
