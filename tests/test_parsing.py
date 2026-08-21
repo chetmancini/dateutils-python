@@ -75,18 +75,18 @@ def test_parse_date_dayfirst() -> None:
     assert parse_date("2024-07-22", dayfirst=True) == datetime.date(2024, 7, 22)
 
     # Ambiguous date: 03/04/2024 could be March 4th or April 3rd
-    # Default (dayfirst=False): US style, month first -> March 4th
+    # Explicit dayfirst=False: US style, month first -> March 4th
     assert parse_date("03/04/2024", dayfirst=False) == datetime.date(2024, 3, 4)
 
     # dayfirst=True: European style, day first -> April 3rd
     assert parse_date("03/04/2024", dayfirst=True) == datetime.date(2024, 4, 3)
 
     # Same with dashes
-    assert parse_date("03-04-2024", dayfirst=False) == datetime.date(2024, 3, 4)  # US default
+    assert parse_date("03-04-2024", dayfirst=False) == datetime.date(2024, 3, 4)  # Explicit month-first behavior
     assert parse_date("03-04-2024", dayfirst=True) == datetime.date(2024, 4, 3)  # European
 
     # Unambiguous because day > 12 (must be day, not month)
-    assert parse_date("22/07/2024") == datetime.date(2024, 7, 22)  # Works with US default
+    assert parse_date("22/07/2024") == datetime.date(2024, 7, 22)  # Unambiguous day-first result
     assert parse_date("22/07/2024", dayfirst=True) == datetime.date(2024, 7, 22)
 
     # Text formats are unambiguous
@@ -334,7 +334,7 @@ def test_parse_datetime() -> None:
         2024, 3, 27, 14, 30, 45
     )
 
-    # Test ambiguous date defaults to US style (month first), consistent with parse_date
+    # Test ambiguous date with explicit month-first behavior, consistent with parse_date
     assert parse_datetime("03/04/2024 12:00:00", dayfirst=False) == datetime.datetime(2024, 3, 4, 12, 0, 0)
 
     # Test dayfirst=True interprets ambiguous date as European (day first)
