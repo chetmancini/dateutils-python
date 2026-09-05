@@ -20,8 +20,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `make lint-fix` - Run ruff linting and fix auto-fixable issues
 - `make format` - Format code using ruff
 - `make format-check` - Check if code is properly formatted
+- `make validate-changelog` - Validate CHANGELOG.md structure
 - `make typecheck` - Run ty static type checking
-- `make check` - Run all checks (lint, format-check, typecheck, test)
+- `make doctest` - Run public module doctests and README Python examples
+- `make check` - Run all checks (lint, format-check, validate-changelog, typecheck, test, doctest)
 - `make fix` - Fix common issues (format + lint-fix)
 
 ### Build and Distribution
@@ -40,10 +42,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Architecture
 
 ### Core Structure
-- **Single Module Design**: All functionality is contained in `dateutils/dateutils.py` - a single, comprehensive module
-- **Standard Library Only**: No external dependencies beyond Python's standard library
-- **Full Type Annotations**: Complete type hints using Python 3.9+ typing features
-- **Comprehensive Testing**: Single test file `tests/test_dateutils.py` with extensive coverage using pytest and freezegun
+- **Focused Module Architecture**: Functionality is divided into dedicated modules:
+  - `dateutils/dateutils.py`: Core UTC, period, business-day, relative-time, and scheduling utilities
+  - `dateutils/parsing.py`: Multi-format date/datetime parsing and formatting helpers
+  - `dateutils/timezones.py`: Timezone resolution, localization, and conversion using `zoneinfo`
+  - `dateutils/_awareness.py` (internal, formerly `_datetime.py`): Shared private datetime-awareness predicate (`is_aware_datetime`)
+  - `dateutils/__init__.py`: Public top-level re-exports for the library API
+- **Standard Library Only**: No external dependencies beyond Python's standard library at runtime
+- **Full Type Annotations**: Complete type hints using Python 3.10+ typing features
+- **Comprehensive Testing**: Focused package test suites (`tests/test_dateutils.py`, `tests/test_parsing.py`, `tests/test_timezones.py`) and release tooling tests (`tests/test_update_changelog.py`, `tests/test_validate_docs.py`, `tests/test_validate_release_tag.py`)
 
 ### Key Components
 - **UTC Operations**: Core timestamp and UTC date functions (`utc_now_seconds`, `utc_today`, `epoch_s`)
@@ -70,7 +77,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Comprehensive Makefile for all development tasks
 
 ### Testing Strategy
-- Single comprehensive test file covering all functionality
+- Focused test files covering each package module (`tests/test_dateutils.py`, `tests/test_parsing.py`, `tests/test_timezones.py`) and tooling scripts (`tests/test_update_changelog.py`, `tests/test_validate_docs.py`, `tests/test_validate_release_tag.py`)
 - Time-based testing using `freezegun` for consistent results
-- Coverage requirements enforced through pytest configuration
+- 100% statement and branch coverage enforced through pytest configuration on all `dateutils` package modules, with `scripts/update_changelog.py` also included in the normal coverage gate
 - Tests validate both success cases and error conditions with proper exception handling
