@@ -42,14 +42,14 @@ Documentation = "https://github.com/chetmancini/dateutils-python#readme"
 [dependency-groups]
 dev = [
     "freezegun>=1.5.5",
-    "pytest>=9.0.3",
-    "ruff>=0.15.21",
+    "pytest>=9.1.1",
+    "ruff>=0.16.6",
     "pytest-cov>=7.1.0",
-    "ty>=0.0.59",
-    "build>=1.5.0",
-    "pre-commit>=4.6.0",
+    "ty>=0.0.78",
+    "build>=1.6.0",
+    "pre-commit>=4.6.2",
     "bump2version>=1.0.1",
-    "twine>=6.2.0",
+    "twine>=7.0.0",
 ]
 
 [tool.uv]
@@ -92,7 +92,7 @@ target-version = "py310"
 line-length = 120
 
 [tool.ruff.lint]
-extend-select = [
+select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
     "F",   # pyflakes

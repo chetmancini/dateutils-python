@@ -6,7 +6,7 @@ import locale
 import re
 from collections.abc import Iterable
 from datetime import date, datetime, timedelta, timezone
-from typing import Literal, cast
+from typing import Literal
 
 from ._awareness import is_aware_datetime as _is_aware_datetime
 
@@ -142,7 +142,7 @@ def _validate_ambiguous_mode(ambiguous: str) -> Literal["locale", "reject"]:
     """Validate the requested handling for ambiguous numeric dates."""
     if ambiguous not in {"locale", "reject"}:
         raise ValueError("ambiguous must be either 'locale' or 'reject'")
-    return cast(Literal["locale", "reject"], ambiguous)
+    return ambiguous
 
 
 class ParseError(ValueError):

@@ -75,6 +75,7 @@ today = utc_today()  # e.g., datetime.date(2024, 6, 6)
 
 # Convert a datetime to timestamp
 from datetime import datetime
+
 dt = datetime(2024, 6, 6, 12, 30, 0)
 ts = epoch_s(dt)  # 1717677000
 ```
@@ -82,10 +83,7 @@ ts = epoch_s(dt)  # 1717677000
 ### Business Day Calculations
 
 ```python
-from dateutils import (
-    workdays_between, add_business_days, next_business_day,
-    previous_business_day, is_business_day
-)
+from dateutils import workdays_between, add_business_days, next_business_day, previous_business_day, is_business_day
 from datetime import date
 
 # Calculate workdays between dates
@@ -174,8 +172,12 @@ iso_str = to_iso8601(dt)  # e.g., "2024-06-06T12:30:45+00:00"
 
 ```python
 from dateutils import (
-    now_in_timezone, localize_datetime, convert_timezone, get_available_timezones,
-    get_timezone_offset, format_timezone_offset
+    now_in_timezone,
+    localize_datetime,
+    convert_timezone,
+    get_available_timezones,
+    get_timezone_offset,
+    format_timezone_offset,
 )
 from datetime import datetime, timezone
 
@@ -204,8 +206,13 @@ offset_str = format_timezone_offset("America/New_York")  # Returns "-05:00" or "
 
 ```python
 from dateutils import (
-    date_to_quarter, date_to_start_of_quarter, get_quarter_start_end,
-    start_of_quarter, end_of_quarter, start_of_month, end_of_month
+    date_to_quarter,
+    date_to_start_of_quarter,
+    get_quarter_start_end,
+    start_of_quarter,
+    end_of_quarter,
+    start_of_month,
+    end_of_month,
 )
 from datetime import datetime
 
@@ -221,15 +228,19 @@ start, end = get_quarter_start_end(2024, 2)  # Q2 2024: (2024-04-01, 2024-06-30)
 
 # Get precise quarter boundaries
 q_start = start_of_quarter(2024, 2)  # 2024-04-01 00:00:00
-q_end = end_of_quarter(2024, 2)      # 2024-06-30 23:59:59.999999
+q_end = end_of_quarter(2024, 2)  # 2024-06-30 23:59:59.999999
 ```
 
 ### Additional Utility Functions
 
 ```python
 from dateutils import (
-    age_in_years, days_until_weekend, days_since_weekend,
-    get_week_number, next_occurrence, time_until_next_occurrence
+    age_in_years,
+    days_until_weekend,
+    days_since_weekend,
+    get_week_number,
+    next_occurrence,
+    time_until_next_occurrence,
 )
 from datetime import date, datetime
 
@@ -285,7 +296,7 @@ an_hour_ago = now - timedelta(hours=1)
 a_day_ago = now - timedelta(days=1)
 
 pretty_date(an_hour_ago)  # "an hour ago"
-pretty_date(a_day_ago)    # "Yesterday"
+pretty_date(a_day_ago)  # "Yesterday"
 ```
 
 ### Error Handling and Validation
