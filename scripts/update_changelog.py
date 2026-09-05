@@ -33,13 +33,13 @@ def run_git_command(cmd: list[str]) -> str:
     """Run a git command and return the output."""
     git_binary = shutil.which("git")
     if git_binary is None:
-        return ""
+        raise RuntimeError("git executable not found")
 
     try:
         result = subprocess.run([git_binary, *cmd], capture_output=True, text=True, check=True)  # noqa: S603
         return result.stdout.strip()
-    except subprocess.CalledProcessError:
-        return ""
+    except subprocess.CalledProcessError as error:
+        raise RuntimeError("git command failed") from error
 
 
 def get_latest_tag() -> str:
