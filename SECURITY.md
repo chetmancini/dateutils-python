@@ -4,10 +4,10 @@
 
 We release patches for security vulnerabilities in the following versions:
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.4.x   | Yes                |
-| < 0.4   | No                 |
+| Version | Supported |
+| ------- | --------- |
+| 0.8.x   | Yes       |
+| < 0.8    | No        |
 
 ## Reporting a Vulnerability
 
