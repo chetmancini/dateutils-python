@@ -13,6 +13,30 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 -
 
+## [0.8.3] - 2026-09-04
+
+### Added
+- Run full quality checks on newest Python in CI matrix.
+
+### Changed
+- More ruff.
+- Bump versions.
+- Ci: bump actions/checkout from 7.0.0 to 7.0.1 (#80).
+- Ci: bump anthropics/claude-code-action from 1.0.174 to 1.0.210 (#88).
+- Ci: bump pypa/gh-action-pypi-publish from 1.14.0 to 1.14.2 (#83).
+- Ci: bump astral-sh/setup-uv from 8.3.2 to 10.0.1 (#85).
+- Refresh contributor architecture guidance (#91).
+- Refresh supported-version security policy (#90).
+- Cover changelog Git operations (#89).
+- Remove direct-file import fallback shims.
+- Stop blanket-ignoring DeprecationWarning and UserWarning in pytest config.
+- Clarify explicit month-first test comments.
+- Stabilize locale and timezone tests.
+- DRY up datetime helpers and quarter logic (#77).
+
+### Fixed
+-
+
 ## [0.8.2] - 2026-07-15
 
 ### Added
