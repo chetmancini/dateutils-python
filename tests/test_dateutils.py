@@ -3,6 +3,7 @@ import locale
 import re
 from importlib.metadata import PackageNotFoundError
 from pathlib import Path
+from typing import Any, cast
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -146,7 +147,7 @@ def test_utc_truncate_epoch_day() -> None:
 
 
 def test_epoch_s() -> None:
-    assert 1397488604 == epoch_s(datetime.datetime(2014, 4, 14, 15, 16, 44))
+    assert epoch_s(datetime.datetime(2014, 4, 14, 15, 16, 44)) == 1397488604
 
 
 def test_epoch_s_handles_fractional_seconds_without_float_rounding() -> None:
@@ -206,16 +207,16 @@ def test_end_of_year() -> None:
 
 @freeze_time("2018-10-12")
 def test_generate_years() -> None:
-    assert [2018, 2017, 2016, 2015, 2014] == list(generate_years(until=2014))
+    assert list(generate_years(until=2014)) == [2018, 2017, 2016, 2015, 2014]
 
 
 def test_generate_years_forward() -> None:
-    assert [2020, 2021, 2022] == list(generate_years(until=2022, start_year=2020))
+    assert list(generate_years(until=2022, start_year=2020)) == [2020, 2021, 2022]
 
 
 def test_generate_years_same_year() -> None:
     """Test generate_years when start_year equals until (same year)."""
-    assert [2024] == list(generate_years(until=2024, start_year=2024))
+    assert list(generate_years(until=2024, start_year=2024)) == [2024]
 
 
 def test_is_leap_year() -> None:
@@ -225,7 +226,7 @@ def test_is_leap_year() -> None:
 
 @freeze_time("2018-9-12")
 def test_generate_quarters() -> None:
-    assert [
+    assert list(generate_quarters(until_year=2016, until_q=2)) == [
         (3, 2018),
         (2, 2018),
         (1, 2018),
@@ -236,7 +237,7 @@ def test_generate_quarters() -> None:
         (4, 2016),
         (3, 2016),
         (2, 2016),
-    ] == list(generate_quarters(until_year=2016, until_q=2))
+    ]
 
 
 @freeze_time("2024-01-15")
@@ -275,12 +276,12 @@ def test_generate_quarters_invalid_start_quarter() -> None:
 
 def test_generate_years_honors_zero_start_year() -> None:
     """A falsy but explicit start_year should not be replaced by the default."""
-    assert [0, 1, 2] == list(generate_years(until=2, start_year=0))
+    assert list(generate_years(until=2, start_year=0)) == [0, 1, 2]
 
 
 @freeze_time("2018-9-12")
 def test_generate_months() -> None:
-    assert [
+    assert list(generate_months(until_year=2017, until_m=8)) == [
         (9, 2018),
         (8, 2018),
         (7, 2018),
@@ -295,7 +296,7 @@ def test_generate_months() -> None:
         (10, 2017),
         (9, 2017),
         (8, 2017),
-    ] == list(generate_months(until_year=2017, until_m=8))
+    ]
 
 
 @freeze_time("2024-03-15")
@@ -468,17 +469,17 @@ def test_date_to_quarter() -> None:
     def to_date(m: int, d: int) -> datetime.datetime:
         return datetime.datetime(2018, m, d)
 
-    assert 1 == date_to_quarter(to_date(1, 6))
-    assert 1 == date_to_quarter(to_date(3, 31))
+    assert date_to_quarter(to_date(1, 6)) == 1
+    assert date_to_quarter(to_date(3, 31)) == 1
 
-    assert 2 == date_to_quarter(to_date(4, 1))
-    assert 2 == date_to_quarter(to_date(6, 30))
+    assert date_to_quarter(to_date(4, 1)) == 2
+    assert date_to_quarter(to_date(6, 30)) == 2
 
-    assert 3 == date_to_quarter(to_date(7, 30))
-    assert 3 == date_to_quarter(to_date(9, 3))
+    assert date_to_quarter(to_date(7, 30)) == 3
+    assert date_to_quarter(to_date(9, 3)) == 3
 
-    assert 4 == date_to_quarter(to_date(10, 1))
-    assert 4 == date_to_quarter(to_date(12, 31))
+    assert date_to_quarter(to_date(10, 1)) == 4
+    assert date_to_quarter(to_date(12, 31)) == 4
 
 
 def test_date_to_start_of_quarter() -> None:
@@ -880,7 +881,7 @@ def test_httpdate_edge_case_leap_year() -> None:
 def test_httpdate_invalid_input() -> None:
     """Test httpdate with invalid input raises an appropriate exception."""
     with pytest.raises(AttributeError):
-        httpdate("not a datetime")  # type: ignore # Should fail due to missing datetime attrs
+        httpdate(cast(Any, "not a datetime"))  # Should fail due to missing datetime attrs
 
 
 def test_httpdate_locale_independence() -> None:

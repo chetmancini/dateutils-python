@@ -93,24 +93,45 @@ line-length = 120
 
 [tool.ruff.lint]
 select = [
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings
-    "F",   # pyflakes
-    "I",   # isort
-    "C",   # flake8-comprehensions
-    "B",   # flake8-bugbear
-    "UP",  # pyupgrade
-    "N",   # pep8-naming
-    "PL",  # pylint
-    "RUF", # ruff-specific rules
-    "S",
-    "PT",
-    "RET",
-    "PERF",
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "C",     # flake8-comprehensions / mccabe
+    "B",     # flake8-bugbear
+    "UP",    # pyupgrade
+    "N",     # pep8-naming
+    "PL",    # pylint
+    "RUF",   # ruff-specific rules
+    "S",     # flake8-bandit
+    "PT",    # flake8-pytest-style
+    "RET",   # flake8-return
+    "PERF",  # Perflint
+    "A",     # flake8-builtins
+    "ASYNC", # flake8-async
+    "BLE",   # flake8-blind-except
+    "ERA",   # eradicate
+    "FA",    # flake8-future-annotations
+    "FLY",   # flynt
+    "FURB",  # refurb
+    "G",     # flake8-logging-format
+    "ICN",   # flake8-import-conventions
+    "INP",   # flake8-no-pep420
+    "PGH",   # pygrep-hooks
+    "PIE",   # flake8-pie
+    "PYI",   # flake8-pyi
+    "RSE",   # flake8-raise
+    "SIM",   # flake8-simplify
+    "SLOT",  # flake8-slots
+    "T10",   # flake8-debugger
+    "T20",   # flake8-print
+    "TID",   # flake8-tidy-imports
+    "YTT",   # flake8-2020
 ]
 ignore = [
-    "E501",  # line length violations
+    "E501",    # line length violations
     "PLR0913", # too many arguments
+    "SIM108",  # ternary operator instead of if-else
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -119,6 +140,10 @@ ignore = [
     "PLR2004",
     "PLC0415",  # Allow imports inside test functions for isolation
     "RUF043",   # Allow regex metacharacters in pytest.raises match patterns
+]
+"scripts/*" = [
+    "T201",    # Allow print statements in CLI scripts
+    "BLE001",  # Allow catching general Exception when executing dynamic doc blocks
 ]
 
 [tool.ruff.format]
