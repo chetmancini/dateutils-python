@@ -347,6 +347,8 @@ except ZoneInfoNotFoundError as e:
 
 ## Running Tests
 
+Development uses Python 3.14.8 (pinned in `.python-version`) and uv 0.12.23 or newer.
+
 ### Makefile
 ```sh
 make init # ensures uv is installed

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=84.0.0", "wheel>=0.48.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -43,18 +43,19 @@ Documentation = "https://github.com/chetmancini/dateutils-python#readme"
 dev = [
     "freezegun>=1.5.5",
     "pytest>=9.1.1",
-    "ruff>=0.16.6",
+    "ruff>=0.16.10",
     "pytest-cov>=7.1.0",
-    "ty>=0.0.78",
-    "build>=1.6.0",
+    "ty>=0.0.84",
+    "build>=1.6.1",
     "pre-commit>=4.6.2",
     "bump2version>=1.0.1",
     "twine>=7.0.0",
 ]
 
 [tool.uv]
+required-version = ">=0.12.23"
 constraint-dependencies = [
-    "urllib3>=2.7.0",
+    "urllib3>=2.8.0",
 ]
 
 [tool.pytest.ini_options]
