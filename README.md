@@ -1,5 +1,7 @@
 # DateUtils Python
 
+![DateUtils Python — Dates, without the baggage. Date and time utilities for Python.](docs/brand/workweek-social.png)
+
 [![PyPI version](https://badge.fury.io/py/dateutils-python.svg)](https://pypi.org/project/dateutils-python/)
 [![PyPI downloads](https://img.shields.io/pypi/dm/dateutils-python.svg)](https://pypi.org/project/dateutils-python/)
 [![Python versions](https://img.shields.io/pypi/pyversions/dateutils-python.svg)](https://pypi.org/project/dateutils-python/)
