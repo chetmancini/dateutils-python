@@ -13,6 +13,18 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 -
 
+## [0.8.4] - 2026-10-26
+
+### Added
+-
+
+### Changed
+- Bump all deps.
+- Brand images.
+
+### Fixed
+-
+
 ## [0.8.3] - 2026-09-04
 
 ### Added
