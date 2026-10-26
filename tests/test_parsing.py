@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import locale
 from typing import cast
 from zoneinfo import ZoneInfo
@@ -20,16 +20,16 @@ from dateutils import (
 ##################
 
 
-class _IndeterminateTimezone(datetime.tzinfo):
+class _IndeterminateTimezone(dt.tzinfo):
     """A tzinfo attached to a datetime that still has no UTC offset."""
 
-    def utcoffset(self, dt: datetime.datetime | None) -> None:
+    def utcoffset(self, dt: dt.datetime | None) -> None:
         return None
 
-    def dst(self, dt: datetime.datetime | None) -> None:
+    def dst(self, dt: dt.datetime | None) -> None:
         return None
 
-    def tzname(self, dt: datetime.datetime | None) -> None:
+    def tzname(self, dt: dt.datetime | None) -> None:
         return None
 
 
@@ -39,27 +39,27 @@ def _parse_error(exc_info: pytest.ExceptionInfo[BaseException]) -> ParseError:
 
 def test_parse_date() -> None:
     """Test parsing date strings in various formats."""
-    assert parse_date(" 2024-03-27 ") == datetime.date(2024, 3, 27)
+    assert parse_date(" 2024-03-27 ") == dt.date(2024, 3, 27)
 
     # Test ISO format
-    assert parse_date("2024-03-27") == datetime.date(2024, 3, 27)
+    assert parse_date("2024-03-27") == dt.date(2024, 3, 27)
 
     # Test various formats
-    assert parse_date("27/03/2024") == datetime.date(2024, 3, 27)  # DD/MM/YYYY
-    assert parse_date("03/27/2024", dayfirst=False) == datetime.date(2024, 3, 27)  # MM/DD/YYYY
-    assert parse_date("27-03-2024") == datetime.date(2024, 3, 27)  # DD-MM-YYYY
-    assert parse_date("03-27-2024", dayfirst=False) == datetime.date(2024, 3, 27)  # MM-DD-YYYY
-    assert parse_date("27.03.2024") == datetime.date(2024, 3, 27)  # DD.MM.YYYY
-    assert parse_date("2024/03/27") == datetime.date(2024, 3, 27)  # YYYY/MM/DD
+    assert parse_date("27/03/2024") == dt.date(2024, 3, 27)  # DD/MM/YYYY
+    assert parse_date("03/27/2024", dayfirst=False) == dt.date(2024, 3, 27)  # MM/DD/YYYY
+    assert parse_date("27-03-2024") == dt.date(2024, 3, 27)  # DD-MM-YYYY
+    assert parse_date("03-27-2024", dayfirst=False) == dt.date(2024, 3, 27)  # MM-DD-YYYY
+    assert parse_date("27.03.2024") == dt.date(2024, 3, 27)  # DD.MM.YYYY
+    assert parse_date("2024/03/27") == dt.date(2024, 3, 27)  # YYYY/MM/DD
 
     # Test text formats
-    assert parse_date("March 27, 2024") == datetime.date(2024, 3, 27)  # Month DD, YYYY
-    assert parse_date("27 March 2024") == datetime.date(2024, 3, 27)  # DD Month YYYY
-    assert parse_date("Mar 27, 2024") == datetime.date(2024, 3, 27)  # Mon DD, YYYY
-    assert parse_date("27 Mar 2024") == datetime.date(2024, 3, 27)  # DD Mon YYYY
+    assert parse_date("March 27, 2024") == dt.date(2024, 3, 27)  # Month DD, YYYY
+    assert parse_date("27 March 2024") == dt.date(2024, 3, 27)  # DD Month YYYY
+    assert parse_date("Mar 27, 2024") == dt.date(2024, 3, 27)  # Mon DD, YYYY
+    assert parse_date("27 Mar 2024") == dt.date(2024, 3, 27)  # DD Mon YYYY
 
     # Test with custom format
-    assert parse_date("2024 03 27", formats=["%Y %m %d"]) == datetime.date(2024, 3, 27)
+    assert parse_date("2024 03 27", formats=["%Y %m %d"]) == dt.date(2024, 3, 27)
 
     # Test invalid date
     with pytest.raises(ParseError):
@@ -71,41 +71,41 @@ def test_parse_date() -> None:
 def test_parse_date_dayfirst() -> None:
     """Test parse_date with dayfirst parameter for ambiguous dates."""
     # Unambiguous dates work the same either way
-    assert parse_date("2024-07-22") == datetime.date(2024, 7, 22)
-    assert parse_date("2024-07-22", dayfirst=True) == datetime.date(2024, 7, 22)
+    assert parse_date("2024-07-22") == dt.date(2024, 7, 22)
+    assert parse_date("2024-07-22", dayfirst=True) == dt.date(2024, 7, 22)
 
     # Ambiguous date: 03/04/2024 could be March 4th or April 3rd
     # Explicit dayfirst=False: US style, month first -> March 4th
-    assert parse_date("03/04/2024", dayfirst=False) == datetime.date(2024, 3, 4)
+    assert parse_date("03/04/2024", dayfirst=False) == dt.date(2024, 3, 4)
 
     # dayfirst=True: European style, day first -> April 3rd
-    assert parse_date("03/04/2024", dayfirst=True) == datetime.date(2024, 4, 3)
+    assert parse_date("03/04/2024", dayfirst=True) == dt.date(2024, 4, 3)
 
     # Same with dashes
-    assert parse_date("03-04-2024", dayfirst=False) == datetime.date(2024, 3, 4)  # Explicit month-first behavior
-    assert parse_date("03-04-2024", dayfirst=True) == datetime.date(2024, 4, 3)  # European
+    assert parse_date("03-04-2024", dayfirst=False) == dt.date(2024, 3, 4)  # Explicit month-first behavior
+    assert parse_date("03-04-2024", dayfirst=True) == dt.date(2024, 4, 3)  # European
 
     # Unambiguous because day > 12 (must be day, not month)
-    assert parse_date("22/07/2024") == datetime.date(2024, 7, 22)  # Unambiguous day-first result
-    assert parse_date("22/07/2024", dayfirst=True) == datetime.date(2024, 7, 22)
+    assert parse_date("22/07/2024") == dt.date(2024, 7, 22)  # Unambiguous day-first result
+    assert parse_date("22/07/2024", dayfirst=True) == dt.date(2024, 7, 22)
 
     # Text formats are unambiguous
-    assert parse_date("July 22, 2024") == datetime.date(2024, 7, 22)
-    assert parse_date("22 Jul 2024") == datetime.date(2024, 7, 22)
-    assert parse_date("July 22, 2024", dayfirst=True) == datetime.date(2024, 7, 22)
+    assert parse_date("July 22, 2024") == dt.date(2024, 7, 22)
+    assert parse_date("22 Jul 2024") == dt.date(2024, 7, 22)
+    assert parse_date("July 22, 2024", dayfirst=True) == dt.date(2024, 7, 22)
 
     # Custom formats ignore dayfirst
-    assert parse_date("2024|07|22", formats=["%Y|%m|%d"]) == datetime.date(2024, 7, 22)
-    assert parse_date("2024|07|22", formats=["%Y|%m|%d"], dayfirst=True) == datetime.date(2024, 7, 22)
+    assert parse_date("2024|07|22", formats=["%Y|%m|%d"]) == dt.date(2024, 7, 22)
+    assert parse_date("2024|07|22", formats=["%Y|%m|%d"], dayfirst=True) == dt.date(2024, 7, 22)
 
 
 def test_parse_date_uses_locale_order_when_dayfirst_is_not_specified(monkeypatch: pytest.MonkeyPatch) -> None:
     """Default numeric date parsing should follow the locale's date-order directive."""
     monkeypatch.setattr(locale, "nl_langinfo", lambda _: "%d/%m/%Y")
-    assert parse_date("03/04/2024") == datetime.date(2024, 4, 3)
+    assert parse_date("03/04/2024") == dt.date(2024, 4, 3)
 
     monkeypatch.setattr(locale, "nl_langinfo", lambda _: "%m/%d/%Y")
-    assert parse_date("03/04/2024") == datetime.date(2024, 3, 4)
+    assert parse_date("03/04/2024") == dt.date(2024, 3, 4)
 
 
 def test_parse_datetime_uses_locale_order_when_dayfirst_is_not_specified(
@@ -113,10 +113,10 @@ def test_parse_datetime_uses_locale_order_when_dayfirst_is_not_specified(
 ) -> None:
     """Default numeric datetime parsing should follow the locale's date-order directive."""
     monkeypatch.setattr(locale, "nl_langinfo", lambda _: "%d/%m/%Y")
-    assert parse_datetime("03/04/2024 12:00:00") == datetime.datetime(2024, 4, 3, 12, 0, 0)
+    assert parse_datetime("03/04/2024 12:00:00") == dt.datetime(2024, 4, 3, 12, 0, 0)
 
     monkeypatch.setattr(locale, "nl_langinfo", lambda _: "%m/%d/%Y")
-    assert parse_datetime("03/04/2024 12:00:00") == datetime.datetime(2024, 3, 4, 12, 0, 0)
+    assert parse_datetime("03/04/2024 12:00:00") == dt.datetime(2024, 3, 4, 12, 0, 0)
 
 
 @pytest.mark.parametrize(
@@ -135,7 +135,7 @@ def test_parse_date_locale_falls_back_to_monthfirst(
             raise locale_format()
 
         monkeypatch.setattr(locale, "nl_langinfo", raise_locale_error)
-    assert parse_date("03/04/2024") == datetime.date(2024, 3, 4)
+    assert parse_date("03/04/2024") == dt.date(2024, 3, 4)
 
 
 def test_parse_date_locale_errors_fall_back_to_monthfirst(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -145,7 +145,7 @@ def test_parse_date_locale_errors_fall_back_to_monthfirst(monkeypatch: pytest.Mo
         raise ValueError
 
     monkeypatch.setattr(locale, "nl_langinfo", _raise_value_error)
-    assert parse_date("03/04/2024") == datetime.date(2024, 3, 4)
+    assert parse_date("03/04/2024") == dt.date(2024, 3, 4)
 
 
 def test_parse_date_rejects_ambiguous_numeric_dates() -> None:
@@ -154,10 +154,10 @@ def test_parse_date_rejects_ambiguous_numeric_dates() -> None:
         parse_date("03/04/2024", ambiguous="reject")
     assert _parse_error(exc_info).reason == "ambiguous numeric date"
 
-    assert parse_date("22/07/2024", ambiguous="reject") == datetime.date(2024, 7, 22)
-    assert parse_date("2024-03-04", ambiguous="reject") == datetime.date(2024, 3, 4)
-    assert parse_date("03/04/2024", formats=["%m/%d/%Y"], ambiguous="reject") == datetime.date(2024, 3, 4)
-    assert parse_date("03/04/2024", formats=["%m/%d/%Y"], ambiguous="prefer-us") == datetime.date(2024, 3, 4)
+    assert parse_date("22/07/2024", ambiguous="reject") == dt.date(2024, 7, 22)
+    assert parse_date("2024-03-04", ambiguous="reject") == dt.date(2024, 3, 4)
+    assert parse_date("03/04/2024", formats=["%m/%d/%Y"], ambiguous="reject") == dt.date(2024, 3, 4)
+    assert parse_date("03/04/2024", formats=["%m/%d/%Y"], ambiguous="prefer-us") == dt.date(2024, 3, 4)
 
 
 def test_parse_date_reject_mode_allows_nonmatching_values_to_raise_normal_parse_errors() -> None:
@@ -188,8 +188,8 @@ def test_parse_date_english_month_names_locale_independent() -> None:
         if not switched:
             pytest.skip("No non-English locale available for testing")
 
-        assert parse_date("March 27, 2024") == datetime.date(2024, 3, 27)
-        assert parse_date("27 Mar 2024") == datetime.date(2024, 3, 27)
+        assert parse_date("March 27, 2024") == dt.date(2024, 3, 27)
+        assert parse_date("27 Mar 2024") == dt.date(2024, 3, 27)
     finally:
         locale.setlocale(locale.LC_TIME, original_locale)
 
@@ -245,14 +245,14 @@ def test_parse_date_invalid_calendar_dates() -> None:
         parse_date("2024-01-00")
 
     # Valid leap year Feb 29 should work
-    assert parse_date("2024-02-29") == datetime.date(2024, 2, 29)  # 2024 is a leap year
-    assert parse_date("Feb 29, 2024") == datetime.date(2024, 2, 29)
+    assert parse_date("2024-02-29") == dt.date(2024, 2, 29)  # 2024 is a leap year
+    assert parse_date("Feb 29, 2024") == dt.date(2024, 2, 29)
 
 
 def test_parse_date_errors_include_details() -> None:
     """Date parsing should raise ParseError with useful details."""
-    assert parse_date("03/04/2024", dayfirst=True) == datetime.date(2024, 4, 3)
-    assert parse_date("2024|03|27", formats=["%Y|%m|%d"]) == datetime.date(2024, 3, 27)
+    assert parse_date("03/04/2024", dayfirst=True) == dt.date(2024, 4, 3)
+    assert parse_date("2024|03|27", formats=["%Y|%m|%d"]) == dt.date(2024, 3, 27)
 
     with pytest.raises(ParseError, match="Failed to parse date") as exc_info:
         parse_date("not a date")
@@ -269,85 +269,79 @@ def test_parse_date_errors_include_details() -> None:
 
 def test_parse_datetime() -> None:
     """Test parsing datetime strings in various formats."""
-    assert parse_datetime(" 2024-03-27T14:30:45Z ") == datetime.datetime(
-        2024, 3, 27, 14, 30, 45, tzinfo=datetime.timezone.utc
-    )
+    assert parse_datetime(" 2024-03-27T14:30:45Z ") == dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.timezone.utc)
 
     # Test ISO format with space separator
-    assert parse_datetime("2024-03-27 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)
+    assert parse_datetime("2024-03-27 14:30:45") == dt.datetime(2024, 3, 27, 14, 30, 45)
 
     # Test ISO format with T separator
-    assert parse_datetime("2024-03-27T14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)
+    assert parse_datetime("2024-03-27T14:30:45") == dt.datetime(2024, 3, 27, 14, 30, 45)
 
     # Test with milliseconds
-    expected_with_ms = datetime.datetime(2024, 3, 27, 14, 30, 45, 123456)
+    expected_with_ms = dt.datetime(2024, 3, 27, 14, 30, 45, 123456)
     assert parse_datetime("2024-03-27T14:30:45.123456") == expected_with_ms
 
     # Test with timezone designator Z
     with_z = parse_datetime("2024-03-27T14:30:45Z")
-    assert with_z == datetime.datetime(2024, 3, 27, 14, 30, 45, tzinfo=datetime.timezone.utc)
+    assert with_z == dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.timezone.utc)
 
     # Test with microseconds and Z
     with_ms_z = parse_datetime("2024-03-27T14:30:45.123456Z")
-    assert with_ms_z == datetime.datetime(2024, 3, 27, 14, 30, 45, 123456, tzinfo=datetime.timezone.utc)
+    assert with_ms_z == dt.datetime(2024, 3, 27, 14, 30, 45, 123456, tzinfo=dt.timezone.utc)
 
     # Test with timezone offset with colon (ISO)
     with_tz_colon = parse_datetime("2024-03-27T14:30:45+02:00")
     assert with_tz_colon is not None
     assert with_tz_colon.tzinfo is not None
-    assert with_tz_colon.tzinfo.utcoffset(None) == datetime.timedelta(hours=2)
+    assert with_tz_colon.tzinfo.utcoffset(None) == dt.timedelta(hours=2)
 
     # Test with timezone offset without colon (ISO)
     with_tz_no_colon = parse_datetime("2024-03-27T14:30:45-0500")
     assert with_tz_no_colon is not None
     assert with_tz_no_colon.tzinfo is not None
-    assert with_tz_no_colon.tzinfo.utcoffset(None) == datetime.timedelta(hours=-5)
+    assert with_tz_no_colon.tzinfo.utcoffset(None) == dt.timedelta(hours=-5)
 
     # Test other date formats with time
-    assert parse_datetime("27/03/2024 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)  # DD/MM/YYYY
-    assert parse_datetime("03/27/2024 14:30:45", dayfirst=False) == datetime.datetime(
-        2024, 3, 27, 14, 30, 45
-    )  # MM/DD/YYYY
-    assert parse_datetime("27-03-2024 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)  # DD-MM-YYYY
-    assert parse_datetime("2024/03/27 14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)  # YYYY/MM/DD
-    assert parse_datetime("03/27/2024 14:30:45-0500", dayfirst=False) == datetime.datetime(
+    assert parse_datetime("27/03/2024 14:30:45") == dt.datetime(2024, 3, 27, 14, 30, 45)  # DD/MM/YYYY
+    assert parse_datetime("03/27/2024 14:30:45", dayfirst=False) == dt.datetime(2024, 3, 27, 14, 30, 45)  # MM/DD/YYYY
+    assert parse_datetime("27-03-2024 14:30:45") == dt.datetime(2024, 3, 27, 14, 30, 45)  # DD-MM-YYYY
+    assert parse_datetime("2024/03/27 14:30:45") == dt.datetime(2024, 3, 27, 14, 30, 45)  # YYYY/MM/DD
+    assert parse_datetime("03/27/2024 14:30:45-0500", dayfirst=False) == dt.datetime(
         2024,
         3,
         27,
         14,
         30,
         45,
-        tzinfo=datetime.timezone(datetime.timedelta(hours=-5)),
+        tzinfo=dt.timezone(dt.timedelta(hours=-5)),
     )
-    assert parse_datetime("03/27/2024 14:30:45 +02:00", dayfirst=False) == datetime.datetime(
+    assert parse_datetime("03/27/2024 14:30:45 +02:00", dayfirst=False) == dt.datetime(
         2024,
         3,
         27,
         14,
         30,
         45,
-        tzinfo=datetime.timezone(datetime.timedelta(hours=2)),
+        tzinfo=dt.timezone(dt.timedelta(hours=2)),
     )
 
     # Test with custom format
-    assert parse_datetime("2024|03|27|14|30|45", formats=["%Y|%m|%d|%H|%M|%S"]) == datetime.datetime(
-        2024, 3, 27, 14, 30, 45
-    )
+    assert parse_datetime("2024|03|27|14|30|45", formats=["%Y|%m|%d|%H|%M|%S"]) == dt.datetime(2024, 3, 27, 14, 30, 45)
 
     # Test ambiguous date with explicit month-first behavior, consistent with parse_date
-    assert parse_datetime("03/04/2024 12:00:00", dayfirst=False) == datetime.datetime(2024, 3, 4, 12, 0, 0)
+    assert parse_datetime("03/04/2024 12:00:00", dayfirst=False) == dt.datetime(2024, 3, 4, 12, 0, 0)
 
     # Test dayfirst=True interprets ambiguous date as European (day first)
-    assert parse_datetime("03/04/2024 12:00:00", dayfirst=True) == datetime.datetime(2024, 4, 3, 12, 0, 0)
+    assert parse_datetime("03/04/2024 12:00:00", dayfirst=True) == dt.datetime(2024, 4, 3, 12, 0, 0)
 
     # Test dayfirst with dash separator
-    assert parse_datetime("03-04-2024 12:00:00", dayfirst=False) == datetime.datetime(2024, 3, 4, 12, 0, 0)
-    assert parse_datetime("03-04-2024 12:00:00", dayfirst=True) == datetime.datetime(2024, 4, 3, 12, 0, 0)
+    assert parse_datetime("03-04-2024 12:00:00", dayfirst=False) == dt.datetime(2024, 3, 4, 12, 0, 0)
+    assert parse_datetime("03-04-2024 12:00:00", dayfirst=True) == dt.datetime(2024, 4, 3, 12, 0, 0)
 
     # Import callers can reject numeric dates that have valid values in either order.
     with pytest.raises(ParseError, match="ambiguous numeric date"):
         parse_datetime("03/04/2024 12:00:00", ambiguous="reject")
-    assert parse_datetime("22/07/2024 12:00:00", ambiguous="reject") == datetime.datetime(2024, 7, 22, 12, 0, 0)
+    assert parse_datetime("22/07/2024 12:00:00", ambiguous="reject") == dt.datetime(2024, 7, 22, 12, 0, 0)
 
     # Test invalid datetime
     with pytest.raises(ParseError):
@@ -371,9 +365,7 @@ def test_parse_datetime_invalid_calendar_date_preserves_reason() -> None:
 
 def test_parse_datetime_errors_include_details() -> None:
     """Datetime parsing should raise ParseError with format details on failure."""
-    assert parse_datetime("2024-03-27T14:30:45Z") == datetime.datetime(
-        2024, 3, 27, 14, 30, 45, tzinfo=datetime.timezone.utc
-    )
+    assert parse_datetime("2024-03-27T14:30:45Z") == dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.timezone.utc)
 
     with pytest.raises(ParseError, match="Failed to parse datetime"):
         parse_datetime("not a datetime")
@@ -392,37 +384,35 @@ def test_parse_datetime_errors_include_details() -> None:
 
 def test_parse_iso8601() -> None:
     """Test parsing ISO 8601 formatted strings."""
-    assert parse_iso8601(" 2024-03-27T14:30:45Z ") == datetime.datetime(
-        2024, 3, 27, 14, 30, 45, tzinfo=datetime.timezone.utc
-    )
+    assert parse_iso8601(" 2024-03-27T14:30:45Z ") == dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.timezone.utc)
 
     # Test date only
-    assert parse_iso8601("2024-03-27") == datetime.datetime(2024, 3, 27)
+    assert parse_iso8601("2024-03-27") == dt.datetime(2024, 3, 27)
 
     # Test date and time
-    assert parse_iso8601("2024-03-27T14:30:45") == datetime.datetime(2024, 3, 27, 14, 30, 45)
+    assert parse_iso8601("2024-03-27T14:30:45") == dt.datetime(2024, 3, 27, 14, 30, 45)
 
     # Test with milliseconds
-    expected_with_ms = datetime.datetime(2024, 3, 27, 14, 30, 45, 123000)
+    expected_with_ms = dt.datetime(2024, 3, 27, 14, 30, 45, 123000)
     assert parse_iso8601("2024-03-27T14:30:45.123") == expected_with_ms
 
     # Test with timezone designator Z
     with_z = parse_iso8601("2024-03-27T14:30:45Z")
-    assert with_z == datetime.datetime(2024, 3, 27, 14, 30, 45, tzinfo=datetime.timezone.utc)
+    assert with_z == dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.timezone.utc)
 
     # Test with timezone offset with colon
     with_tz_colon = parse_iso8601("2024-03-27T14:30:45+02:00")
     assert with_tz_colon is not None
     assert with_tz_colon.tzinfo is not None
     assert with_tz_colon.hour == 14
-    assert with_tz_colon.tzinfo.utcoffset(None) == datetime.timedelta(hours=2)
+    assert with_tz_colon.tzinfo.utcoffset(None) == dt.timedelta(hours=2)
 
     # Test with timezone offset without colon
     with_tz_no_colon = parse_iso8601("2024-03-27T14:30:45-0500")
     assert with_tz_no_colon is not None
     assert with_tz_no_colon.tzinfo is not None
     assert with_tz_no_colon.hour == 14
-    assert with_tz_no_colon.tzinfo.utcoffset(None) == datetime.timedelta(hours=-5)
+    assert with_tz_no_colon.tzinfo.utcoffset(None) == dt.timedelta(hours=-5)
 
     # Additional edge cases
 
@@ -435,7 +425,7 @@ def test_parse_iso8601() -> None:
     half_hour_offset = parse_iso8601("2024-03-27T14:30:45-05:30")
     assert half_hour_offset is not None
     assert half_hour_offset.tzinfo is not None
-    assert half_hour_offset.tzinfo.utcoffset(None) == datetime.timedelta(hours=-5, minutes=-30)
+    assert half_hour_offset.tzinfo.utcoffset(None) == dt.timedelta(hours=-5, minutes=-30)
 
     # Test basic format without T separator (should fail)
     with pytest.raises(ParseError):
@@ -473,13 +463,13 @@ def test_parse_iso8601_malformed_edge_cases() -> None:
     assert result is not None
     assert result.microsecond == 123000
     assert result.tzinfo is not None
-    assert result.tzinfo.utcoffset(None) == datetime.timedelta(hours=2)
+    assert result.tzinfo.utcoffset(None) == dt.timedelta(hours=2)
 
     result = parse_iso8601("2024-03-27T14:30:45.123456-05:30")
     assert result is not None
     assert result.microsecond == 123456
     assert result.tzinfo is not None
-    assert result.tzinfo.utcoffset(None) == datetime.timedelta(hours=-5, minutes=-30)
+    assert result.tzinfo.utcoffset(None) == dt.timedelta(hours=-5, minutes=-30)
 
     # Invalid timezone offset values (accepted by regex, rejected by validation)
     with pytest.raises(ParseError):
@@ -529,7 +519,7 @@ def test_parse_iso8601_nanosecond_truncation() -> None:
     result = parse_iso8601("2024-03-27T14:30:45.123456789Z")
     assert result is not None
     assert result.microsecond == 123456
-    assert result.tzinfo == datetime.timezone.utc
+    assert result.tzinfo == dt.timezone.utc
 
 
 def test_parse_iso8601_invalid_values_raise() -> None:
@@ -548,14 +538,14 @@ def test_parse_iso8601_invalid_values_raise() -> None:
 
 def test_parse_iso8601_errors_include_details() -> None:
     """ISO parsing should raise ParseError with clear reasons."""
-    assert parse_iso8601("2024-03-27T14:30:45+02:00") == datetime.datetime(
+    assert parse_iso8601("2024-03-27T14:30:45+02:00") == dt.datetime(
         2024,
         3,
         27,
         14,
         30,
         45,
-        tzinfo=datetime.timezone(datetime.timedelta(hours=2)),
+        tzinfo=dt.timezone(dt.timedelta(hours=2)),
     )
 
     with pytest.raises(ParseError, match="supported pattern"):
@@ -576,7 +566,7 @@ def test_parse_iso8601_errors_include_details() -> None:
 
 def test_format_date() -> None:
     """Test formatting dates."""
-    test_date = datetime.date(2024, 3, 27)
+    test_date = dt.date(2024, 3, 27)
 
     # Test default ISO format
     assert format_date(test_date) == "2024-03-27"
@@ -588,13 +578,13 @@ def test_format_date() -> None:
     assert format_date(test_date, "%A, %d %B %Y") == "Wednesday, 27 March 2024"
 
     # Test with datetime input
-    test_datetime = datetime.datetime(2024, 3, 27, 14, 30, 45)
+    test_datetime = dt.datetime(2024, 3, 27, 14, 30, 45)
     assert format_date(test_datetime) == "2024-03-27"  # Should extract just the date part
 
 
 def test_format_datetime() -> None:
     """Test formatting datetimes."""
-    test_datetime = datetime.datetime(2024, 3, 27, 14, 30, 45)
+    test_datetime = dt.datetime(2024, 3, 27, 14, 30, 45)
 
     # Test default format
     assert format_datetime(test_datetime) == "2024-03-27 14:30:45"
@@ -605,23 +595,23 @@ def test_format_datetime() -> None:
     assert format_datetime(test_datetime, "%B %d, %Y, %I:%M %p") == "March 27, 2024, 02:30 PM"
 
     # With timezone
-    test_datetime_tz = datetime.datetime(2024, 3, 27, 14, 30, 45, tzinfo=datetime.timezone.utc)
+    test_datetime_tz = dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.timezone.utc)
     assert format_datetime(test_datetime_tz, "%Y-%m-%d %H:%M:%S %Z") == "2024-03-27 14:30:45 UTC"
 
 
 def test_to_iso8601() -> None:
     """Test converting to ISO 8601 format."""
     # Test with date
-    test_date = datetime.date(2024, 3, 27)
+    test_date = dt.date(2024, 3, 27)
     assert to_iso8601(test_date) == "2024-03-27"
 
     # Test with naive datetime (should assume UTC)
-    test_datetime = datetime.datetime(2024, 3, 27, 14, 30, 45)
+    test_datetime = dt.datetime(2024, 3, 27, 14, 30, 45)
     # Should add UTC timezone and format with timezone info
     assert to_iso8601(test_datetime) == "2024-03-27T14:30:45+00:00"
 
     # Test with timezone-aware datetime
-    ny_dt = datetime.datetime(2024, 3, 27, 10, 30, 45, tzinfo=ZoneInfo("America/New_York"))
+    ny_dt = dt.datetime(2024, 3, 27, 10, 30, 45, tzinfo=ZoneInfo("America/New_York"))
     # Should preserve timezone in output
     iso_ny = to_iso8601(ny_dt)
     assert "2024-03-27T10:30:45" in iso_ny
@@ -630,6 +620,6 @@ def test_to_iso8601() -> None:
 
 def test_to_iso8601_treats_indeterminate_timezones_as_naive_utc() -> None:
     """A datetime without a usable offset gets the same UTC suffix as a naive value."""
-    indeterminate = datetime.datetime(2024, 3, 27, 14, 30, 45, tzinfo=_IndeterminateTimezone())
+    indeterminate = dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=_IndeterminateTimezone())
 
     assert to_iso8601(indeterminate) == to_iso8601(indeterminate.replace(tzinfo=None))

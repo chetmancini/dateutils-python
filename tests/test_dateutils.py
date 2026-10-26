@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import locale
 import re
 from importlib.metadata import PackageNotFoundError
@@ -51,16 +51,16 @@ from dateutils import (
 )
 
 
-class _IndeterminateTimezone(datetime.tzinfo):
+class _IndeterminateTimezone(dt.tzinfo):
     """A tzinfo attached to a datetime that still has no UTC offset."""
 
-    def utcoffset(self, dt: datetime.datetime | None) -> None:
+    def utcoffset(self, dt: dt.datetime | None) -> None:
         return None
 
-    def dst(self, dt: datetime.datetime | None) -> None:
+    def dst(self, dt: dt.datetime | None) -> None:
         return None
 
-    def tzname(self, dt: datetime.datetime | None) -> None:
+    def tzname(self, dt: dt.datetime | None) -> None:
         return None
 
 
@@ -121,7 +121,7 @@ def test_utc_today() -> None:
     """Test that utc_today returns the current UTC date."""
     from dateutils import utc_today
 
-    assert utc_today() == datetime.date(2024, 3, 27)
+    assert utc_today() == dt.date(2024, 3, 27)
 
 
 @freeze_time("2024-03-27 14:30:45", tz_offset=0)
@@ -147,25 +147,23 @@ def test_utc_truncate_epoch_day() -> None:
 
 
 def test_epoch_s() -> None:
-    assert epoch_s(datetime.datetime(2014, 4, 14, 15, 16, 44)) == 1397488604
+    assert epoch_s(dt.datetime(2014, 4, 14, 15, 16, 44)) == 1397488604
 
 
 def test_epoch_s_handles_fractional_seconds_without_float_rounding() -> None:
     """Whole epoch seconds should floor exactly on both sides of the epoch."""
-    just_before_epoch = datetime.datetime(1969, 12, 31, 23, 59, 59, 999999, tzinfo=datetime.timezone.utc)
+    just_before_epoch = dt.datetime(1969, 12, 31, 23, 59, 59, 999999, tzinfo=dt.timezone.utc)
     assert epoch_s(just_before_epoch) == -1
 
-    latest = datetime.datetime.max.replace(tzinfo=datetime.timezone.utc)
+    latest = dt.datetime.max.replace(tzinfo=dt.timezone.utc)
     latest_whole_second = 253402300799
     assert epoch_s(latest) == latest_whole_second
-    assert utc_from_timestamp(latest_whole_second) == datetime.datetime(
-        9999, 12, 31, 23, 59, 59, tzinfo=datetime.timezone.utc
-    )
+    assert utc_from_timestamp(latest_whole_second) == dt.datetime(9999, 12, 31, 23, 59, 59, tzinfo=dt.timezone.utc)
 
 
 def test_epoch_s_treats_indeterminate_timezones_as_naive_utc() -> None:
     """A datetime without a usable offset must follow the naive UTC policy."""
-    indeterminate = datetime.datetime(2024, 1, 1, 12, 0, tzinfo=_IndeterminateTimezone())
+    indeterminate = dt.datetime(2024, 1, 1, 12, 0, tzinfo=_IndeterminateTimezone())
 
     assert epoch_s(indeterminate) == epoch_s(indeterminate.replace(tzinfo=None))
 
@@ -177,32 +175,32 @@ def test_utc_from_timestamp() -> None:
     # Timestamp for 2024-03-28 15:30:45 UTC
     ts = 1711639845
 
-    dt = utc_from_timestamp(ts)
-    assert dt.year == 2024
-    assert dt.month == 3
-    assert dt.day == 28
-    assert dt.hour == 15
-    assert dt.minute == 30
-    assert dt.second == 45
-    assert dt.tzinfo == datetime.timezone.utc
+    result = utc_from_timestamp(ts)
+    assert result.year == 2024
+    assert result.month == 3
+    assert result.day == 28
+    assert result.hour == 15
+    assert result.minute == 30
+    assert result.second == 45
+    assert result.tzinfo == dt.timezone.utc
 
 
 def test_datetime_start_of_day() -> None:
-    day = datetime.datetime(2016, 11, 23, 5, 4, 3).date()
-    assert datetime_start_of_day(day) == datetime.datetime(2016, 11, 23, 0, 0, 0)
+    day = dt.datetime(2016, 11, 23, 5, 4, 3).date()
+    assert datetime_start_of_day(day) == dt.datetime(2016, 11, 23, 0, 0, 0)
 
 
 def test_datetime_end_of_day() -> None:
-    day = datetime.datetime(2016, 11, 23, 5, 4, 3).date()
-    assert datetime_end_of_day(day) == datetime.datetime(2016, 11, 23, 23, 59, 59, 999999)
+    day = dt.datetime(2016, 11, 23, 5, 4, 3).date()
+    assert datetime_end_of_day(day) == dt.datetime(2016, 11, 23, 23, 59, 59, 999999)
 
 
 def test_start_of_year() -> None:
-    assert datetime.datetime(2018, 1, 1) == start_of_year(2018)
+    assert dt.datetime(2018, 1, 1) == start_of_year(2018)
 
 
 def test_end_of_year() -> None:
-    assert datetime.datetime(2018, 12, 31, 23, 59, 59, 999999) == end_of_year(2018)
+    assert dt.datetime(2018, 12, 31, 23, 59, 59, 999999) == end_of_year(2018)
 
 
 @freeze_time("2018-10-12")
@@ -311,13 +309,13 @@ def test_generate_months_natural_loop_exit() -> None:
 
 def test_generate_months_same_month() -> None:
     """Test generate_months when start month equals target month."""
-    start = datetime.date(2024, 6, 15)
+    start = dt.date(2024, 6, 15)
     months = list(generate_months(until_year=2024, until_m=6, start_date=start))
     assert months == [(6, 2024)]
 
 
 def test_generate_months_forward_custom_start() -> None:
-    start = datetime.date(2023, 11, 15)
+    start = dt.date(2023, 11, 15)
     months = list(generate_months(until_year=2024, until_m=2, start_date=start))
     assert months == [
         (11, 2023),
@@ -331,8 +329,8 @@ def test_generate_months_forward_custom_start() -> None:
 def test_generate_weeks() -> None:
     weeks = list(generate_weeks(count=2))
     assert weeks == [
-        (datetime.date(2018, 9, 9), datetime.date(2018, 9, 15)),
-        (datetime.date(2018, 9, 2), datetime.date(2018, 9, 8)),
+        (dt.date(2018, 9, 9), dt.date(2018, 9, 15)),
+        (dt.date(2018, 9, 2), dt.date(2018, 9, 8)),
     ]
 
 
@@ -340,55 +338,55 @@ def test_generate_weeks() -> None:
 def test_generate_weeks_start_on_monday() -> None:
     weeks = list(generate_weeks(count=2, start_on_monday=True))
     assert weeks == [
-        (datetime.date(2018, 9, 10), datetime.date(2018, 9, 16)),
-        (datetime.date(2018, 9, 3), datetime.date(2018, 9, 9)),
+        (dt.date(2018, 9, 10), dt.date(2018, 9, 16)),
+        (dt.date(2018, 9, 3), dt.date(2018, 9, 9)),
     ]
 
 
 @freeze_time("2024-07-22")
 def test_generate_weeks_with_until_date() -> None:
     """Test generate_weeks with until_date parameter."""
-    until = datetime.date(2024, 7, 10)
+    until = dt.date(2024, 7, 10)
     weeks = list(generate_weeks(count=5, until_date=until))
     assert weeks == [
-        (datetime.date(2024, 7, 21), datetime.date(2024, 7, 27)),
-        (datetime.date(2024, 7, 14), datetime.date(2024, 7, 20)),
-        (datetime.date(2024, 7, 7), datetime.date(2024, 7, 13)),
+        (dt.date(2024, 7, 21), dt.date(2024, 7, 27)),
+        (dt.date(2024, 7, 14), dt.date(2024, 7, 20)),
+        (dt.date(2024, 7, 7), dt.date(2024, 7, 13)),
     ]
 
     # When until_date is in the future we walk forward
-    future_until = datetime.date(2024, 8, 10)
+    future_until = dt.date(2024, 8, 10)
     future_weeks = list(generate_weeks(count=5, until_date=future_until))
     assert future_weeks == [
-        (datetime.date(2024, 7, 21), datetime.date(2024, 7, 27)),
-        (datetime.date(2024, 7, 28), datetime.date(2024, 8, 3)),
-        (datetime.date(2024, 8, 4), datetime.date(2024, 8, 10)),
+        (dt.date(2024, 7, 21), dt.date(2024, 7, 27)),
+        (dt.date(2024, 7, 28), dt.date(2024, 8, 3)),
+        (dt.date(2024, 8, 4), dt.date(2024, 8, 10)),
     ]
 
 
 def test_generate_weeks_custom_start_forward() -> None:
     """Custom start_date moving forward toward until_date."""
-    start = datetime.date(2024, 1, 3)  # Wednesday
-    until = datetime.date(2024, 1, 20)
+    start = dt.date(2024, 1, 3)  # Wednesday
+    until = dt.date(2024, 1, 20)
     weeks = list(generate_weeks(count=4, start_date=start, until_date=until))
     assert weeks == [
-        (datetime.date(2023, 12, 31), datetime.date(2024, 1, 6)),
-        (datetime.date(2024, 1, 7), datetime.date(2024, 1, 13)),
-        (datetime.date(2024, 1, 14), datetime.date(2024, 1, 20)),
+        (dt.date(2023, 12, 31), dt.date(2024, 1, 6)),
+        (dt.date(2024, 1, 7), dt.date(2024, 1, 13)),
+        (dt.date(2024, 1, 14), dt.date(2024, 1, 20)),
     ]
 
 
 def test_generate_weeks_custom_start_backward_monday() -> None:
     """Custom start_date moving backward with Monday-based weeks."""
-    start = datetime.date(2024, 1, 20)
-    until = datetime.date(2023, 12, 31)
+    start = dt.date(2024, 1, 20)
+    until = dt.date(2023, 12, 31)
     weeks = list(generate_weeks(count=5, start_date=start, until_date=until, start_on_monday=True))
     # Should include week containing until_date (Dec 25-31 contains Dec 31)
     assert weeks == [
-        (datetime.date(2024, 1, 15), datetime.date(2024, 1, 21)),
-        (datetime.date(2024, 1, 8), datetime.date(2024, 1, 14)),
-        (datetime.date(2024, 1, 1), datetime.date(2024, 1, 7)),
-        (datetime.date(2023, 12, 25), datetime.date(2023, 12, 31)),
+        (dt.date(2024, 1, 15), dt.date(2024, 1, 21)),
+        (dt.date(2024, 1, 8), dt.date(2024, 1, 14)),
+        (dt.date(2024, 1, 1), dt.date(2024, 1, 7)),
+        (dt.date(2023, 12, 25), dt.date(2023, 12, 31)),
     ]
 
 
@@ -397,32 +395,32 @@ def test_generate_weeks_start_equals_until() -> None:
 
     When both dates are the same, direction=0 and exactly one week should be yielded.
     """
-    same_date = datetime.date(2024, 7, 17)  # Wednesday
+    same_date = dt.date(2024, 7, 17)  # Wednesday
 
     # Sunday-based weeks (default)
     weeks = list(generate_weeks(count=10, start_date=same_date, until_date=same_date))
     assert len(weeks) == 1
     # July 17, 2024 (Wed) falls in week Sun Jul 14 - Sat Jul 20
-    assert weeks == [(datetime.date(2024, 7, 14), datetime.date(2024, 7, 20))]
+    assert weeks == [(dt.date(2024, 7, 14), dt.date(2024, 7, 20))]
 
     # Monday-based weeks
     weeks_monday = list(generate_weeks(count=10, start_date=same_date, until_date=same_date, start_on_monday=True))
     assert len(weeks_monday) == 1
     # July 17, 2024 (Wed) falls in week Mon Jul 15 - Sun Jul 21
-    assert weeks_monday == [(datetime.date(2024, 7, 15), datetime.date(2024, 7, 21))]
+    assert weeks_monday == [(dt.date(2024, 7, 15), dt.date(2024, 7, 21))]
 
     # Test with a weekend date
-    saturday = datetime.date(2024, 7, 20)
+    saturday = dt.date(2024, 7, 20)
     weeks_sat = list(generate_weeks(count=10, start_date=saturday, until_date=saturday))
     assert len(weeks_sat) == 1
     # Saturday Jul 20 falls in week Sun Jul 14 - Sat Jul 20
-    assert weeks_sat == [(datetime.date(2024, 7, 14), datetime.date(2024, 7, 20))]
+    assert weeks_sat == [(dt.date(2024, 7, 14), dt.date(2024, 7, 20))]
 
     # Test with Sunday (week boundary)
-    sunday = datetime.date(2024, 7, 14)
+    sunday = dt.date(2024, 7, 14)
     weeks_sun = list(generate_weeks(count=10, start_date=sunday, until_date=sunday))
     assert len(weeks_sun) == 1
-    assert weeks_sun == [(datetime.date(2024, 7, 14), datetime.date(2024, 7, 20))]
+    assert weeks_sun == [(dt.date(2024, 7, 14), dt.date(2024, 7, 20))]
 
 
 def test_generate_weeks_negative_count_validation() -> None:
@@ -433,11 +431,9 @@ def test_generate_weeks_negative_count_validation() -> None:
 
 def test_generate_weeks_clips_unrepresentable_boundary_days() -> None:
     """Weeks at the representable date boundaries include only valid dates."""
-    assert list(generate_weeks(count=0, start_date=datetime.date.min)) == []
-    assert list(generate_weeks(count=1, start_date=datetime.date.min)) == [(datetime.date.min, datetime.date(1, 1, 6))]
-    assert list(generate_weeks(count=1, start_date=datetime.date.max)) == [
-        (datetime.date(9999, 12, 26), datetime.date.max)
-    ]
+    assert list(generate_weeks(count=0, start_date=dt.date.min)) == []
+    assert list(generate_weeks(count=1, start_date=dt.date.min)) == [(dt.date.min, dt.date(1, 1, 6))]
+    assert list(generate_weeks(count=1, start_date=dt.date.max)) == [(dt.date(9999, 12, 26), dt.date.max)]
 
 
 def test_generate_weeks_stops_at_lower_boundary() -> None:
@@ -445,10 +441,10 @@ def test_generate_weeks_stops_at_lower_boundary() -> None:
     assert list(
         generate_weeks(
             count=3,
-            start_date=datetime.date.min,
+            start_date=dt.date.min,
             start_on_monday=True,
         )
-    ) == [(datetime.date.min, datetime.date(1, 1, 7))]
+    ) == [(dt.date.min, dt.date(1, 1, 7))]
 
 
 def test_generate_weeks_yields_clipped_week_containing_lower_boundary_target() -> None:
@@ -456,18 +452,18 @@ def test_generate_weeks_yields_clipped_week_containing_lower_boundary_target() -
     assert list(
         generate_weeks(
             count=2,
-            start_date=datetime.date(1, 1, 7),
-            until_date=datetime.date.min,
+            start_date=dt.date(1, 1, 7),
+            until_date=dt.date.min,
         )
     ) == [
-        (datetime.date(1, 1, 7), datetime.date(1, 1, 13)),
-        (datetime.date.min, datetime.date(1, 1, 6)),
+        (dt.date(1, 1, 7), dt.date(1, 1, 13)),
+        (dt.date.min, dt.date(1, 1, 6)),
     ]
 
 
 def test_date_to_quarter() -> None:
-    def to_date(m: int, d: int) -> datetime.datetime:
-        return datetime.datetime(2018, m, d)
+    def to_date(m: int, d: int) -> dt.datetime:
+        return dt.datetime(2018, m, d)
 
     assert date_to_quarter(to_date(1, 6)) == 1
     assert date_to_quarter(to_date(3, 31)) == 1
@@ -483,40 +479,40 @@ def test_date_to_quarter() -> None:
 
 
 def test_date_to_start_of_quarter() -> None:
-    def to_datetime(m: int, d: int) -> datetime.datetime:
-        return datetime.datetime(2018, m, d, 12, 34, 56, tzinfo=datetime.timezone.utc)
+    def to_datetime(m: int, d: int) -> dt.datetime:
+        return dt.datetime(2018, m, d, 12, 34, 56, tzinfo=dt.timezone.utc)
 
-    assert datetime.date(2018, 1, 1) == date_to_start_of_quarter(to_datetime(1, 6))
-    assert datetime.date(2018, 1, 1) == date_to_start_of_quarter(to_datetime(3, 31))
-    assert datetime.date(2018, 4, 1) == date_to_start_of_quarter(to_datetime(4, 1))
-    assert datetime.date(2018, 4, 1) == date_to_start_of_quarter(to_datetime(6, 30))
-    assert datetime.date(2018, 7, 1) == date_to_start_of_quarter(to_datetime(7, 30))
-    assert datetime.date(2018, 7, 1) == date_to_start_of_quarter(to_datetime(9, 3))
-    assert datetime.date(2018, 10, 1) == date_to_start_of_quarter(to_datetime(10, 1))
-    assert datetime.date(2018, 10, 1) == date_to_start_of_quarter(to_datetime(12, 31))
+    assert dt.date(2018, 1, 1) == date_to_start_of_quarter(to_datetime(1, 6))
+    assert dt.date(2018, 1, 1) == date_to_start_of_quarter(to_datetime(3, 31))
+    assert dt.date(2018, 4, 1) == date_to_start_of_quarter(to_datetime(4, 1))
+    assert dt.date(2018, 4, 1) == date_to_start_of_quarter(to_datetime(6, 30))
+    assert dt.date(2018, 7, 1) == date_to_start_of_quarter(to_datetime(7, 30))
+    assert dt.date(2018, 7, 1) == date_to_start_of_quarter(to_datetime(9, 3))
+    assert dt.date(2018, 10, 1) == date_to_start_of_quarter(to_datetime(10, 1))
+    assert dt.date(2018, 10, 1) == date_to_start_of_quarter(to_datetime(12, 31))
 
 
 def test_date_only_apis_normalize_datetime_inputs() -> None:
     """Date-domain functions should use and return plain local calendar dates."""
-    start = datetime.datetime(2024, 7, 3, 23, 30, tzinfo=ZoneInfo("America/New_York"))
-    end = datetime.datetime(2024, 7, 5, 0, 30, tzinfo=ZoneInfo("America/New_York"))
-    july_fourth = datetime.date(2024, 7, 4)
+    start = dt.datetime(2024, 7, 3, 23, 30, tzinfo=ZoneInfo("America/New_York"))
+    end = dt.datetime(2024, 7, 5, 0, 30, tzinfo=ZoneInfo("America/New_York"))
+    july_fourth = dt.date(2024, 7, 4)
 
     assert date_range(start, end) == [
-        datetime.date(2024, 7, 3),
-        datetime.date(2024, 7, 4),
-        datetime.date(2024, 7, 5),
+        dt.date(2024, 7, 3),
+        dt.date(2024, 7, 4),
+        dt.date(2024, 7, 5),
     ]
     assert list(date_range_generator(start, end)) == date_range(start, end)
     assert workdays_between(start, end, holidays=[july_fourth]) == 2
-    assert add_business_days(start, 1, holidays=[july_fourth]) == datetime.date(2024, 7, 5)
-    assert next_business_day(start, holidays=[july_fourth]) == datetime.date(2024, 7, 5)
-    assert previous_business_day(end, holidays=[july_fourth]) == datetime.date(2024, 7, 3)
-    assert not is_business_day(datetime.datetime(2024, 7, 4, 12, tzinfo=datetime.timezone.utc), holidays=[july_fourth])
+    assert add_business_days(start, 1, holidays=[july_fourth]) == dt.date(2024, 7, 5)
+    assert next_business_day(start, holidays=[july_fourth]) == dt.date(2024, 7, 5)
+    assert previous_business_day(end, holidays=[july_fourth]) == dt.date(2024, 7, 3)
+    assert not is_business_day(dt.datetime(2024, 7, 4, 12, tzinfo=dt.timezone.utc), holidays=[july_fourth])
 
 
 def test_start_of_quarter() -> None:
-    assert start_of_quarter(2024, 1) == datetime.datetime(2024, 1, 1)
+    assert start_of_quarter(2024, 1) == dt.datetime(2024, 1, 1)
 
 
 def test_end_of_quarter() -> None:
@@ -524,40 +520,40 @@ def test_end_of_quarter() -> None:
     from dateutils import end_of_quarter
 
     # Q1 should end on March 31
-    assert end_of_quarter(2024, 1) == datetime.datetime(2024, 3, 31, 23, 59, 59, 999999)
+    assert end_of_quarter(2024, 1) == dt.datetime(2024, 3, 31, 23, 59, 59, 999999)
 
     # Q2 should end on June 30
-    assert end_of_quarter(2024, 2) == datetime.datetime(2024, 6, 30, 23, 59, 59, 999999)
+    assert end_of_quarter(2024, 2) == dt.datetime(2024, 6, 30, 23, 59, 59, 999999)
 
     # Q3 should end on September 30
-    assert end_of_quarter(2024, 3) == datetime.datetime(2024, 9, 30, 23, 59, 59, 999999)
+    assert end_of_quarter(2024, 3) == dt.datetime(2024, 9, 30, 23, 59, 59, 999999)
 
     # Q4 should end on December 31
-    assert end_of_quarter(2024, 4) == datetime.datetime(2024, 12, 31, 23, 59, 59, 999999)
+    assert end_of_quarter(2024, 4) == dt.datetime(2024, 12, 31, 23, 59, 59, 999999)
 
     # Test non-leap year February (Q1 of 2023)
-    assert end_of_quarter(2023, 1) == datetime.datetime(2023, 3, 31, 23, 59, 59, 999999)
+    assert end_of_quarter(2023, 1) == dt.datetime(2023, 3, 31, 23, 59, 59, 999999)
 
     # Test leap year February (Q1 of 2024)
-    assert end_of_quarter(2024, 1) == datetime.datetime(2024, 3, 31, 23, 59, 59, 999999)
+    assert end_of_quarter(2024, 1) == dt.datetime(2024, 3, 31, 23, 59, 59, 999999)
 
 
 def test_start_of_month() -> None:
     """Test getting the start of a month."""
     from dateutils import start_of_month
 
-    assert start_of_month(2024, 2) == datetime.datetime(2024, 2, 1)
-    assert start_of_month(2023, 12) == datetime.datetime(2023, 12, 1)
+    assert start_of_month(2024, 2) == dt.datetime(2024, 2, 1)
+    assert start_of_month(2023, 12) == dt.datetime(2023, 12, 1)
 
 
 def test_end_of_month() -> None:
     """Test getting the end of a month."""
     from dateutils import end_of_month
 
-    assert end_of_month(2024, 2) == datetime.datetime(2024, 2, 29, 23, 59, 59, 999999)  # Leap year
-    assert end_of_month(2023, 2) == datetime.datetime(2023, 2, 28, 23, 59, 59, 999999)  # Non-leap year
-    assert end_of_month(2024, 4) == datetime.datetime(2024, 4, 30, 23, 59, 59, 999999)
-    assert end_of_month(2024, 12) == datetime.datetime(2024, 12, 31, 23, 59, 59, 999999)
+    assert end_of_month(2024, 2) == dt.datetime(2024, 2, 29, 23, 59, 59, 999999)  # Leap year
+    assert end_of_month(2023, 2) == dt.datetime(2023, 2, 28, 23, 59, 59, 999999)  # Non-leap year
+    assert end_of_month(2024, 4) == dt.datetime(2024, 4, 30, 23, 59, 59, 999999)
+    assert end_of_month(2024, 12) == dt.datetime(2024, 12, 31, 23, 59, 59, 999999)
 
 
 def test_get_days_in_month() -> None:
@@ -574,15 +570,15 @@ def test_date_range() -> None:
     """Test generating a range of dates."""
     from dateutils import date_range
 
-    start = datetime.date(2024, 3, 1)
-    end = datetime.date(2024, 3, 5)
+    start = dt.date(2024, 3, 1)
+    end = dt.date(2024, 3, 5)
 
     expected = [
-        datetime.date(2024, 3, 1),
-        datetime.date(2024, 3, 2),
-        datetime.date(2024, 3, 3),
-        datetime.date(2024, 3, 4),
-        datetime.date(2024, 3, 5),
+        dt.date(2024, 3, 1),
+        dt.date(2024, 3, 2),
+        dt.date(2024, 3, 3),
+        dt.date(2024, 3, 4),
+        dt.date(2024, 3, 5),
     ]
 
     assert date_range(start, end) == expected
@@ -593,37 +589,37 @@ def test_workdays_between() -> None:
     from dateutils import workdays_between
 
     # Monday to Friday (5 workdays)
-    start = datetime.date(2024, 3, 25)  # Monday
-    end = datetime.date(2024, 3, 29)  # Friday
+    start = dt.date(2024, 3, 25)  # Monday
+    end = dt.date(2024, 3, 29)  # Friday
     assert workdays_between(start, end) == 5
 
     # Monday to Monday (6 workdays - excludes weekends)
-    start = datetime.date(2024, 3, 25)  # Monday
-    end = datetime.date(2024, 4, 1)  # Monday
+    start = dt.date(2024, 3, 25)  # Monday
+    end = dt.date(2024, 4, 1)  # Monday
     assert workdays_between(start, end) == 6
 
     # Friday to Monday (2 workdays - excludes weekend)
-    start = datetime.date(2024, 3, 1)  # Friday
-    end = datetime.date(2024, 3, 4)  # Monday
+    start = dt.date(2024, 3, 1)  # Friday
+    end = dt.date(2024, 3, 4)  # Monday
     assert workdays_between(start, end) == 2
 
     # Edge cases
 
     # Same day (weekday)
-    start = end = datetime.date(2024, 3, 25)  # Monday
+    start = end = dt.date(2024, 3, 25)  # Monday
     assert workdays_between(start, end) == 1
 
     # Same day (weekend)
-    start = end = datetime.date(2024, 3, 23)  # Saturday
+    start = end = dt.date(2024, 3, 23)  # Saturday
     assert workdays_between(start, end) == 0
 
     # Same day (holiday)
-    holiday = datetime.date(2024, 3, 25)  # Monday
+    holiday = dt.date(2024, 3, 25)  # Monday
     assert workdays_between(holiday, holiday, [holiday]) == 0
 
     # End date before start date (should raise ValueError now)
-    start = datetime.date(2024, 3, 4)  # Monday
-    end = datetime.date(2024, 3, 1)  # Friday of previous week
+    start = dt.date(2024, 3, 4)  # Monday
+    end = dt.date(2024, 3, 1)  # Friday of previous week
     with pytest.raises(ValueError, match="must be <= end_date"):
         workdays_between(start, end)
 
@@ -633,16 +629,16 @@ def test_add_business_days() -> None:
     from dateutils import add_business_days
 
     # Add 5 business days from Monday (should be next Monday)
-    start = datetime.date(2024, 3, 25)  # Monday
-    assert add_business_days(start, 5) == datetime.date(2024, 4, 1)  # Next Monday
+    start = dt.date(2024, 3, 25)  # Monday
+    assert add_business_days(start, 5) == dt.date(2024, 4, 1)  # Next Monday
 
     # Add 3 business days from Wednesday (should be next Monday)
-    start = datetime.date(2024, 3, 27)  # Wednesday
-    assert add_business_days(start, 3) == datetime.date(2024, 4, 1)  # Monday
+    start = dt.date(2024, 3, 27)  # Wednesday
+    assert add_business_days(start, 3) == dt.date(2024, 4, 1)  # Monday
 
     # Add 1 business day on Friday (should be next Monday)
-    start = datetime.date(2024, 3, 29)  # Friday
-    assert add_business_days(start, 1) == datetime.date(2024, 4, 1)  # Monday
+    start = dt.date(2024, 3, 29)  # Friday
+    assert add_business_days(start, 1) == dt.date(2024, 4, 1)  # Monday
 
 
 @freeze_time("2024-03-27 12:00:00")
@@ -651,27 +647,27 @@ def test_pretty_date() -> None:
     from dateutils import pretty_date
 
     # Test "just now"
-    now = datetime.datetime(2024, 3, 27, 12, 0, 0)
+    now = dt.datetime(2024, 3, 27, 12, 0, 0)
     assert pretty_date(now) == "just now"
 
     # Test seconds
-    seconds_ago = datetime.datetime(2024, 3, 27, 11, 59, 30)
+    seconds_ago = dt.datetime(2024, 3, 27, 11, 59, 30)
     assert pretty_date(seconds_ago) == "30 seconds ago"
 
     # Test minutes
-    minute_ago = datetime.datetime(2024, 3, 27, 11, 59, 0)
+    minute_ago = dt.datetime(2024, 3, 27, 11, 59, 0)
     assert pretty_date(minute_ago) == "a minute ago"
 
     # Test hours
-    hours_ago = datetime.datetime(2024, 3, 27, 10, 0, 0)
+    hours_ago = dt.datetime(2024, 3, 27, 10, 0, 0)
     assert pretty_date(hours_ago) == "2 hours ago"
 
     # Test yesterday
-    yesterday = datetime.datetime(2024, 3, 26, 12, 0, 0)
+    yesterday = dt.datetime(2024, 3, 26, 12, 0, 0)
     assert pretty_date(yesterday) == "Yesterday"
 
     # Test days
-    days_ago = datetime.datetime(2024, 3, 23, 12, 0, 0)
+    days_ago = dt.datetime(2024, 3, 23, 12, 0, 0)
     assert pretty_date(days_ago) == "4 days ago"
 
 
@@ -681,31 +677,31 @@ def test_pretty_date_future() -> None:
     from dateutils import pretty_date
 
     # Test "just now" for very near future
-    almost_now = datetime.datetime(2024, 3, 27, 12, 0, 5)
+    almost_now = dt.datetime(2024, 3, 27, 12, 0, 5)
     assert pretty_date(almost_now) == "just now"
 
     # Test seconds in future
-    seconds_future = datetime.datetime(2024, 3, 27, 12, 0, 30)
+    seconds_future = dt.datetime(2024, 3, 27, 12, 0, 30)
     assert pretty_date(seconds_future) == "in 30 seconds"
 
     # Test minutes in future
-    minute_future = datetime.datetime(2024, 3, 27, 12, 1, 0)
+    minute_future = dt.datetime(2024, 3, 27, 12, 1, 0)
     assert pretty_date(minute_future) == "in a minute"
 
     # Test hours in future
-    hours_future = datetime.datetime(2024, 3, 27, 14, 0, 0)
+    hours_future = dt.datetime(2024, 3, 27, 14, 0, 0)
     assert pretty_date(hours_future) == "in 2 hours"
 
     # Test tomorrow
-    tomorrow = datetime.datetime(2024, 3, 28, 12, 0, 0)
+    tomorrow = dt.datetime(2024, 3, 28, 12, 0, 0)
     assert pretty_date(tomorrow) == "Tomorrow"
 
     # Test days in future
-    days_future = datetime.datetime(2024, 3, 31, 12, 0, 0)
+    days_future = dt.datetime(2024, 3, 31, 12, 0, 0)
     assert pretty_date(days_future) == "in 4 days"
 
     # Test weeks in future
-    weeks_future = datetime.datetime(2024, 4, 10, 12, 0, 0)
+    weeks_future = dt.datetime(2024, 4, 10, 12, 0, 0)
     assert pretty_date(weeks_future) == "in 2 weeks"
 
 
@@ -744,7 +740,7 @@ def test_pretty_date_with_invalid_now_override() -> None:
 
     invalid_now = 2**63
     with pytest.raises(ValueError, match=f"Invalid now_override timestamp: {invalid_now}"):
-        pretty_date(datetime.datetime(2024, 3, 27, 12, 0, 0), now_override=invalid_now)
+        pretty_date(dt.datetime(2024, 3, 27, 12, 0, 0), now_override=invalid_now)
 
 
 def test_pretty_date_naive_datetime() -> None:
@@ -753,7 +749,7 @@ def test_pretty_date_naive_datetime() -> None:
 
     # Test with naive datetime - should be treated as UTC
     now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
-    naive_dt = datetime.datetime(2024, 3, 27, 11, 59, 30)  # Naive, 30 seconds before
+    naive_dt = dt.datetime(2024, 3, 27, 11, 59, 30)  # Naive, 30 seconds before
     result = pretty_date(naive_dt, now_override=now_ts)
     assert result == "30 seconds ago"
 
@@ -762,7 +758,7 @@ def test_pretty_date_treats_indeterminate_timezones_as_naive_utc() -> None:
     """A datetime without a usable offset must not mix naive and aware values."""
     from dateutils import pretty_date
 
-    indeterminate = datetime.datetime(2024, 3, 27, 11, 59, 30, tzinfo=_IndeterminateTimezone())
+    indeterminate = dt.datetime(2024, 3, 27, 11, 59, 30, tzinfo=_IndeterminateTimezone())
     naive = indeterminate.replace(tzinfo=None)
 
     assert pretty_date(indeterminate, now_override=1711540800) == pretty_date(naive, now_override=1711540800)
@@ -775,30 +771,30 @@ def test_pretty_date_future_extended() -> None:
     now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
 
     # Test "in X minutes"
-    minutes_future = datetime.datetime(2024, 3, 27, 12, 15, 0, tzinfo=datetime.timezone.utc)
+    minutes_future = dt.datetime(2024, 3, 27, 12, 15, 0, tzinfo=dt.timezone.utc)
     assert pretty_date(minutes_future, now_override=now_ts) == "in 15 minutes"
 
     # Test "in an hour"
-    one_hour_future = datetime.datetime(2024, 3, 27, 13, 30, 0, tzinfo=datetime.timezone.utc)
+    one_hour_future = dt.datetime(2024, 3, 27, 13, 30, 0, tzinfo=dt.timezone.utc)
     assert pretty_date(one_hour_future, now_override=now_ts) == "in an hour"
 
     # Test singular forms for weeks/months/years
-    week_future = datetime.datetime(2024, 4, 3, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    week_future = dt.datetime(2024, 4, 3, 12, 0, 0, tzinfo=dt.timezone.utc)
     assert pretty_date(week_future, now_override=now_ts) == "in 1 week"
 
-    month_future = datetime.datetime(2024, 4, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    month_future = dt.datetime(2024, 4, 27, 12, 0, 0, tzinfo=dt.timezone.utc)
     assert pretty_date(month_future, now_override=now_ts) == "in 1 month"
 
-    year_future = datetime.datetime(2025, 3, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    year_future = dt.datetime(2025, 3, 27, 12, 0, 0, tzinfo=dt.timezone.utc)
     assert pretty_date(year_future, now_override=now_ts) == "in 1 year"
 
     # Test "in X months"
-    months_future = datetime.datetime(2024, 6, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    months_future = dt.datetime(2024, 6, 27, 12, 0, 0, tzinfo=dt.timezone.utc)
     result = pretty_date(months_future, now_override=now_ts)
     assert result == "in 3 months"
 
     # Test "in X years"
-    years_future = datetime.datetime(2026, 3, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    years_future = dt.datetime(2026, 3, 27, 12, 0, 0, tzinfo=dt.timezone.utc)
     result = pretty_date(years_future, now_override=now_ts)
     assert result == "in 2 years"
 
@@ -810,70 +806,70 @@ def test_pretty_date_past_extended() -> None:
     now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
 
     # Test "X minutes ago"
-    minutes_ago = datetime.datetime(2024, 3, 27, 11, 45, 0, tzinfo=datetime.timezone.utc)
+    minutes_ago = dt.datetime(2024, 3, 27, 11, 45, 0, tzinfo=dt.timezone.utc)
     assert pretty_date(minutes_ago, now_override=now_ts) == "15 minutes ago"
 
     # Test "an hour ago"
-    one_hour_ago = datetime.datetime(2024, 3, 27, 10, 30, 0, tzinfo=datetime.timezone.utc)
+    one_hour_ago = dt.datetime(2024, 3, 27, 10, 30, 0, tzinfo=dt.timezone.utc)
     assert pretty_date(one_hour_ago, now_override=now_ts) == "an hour ago"
 
     # Test singular forms for weeks/months/years
-    week_ago = datetime.datetime(2024, 3, 20, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    week_ago = dt.datetime(2024, 3, 20, 12, 0, 0, tzinfo=dt.timezone.utc)
     assert pretty_date(week_ago, now_override=now_ts) == "1 week ago"
 
-    month_ago = datetime.datetime(2024, 2, 25, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    month_ago = dt.datetime(2024, 2, 25, 12, 0, 0, tzinfo=dt.timezone.utc)
     assert pretty_date(month_ago, now_override=now_ts) == "1 month ago"
 
-    year_ago = datetime.datetime(2023, 3, 28, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    year_ago = dt.datetime(2023, 3, 28, 12, 0, 0, tzinfo=dt.timezone.utc)
     assert pretty_date(year_ago, now_override=now_ts) == "1 year ago"
 
     # Test "X weeks ago"
-    weeks_ago = datetime.datetime(2024, 3, 13, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    weeks_ago = dt.datetime(2024, 3, 13, 12, 0, 0, tzinfo=dt.timezone.utc)
     result = pretty_date(weeks_ago, now_override=now_ts)
     assert result == "2 weeks ago"
 
     # Test "X months ago"
-    months_ago = datetime.datetime(2023, 12, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    months_ago = dt.datetime(2023, 12, 27, 12, 0, 0, tzinfo=dt.timezone.utc)
     result = pretty_date(months_ago, now_override=now_ts)
     assert result == "3 months ago"
 
     # Test "X years ago"
-    years_ago = datetime.datetime(2022, 3, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    years_ago = dt.datetime(2022, 3, 27, 12, 0, 0, tzinfo=dt.timezone.utc)
     result = pretty_date(years_ago, now_override=now_ts)
     assert result == "2 years ago"
 
 
 def test_httpdate_with_utc_aware_datetime() -> None:
     """Test httpdate with a UTC-aware datetime."""
-    dt_utc = datetime.datetime(2015, 4, 14, 19, 16, 44, tzinfo=datetime.timezone.utc)
+    dt_utc = dt.datetime(2015, 4, 14, 19, 16, 44, tzinfo=dt.timezone.utc)
     result = httpdate(dt_utc)
     assert result == "Tue, 14 Apr 2015 19:16:44 GMT"
 
 
 def test_httpdate_with_naive_datetime() -> None:
     """Test httpdate with a naive datetime (assumed UTC)."""
-    dt_naive = datetime.datetime(2025, 12, 31, 23, 59, 59)
+    dt_naive = dt.datetime(2025, 12, 31, 23, 59, 59)
     result = httpdate(dt_naive)
     assert result == "Wed, 31 Dec 2025 23:59:59 GMT"
 
 
 def test_httpdate_treats_indeterminate_timezones_as_naive_utc() -> None:
     """HTTP dates from an indeterminate timezone use the documented naive UTC policy."""
-    indeterminate = datetime.datetime(2025, 12, 31, 23, 59, 59, tzinfo=_IndeterminateTimezone())
+    indeterminate = dt.datetime(2025, 12, 31, 23, 59, 59, tzinfo=_IndeterminateTimezone())
 
     assert httpdate(indeterminate) == httpdate(indeterminate.replace(tzinfo=None))
 
 
 def test_httpdate_with_non_utc_timezone() -> None:
     """Test httpdate with a non-UTC timezone converted to UTC."""
-    dt_ny = datetime.datetime(2015, 4, 14, 15, 16, 44, tzinfo=ZoneInfo("America/New_York"))
+    dt_ny = dt.datetime(2015, 4, 14, 15, 16, 44, tzinfo=ZoneInfo("America/New_York"))
     result = httpdate(dt_ny)  # Function converts to UTC before formatting
     assert result == "Tue, 14 Apr 2015 19:16:44 GMT"  # 15:16:44 EDT = 19:16:44 UTC
 
 
 def test_httpdate_edge_case_leap_year() -> None:
     """Test httpdate with a leap year date."""
-    dt_leap = datetime.datetime(2020, 2, 29, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    dt_leap = dt.datetime(2020, 2, 29, 12, 0, 0, tzinfo=dt.timezone.utc)
     result = httpdate(dt_leap)
     assert result == "Sat, 29 Feb 2020 12:00:00 GMT"
 
@@ -886,7 +882,7 @@ def test_httpdate_invalid_input() -> None:
 
 def test_httpdate_locale_independence() -> None:
     """httpdate should not be affected by the process locale."""
-    dt = datetime.datetime(2024, 7, 22, 14, 30, 0, tzinfo=datetime.timezone.utc)
+    test_dt = dt.datetime(2024, 7, 22, 14, 30, 0, tzinfo=dt.timezone.utc)
 
     original_locale = locale.setlocale(locale.LC_TIME)
     try:
@@ -901,7 +897,7 @@ def test_httpdate_locale_independence() -> None:
         if not switched:
             pytest.skip("No non-English locale available for testing")
 
-        assert httpdate(dt) == "Mon, 22 Jul 2024 14:30:00 GMT"
+        assert httpdate(test_dt) == "Mon, 22 Jul 2024 14:30:00 GMT"
     finally:
         locale.setlocale(locale.LC_TIME, original_locale)
 
@@ -914,66 +910,66 @@ def test_httpdate_locale_independence() -> None:
 def test_is_weekend() -> None:
     """Test checking if a date falls on a weekend."""
     # Test a Monday (not weekend)
-    monday = datetime.date(2024, 3, 25)
+    monday = dt.date(2024, 3, 25)
     assert not is_weekend(monday)
 
     # Test a Friday (not weekend)
-    friday = datetime.date(2024, 3, 29)
+    friday = dt.date(2024, 3, 29)
     assert not is_weekend(friday)
 
     # Test a Saturday (weekend)
-    saturday = datetime.date(2024, 3, 30)
+    saturday = dt.date(2024, 3, 30)
     assert is_weekend(saturday)
 
     # Test a Sunday (weekend)
-    sunday = datetime.date(2024, 3, 31)
+    sunday = dt.date(2024, 3, 31)
     assert is_weekend(sunday)
 
 
 def test_workdays_between_with_holidays() -> None:
     """Test counting workdays between dates with holiday exclusions."""
     # Set up a date range spanning multiple weeks
-    start = datetime.date(2024, 3, 25)  # Monday
-    end = datetime.date(2024, 4, 5)  # Friday, 2 weeks later
+    start = dt.date(2024, 3, 25)  # Monday
+    end = dt.date(2024, 4, 5)  # Friday, 2 weeks later
 
     # Without holidays, should be 10 workdays (Mon-Fri for 2 weeks)
     assert workdays_between(start, end) == 10
 
     # Define holidays
     holidays = [
-        datetime.date(2024, 3, 29),  # Good Friday
-        datetime.date(2024, 4, 1),  # Easter Monday
+        dt.date(2024, 3, 29),  # Good Friday
+        dt.date(2024, 4, 1),  # Easter Monday
     ]
 
     # With holidays, should be 8 workdays (10 - 2 holidays)
     assert workdays_between(start, end, holidays) == 8
 
     # Test with weekend start/end dates
-    weekend_start = datetime.date(2024, 3, 23)  # Saturday
-    weekend_end = datetime.date(2024, 3, 31)  # Sunday
+    weekend_start = dt.date(2024, 3, 23)  # Saturday
+    weekend_end = dt.date(2024, 3, 31)  # Sunday
 
     # Should still count only workdays between (5 days, minus 1 holiday)
     assert workdays_between(weekend_start, weekend_end, holidays) == 4
 
     # Test with a single day range
-    single_day = datetime.date(2024, 3, 27)  # Wednesday
+    single_day = dt.date(2024, 3, 27)  # Wednesday
     assert workdays_between(single_day, single_day) == 1  # Same day counts as 1
 
     # Test with holiday on the single day
-    holiday_day = datetime.date(2024, 3, 29)  # Friday (Good Friday)
+    holiday_day = dt.date(2024, 3, 29)  # Friday (Good Friday)
     assert workdays_between(holiday_day, holiday_day, holidays) == 0  # Holiday doesn't count
 
 
 def test_workdays_between_duplicate_holidays() -> None:
     """Test that duplicate holidays are handled correctly (not double-counted)."""
-    start = datetime.date(2024, 3, 25)  # Monday
-    end = datetime.date(2024, 3, 29)  # Friday
+    start = dt.date(2024, 3, 25)  # Monday
+    end = dt.date(2024, 3, 29)  # Friday
 
     # Without holidays: 5 workdays
     assert workdays_between(start, end) == 5
 
     # With one holiday on Wednesday
-    wednesday = datetime.date(2024, 3, 27)
+    wednesday = dt.date(2024, 3, 27)
     assert workdays_between(start, end, holidays=[wednesday]) == 4
 
     # With duplicate holidays - should still be 4, not 3
@@ -981,20 +977,20 @@ def test_workdays_between_duplicate_holidays() -> None:
     assert workdays_between(start, end, holidays=[wednesday, wednesday, wednesday]) == 4
 
     # With multiple different holidays, some duplicated
-    thursday = datetime.date(2024, 3, 28)
+    thursday = dt.date(2024, 3, 28)
     holidays_with_dupes = [wednesday, thursday, wednesday, thursday, wednesday]
     assert workdays_between(start, end, holidays=holidays_with_dupes) == 3  # 5 - 2 unique holidays
 
 
 def test_workdays_between_with_generator() -> None:
     """Test that workdays_between works with generator-based holiday inputs."""
-    start = datetime.date(2024, 3, 25)  # Monday
-    end = datetime.date(2024, 3, 29)  # Friday
+    start = dt.date(2024, 3, 25)  # Monday
+    end = dt.date(2024, 3, 29)  # Friday
 
     # Create a generator that yields holidays
     def holiday_generator():
-        yield datetime.date(2024, 3, 27)  # Wednesday
-        yield datetime.date(2024, 3, 28)  # Thursday
+        yield dt.date(2024, 3, 27)  # Wednesday
+        yield dt.date(2024, 3, 28)  # Thursday
 
     # Should work with generator
     assert workdays_between(start, end, holidays=holiday_generator()) == 3
@@ -1002,22 +998,22 @@ def test_workdays_between_with_generator() -> None:
 
 def test_business_day_functions_with_datetime_holidays() -> None:
     """Datetime holiday inputs should be normalized to date values consistently."""
-    start = datetime.date(2024, 7, 1)  # Monday
-    end = datetime.date(2024, 7, 5)  # Friday
-    holiday_dt = datetime.datetime(2024, 7, 4, 12, 0, 0)  # Midday on Thursday
+    start = dt.date(2024, 7, 1)  # Monday
+    end = dt.date(2024, 7, 5)  # Friday
+    holiday_dt = dt.datetime(2024, 7, 4, 12, 0, 0)  # Midday on Thursday
 
     # Thursday holiday removes one workday.
     assert workdays_between(start, end, holidays=[holiday_dt]) == 4
     # Adding one business day from Wednesday should skip Thursday holiday and land Friday.
-    assert add_business_days(datetime.date(2024, 7, 3), 1, holidays=[holiday_dt]) == datetime.date(2024, 7, 5)
+    assert add_business_days(dt.date(2024, 7, 3), 1, holidays=[holiday_dt]) == dt.date(2024, 7, 5)
     # The holiday itself should not be considered a business day.
-    assert is_business_day(datetime.date(2024, 7, 4), holidays=[holiday_dt]) is False
+    assert is_business_day(dt.date(2024, 7, 4), holidays=[holiday_dt]) is False
 
 
 def test_business_day_functions_invalid_holiday_input_type() -> None:
     """Non-date holiday values should raise TypeError."""
     with pytest.raises(TypeError, match="holidays must contain date or datetime values"):
-        workdays_between(datetime.date(2024, 7, 1), datetime.date(2024, 7, 5), holidays=["2024-07-04"])  # ty: ignore[invalid-argument-type]
+        workdays_between(dt.date(2024, 7, 1), dt.date(2024, 7, 5), holidays=["2024-07-04"])  # ty: ignore[invalid-argument-type]
 
 
 def test_add_business_days_empty_holiday_generator_uses_fast_path() -> None:
@@ -1025,10 +1021,10 @@ def test_add_business_days_empty_holiday_generator_uses_fast_path() -> None:
 
     def empty_holidays():
         if False:
-            yield datetime.date(2024, 1, 1)
+            yield dt.date(2024, 1, 1)
 
-    start = datetime.date(2024, 7, 3)  # Wednesday
-    assert add_business_days(start, 1, holidays=empty_holidays()) == datetime.date(2024, 7, 4)
+    start = dt.date(2024, 7, 3)  # Wednesday
+    assert add_business_days(start, 1, holidays=empty_holidays()) == dt.date(2024, 7, 4)
 
 
 def test_normalize_holiday_dates_accepts_none() -> None:
@@ -1041,47 +1037,47 @@ def test_normalize_holiday_dates_accepts_none() -> None:
 def test_add_business_days_with_holidays() -> None:
     """Test adding business days with holiday exclusions."""
     # Start on a Monday
-    start = datetime.date(2024, 3, 25)  # Monday
+    start = dt.date(2024, 3, 25)  # Monday
 
     # Define holidays
     holidays = [
-        datetime.date(2024, 3, 29),  # Good Friday
-        datetime.date(2024, 4, 1),  # Easter Monday
+        dt.date(2024, 3, 29),  # Good Friday
+        dt.date(2024, 4, 1),  # Easter Monday
     ]
 
     # Without holidays, adding 5 days should be the next Monday (skipping weekend)
-    assert add_business_days(start, 5) == datetime.date(2024, 4, 1)  # Monday
+    assert add_business_days(start, 5) == dt.date(2024, 4, 1)  # Monday
 
     # With holidays, adding 5 days should be Wednesday (skipping weekend and holidays)
-    assert add_business_days(start, 5, holidays) == datetime.date(2024, 4, 3)  # Wednesday
+    assert add_business_days(start, 5, holidays) == dt.date(2024, 4, 3)  # Wednesday
 
     # Test adding negative days (going backwards)
-    end = datetime.date(2024, 4, 5)  # Friday
+    end = dt.date(2024, 4, 5)  # Friday
 
     # Without holidays, subtracting 5 days should be previous Friday
-    assert add_business_days(end, -5) == datetime.date(2024, 3, 29)  # Friday
+    assert add_business_days(end, -5) == dt.date(2024, 3, 29)  # Friday
 
     # With holidays, subtracting 5 days should be Wednesday (skipping holidays)
-    assert add_business_days(end, -5, holidays) == datetime.date(2024, 3, 27)  # Wednesday
+    assert add_business_days(end, -5, holidays) == dt.date(2024, 3, 27)  # Wednesday
 
     # Test starting on a weekend
-    weekend_start = datetime.date(2024, 3, 30)  # Saturday
+    weekend_start = dt.date(2024, 3, 30)  # Saturday
 
     # Adding business days from weekend should start from next business day
-    assert add_business_days(weekend_start, 1) == datetime.date(2024, 4, 1)  # Monday
-    assert add_business_days(weekend_start, 1, holidays) == datetime.date(2024, 4, 2)  # Tuesday (Monday is holiday)
+    assert add_business_days(weekend_start, 1) == dt.date(2024, 4, 1)  # Monday
+    assert add_business_days(weekend_start, 1, holidays) == dt.date(2024, 4, 2)  # Tuesday (Monday is holiday)
 
     # Subtracting business days from weekend (no-holidays fast path)
-    assert add_business_days(weekend_start, -1) == datetime.date(2024, 3, 29)  # Friday
-    sunday_start = datetime.date(2024, 3, 31)  # Sunday
-    assert add_business_days(sunday_start, 1) == datetime.date(2024, 4, 1)  # Monday
-    assert add_business_days(sunday_start, -1) == datetime.date(2024, 3, 29)  # Friday
+    assert add_business_days(weekend_start, -1) == dt.date(2024, 3, 29)  # Friday
+    sunday_start = dt.date(2024, 3, 31)  # Sunday
+    assert add_business_days(sunday_start, 1) == dt.date(2024, 4, 1)  # Monday
+    assert add_business_days(sunday_start, -1) == dt.date(2024, 3, 29)  # Friday
 
     # Test adding 0 days (should return same day if business day, or error/next business day if not)
     assert add_business_days(start, 0) == start  # Monday stays Monday
 
     # Edge case: adding a large number of days
-    assert add_business_days(start, 10, holidays) == datetime.date(2024, 4, 10)  # Wednesday, 2 weeks later
+    assert add_business_days(start, 10, holidays) == dt.date(2024, 4, 10)  # Wednesday, 2 weeks later
 
 
 def test_add_business_days_negative_cross_year_with_holidays() -> None:
@@ -1091,17 +1087,17 @@ def test_add_business_days_negative_cross_year_with_holidays() -> None:
     and holidays from both years need to be considered.
     """
     # Start on Jan 3, 2025 (Friday)
-    start = datetime.date(2025, 1, 3)
+    start = dt.date(2025, 1, 3)
 
     # Define holidays spanning both years
-    holidays_2024 = [datetime.date(2024, 12, 25)]  # Christmas 2024 (Thursday)
-    holidays_2025 = [datetime.date(2025, 1, 1)]  # New Year's Day 2025 (Wednesday)
+    holidays_2024 = [dt.date(2024, 12, 25)]  # Christmas 2024 (Thursday)
+    holidays_2025 = [dt.date(2025, 1, 1)]  # New Year's Day 2025 (Wednesday)
     combined_holidays = holidays_2024 + holidays_2025
 
     # Without holidays: subtract 5 business days from Friday Jan 3, 2025
     # Working backwards: Jan 2 (Thu), Jan 1 (Wed), Dec 31 (Tue), Dec 30 (Mon), Dec 27 (Fri)
     # Skips Dec 28-29 (weekend)
-    assert add_business_days(start, -5) == datetime.date(2024, 12, 27)
+    assert add_business_days(start, -5) == dt.date(2024, 12, 27)
 
     # With holidays: subtract 5 business days, skipping Jan 1 and Dec 25
     # Working backwards from Jan 3:
@@ -1110,11 +1106,11 @@ def test_add_business_days_negative_cross_year_with_holidays() -> None:
     # 3: Dec 30 (Mon) - count
     # 4: Dec 29-28 WEEKEND skip, Dec 27 (Fri) - count
     # 5: Dec 26 (Thu) - count (Dec 25 is holiday but we already passed it)
-    assert add_business_days(start, -5, holidays=combined_holidays) == datetime.date(2024, 12, 26)
+    assert add_business_days(start, -5, holidays=combined_holidays) == dt.date(2024, 12, 26)
 
     # Test with more business days to cross the Christmas holiday
     # From Jan 6, 2025 (Monday), subtract 8 business days with holidays
-    start2 = datetime.date(2025, 1, 6)
+    start2 = dt.date(2025, 1, 6)
     # Working backwards:
     # -1: Jan 3 (Fri)
     # -2: Jan 2 (Thu)
@@ -1125,49 +1121,47 @@ def test_add_business_days_negative_cross_year_with_holidays() -> None:
     # -7: Dec 24 (Tue) - skipped Dec 25 holiday
     # -8: Dec 23 (Mon)
     result = add_business_days(start2, -8, holidays=combined_holidays)
-    assert result == datetime.date(2024, 12, 23)
+    assert result == dt.date(2024, 12, 23)
 
 
 def test_next_business_day() -> None:
     """Test finding the next business day."""
     # From a Monday
-    monday = datetime.date(2024, 3, 25)
-    assert next_business_day(monday) == datetime.date(2024, 3, 26)  # Tuesday
+    monday = dt.date(2024, 3, 25)
+    assert next_business_day(monday) == dt.date(2024, 3, 26)  # Tuesday
 
     # From a Friday
-    friday = datetime.date(2024, 3, 29)
-    assert next_business_day(friday) == datetime.date(2024, 4, 1)  # Monday (skipping weekend)
+    friday = dt.date(2024, 3, 29)
+    assert next_business_day(friday) == dt.date(2024, 4, 1)  # Monday (skipping weekend)
 
     # From a weekend
-    saturday = datetime.date(2024, 3, 30)
-    assert next_business_day(saturday) == datetime.date(2024, 4, 1)  # Monday
+    saturday = dt.date(2024, 3, 30)
+    assert next_business_day(saturday) == dt.date(2024, 4, 1)  # Monday
 
     # With holidays
-    holidays = [datetime.date(2024, 4, 1)]  # Easter Monday
-    assert next_business_day(friday, holidays) == datetime.date(2024, 4, 2)  # Tuesday (skipping weekend and holiday)
-    assert next_business_day(saturday, holidays) == datetime.date(2024, 4, 2)  # Tuesday
+    holidays = [dt.date(2024, 4, 1)]  # Easter Monday
+    assert next_business_day(friday, holidays) == dt.date(2024, 4, 2)  # Tuesday (skipping weekend and holiday)
+    assert next_business_day(saturday, holidays) == dt.date(2024, 4, 2)  # Tuesday
 
 
 def test_previous_business_day() -> None:
     """Test finding the previous business day."""
     # From a Tuesday
-    tuesday = datetime.date(2024, 3, 26)
-    assert previous_business_day(tuesday) == datetime.date(2024, 3, 25)  # Monday
+    tuesday = dt.date(2024, 3, 26)
+    assert previous_business_day(tuesday) == dt.date(2024, 3, 25)  # Monday
 
     # From a Monday
-    monday = datetime.date(2024, 4, 1)
-    assert previous_business_day(monday) == datetime.date(2024, 3, 29)  # Friday (skipping weekend)
+    monday = dt.date(2024, 4, 1)
+    assert previous_business_day(monday) == dt.date(2024, 3, 29)  # Friday (skipping weekend)
 
     # From a weekend
-    sunday = datetime.date(2024, 3, 31)
-    assert previous_business_day(sunday) == datetime.date(2024, 3, 29)  # Friday
+    sunday = dt.date(2024, 3, 31)
+    assert previous_business_day(sunday) == dt.date(2024, 3, 29)  # Friday
 
     # With holidays
-    holidays = [datetime.date(2024, 3, 29)]  # Good Friday
-    assert previous_business_day(monday, holidays) == datetime.date(
-        2024, 3, 28
-    )  # Thursday (skipping weekend and holiday)
-    assert previous_business_day(sunday, holidays) == datetime.date(2024, 3, 28)  # Thursday
+    holidays = [dt.date(2024, 3, 29)]  # Good Friday
+    assert previous_business_day(monday, holidays) == dt.date(2024, 3, 28)  # Thursday (skipping weekend and holiday)
+    assert previous_business_day(sunday, holidays) == dt.date(2024, 3, 28)  # Thursday
 
 
 def test_get_us_federal_holidays_all_2024() -> None:
@@ -1178,19 +1172,19 @@ def test_get_us_federal_holidays_all_2024() -> None:
     assert holidays_2024 == sorted(holidays_2024)
 
     # Check fixed holidays
-    assert datetime.date(2024, 1, 1) in holidays_2024  # New Year's Day
-    assert datetime.date(2024, 6, 19) in holidays_2024  # Juneteenth
-    assert datetime.date(2024, 7, 4) in holidays_2024  # Independence Day
-    assert datetime.date(2024, 11, 11) in holidays_2024  # Veterans Day
-    assert datetime.date(2024, 12, 25) in holidays_2024  # Christmas Day
+    assert dt.date(2024, 1, 1) in holidays_2024  # New Year's Day
+    assert dt.date(2024, 6, 19) in holidays_2024  # Juneteenth
+    assert dt.date(2024, 7, 4) in holidays_2024  # Independence Day
+    assert dt.date(2024, 11, 11) in holidays_2024  # Veterans Day
+    assert dt.date(2024, 12, 25) in holidays_2024  # Christmas Day
 
     # Check floating holidays for 2024
-    assert datetime.date(2024, 1, 15) in holidays_2024  # MLK Day (3rd Mon Jan)
-    assert datetime.date(2024, 2, 19) in holidays_2024  # Presidents Day (3rd Mon Feb)
-    assert datetime.date(2024, 5, 27) in holidays_2024  # Memorial Day (Last Mon May)
-    assert datetime.date(2024, 9, 2) in holidays_2024  # Labor Day (1st Mon Sep)
-    assert datetime.date(2024, 10, 14) in holidays_2024  # Columbus Day (2nd Mon Oct)
-    assert datetime.date(2024, 11, 28) in holidays_2024  # Thanksgiving (4th Thu Nov)
+    assert dt.date(2024, 1, 15) in holidays_2024  # MLK Day (3rd Mon Jan)
+    assert dt.date(2024, 2, 19) in holidays_2024  # Presidents Day (3rd Mon Feb)
+    assert dt.date(2024, 5, 27) in holidays_2024  # Memorial Day (Last Mon May)
+    assert dt.date(2024, 9, 2) in holidays_2024  # Labor Day (1st Mon Sep)
+    assert dt.date(2024, 10, 14) in holidays_2024  # Columbus Day (2nd Mon Oct)
+    assert dt.date(2024, 11, 28) in holidays_2024  # Thanksgiving (4th Thu Nov)
 
 
 def test_get_us_federal_holidays_all_2025() -> None:
@@ -1199,17 +1193,17 @@ def test_get_us_federal_holidays_all_2025() -> None:
     assert len(holidays_2025) == 11
 
     # Check a few floating holidays for 2025
-    assert datetime.date(2025, 1, 20) in holidays_2025  # MLK Day
-    assert datetime.date(2025, 2, 17) in holidays_2025  # Presidents Day
-    assert datetime.date(2025, 5, 26) in holidays_2025  # Memorial Day
-    assert datetime.date(2025, 9, 1) in holidays_2025  # Labor Day
-    assert datetime.date(2025, 10, 13) in holidays_2025  # Columbus Day
-    assert datetime.date(2025, 11, 27) in holidays_2025  # Thanksgiving
+    assert dt.date(2025, 1, 20) in holidays_2025  # MLK Day
+    assert dt.date(2025, 2, 17) in holidays_2025  # Presidents Day
+    assert dt.date(2025, 5, 26) in holidays_2025  # Memorial Day
+    assert dt.date(2025, 9, 1) in holidays_2025  # Labor Day
+    assert dt.date(2025, 10, 13) in holidays_2025  # Columbus Day
+    assert dt.date(2025, 11, 27) in holidays_2025  # Thanksgiving
 
     # Check fixed holidays remain the same date (different year)
-    assert datetime.date(2025, 1, 1) in holidays_2025
-    assert datetime.date(2025, 7, 4) in holidays_2025
-    assert datetime.date(2025, 12, 25) in holidays_2025
+    assert dt.date(2025, 1, 1) in holidays_2025
+    assert dt.date(2025, 7, 4) in holidays_2025
+    assert dt.date(2025, 12, 25) in holidays_2025
 
 
 def test_get_us_federal_holidays_rejects_years_before_1971() -> None:
@@ -1232,16 +1226,16 @@ def test_get_us_federal_holidays_historical_era_counts(year: int, expected_count
 
 def test_get_us_federal_holidays_uses_historical_veterans_day_schedule() -> None:
     """Veterans Day moved from October back to November in 1978."""
-    assert get_us_federal_holidays(1971, ("VETERANS_DAY",)) == [datetime.date(1971, 10, 25)]
-    assert get_us_federal_holidays(1977, ("VETERANS_DAY",)) == [datetime.date(1977, 10, 24)]
-    assert get_us_federal_holidays(1978, ("VETERANS_DAY",)) == [datetime.date(1978, 11, 11)]
-    assert get_us_federal_holidays(1978, ("VETERANS_DAY",), observed=True) == [datetime.date(1978, 11, 10)]
+    assert get_us_federal_holidays(1971, ("VETERANS_DAY",)) == [dt.date(1971, 10, 25)]
+    assert get_us_federal_holidays(1977, ("VETERANS_DAY",)) == [dt.date(1977, 10, 24)]
+    assert get_us_federal_holidays(1978, ("VETERANS_DAY",)) == [dt.date(1978, 11, 11)]
+    assert get_us_federal_holidays(1978, ("VETERANS_DAY",), observed=True) == [dt.date(1978, 11, 10)]
 
 
 def test_get_us_federal_holidays_omits_mlk_day_before_its_first_observance() -> None:
     """Martin Luther King Jr. Day first appears in the federal calendar in 1986."""
     assert get_us_federal_holidays(1985, ("MLK_DAY",)) == []
-    assert get_us_federal_holidays(1986, ("MLK_DAY",)) == [datetime.date(1986, 1, 20)]
+    assert get_us_federal_holidays(1986, ("MLK_DAY",)) == [dt.date(1986, 1, 20)]
 
 
 def test_get_us_federal_holidays_excludes_juneteenth_before_2021() -> None:
@@ -1249,7 +1243,7 @@ def test_get_us_federal_holidays_excludes_juneteenth_before_2021() -> None:
     holidays_2020 = get_us_federal_holidays(2020)
 
     assert len(holidays_2020) == 10
-    assert datetime.date(2020, 6, 19) not in holidays_2020
+    assert dt.date(2020, 6, 19) not in holidays_2020
 
 
 def test_get_us_federal_holidays_juneteenth_filter_is_empty_before_2021() -> None:
@@ -1260,8 +1254,8 @@ def test_get_us_federal_holidays_juneteenth_filter_is_empty_before_2021() -> Non
 
 def test_get_us_federal_holidays_includes_juneteenth_starting_2021() -> None:
     """Juneteenth starts appearing in the federal holiday set in 2021."""
-    assert datetime.date(2021, 6, 19) in get_us_federal_holidays(2021)
-    assert get_us_federal_holidays(2021, holiday_types=("JUNETEENTH",), observed=True) == [datetime.date(2021, 6, 18)]
+    assert dt.date(2021, 6, 19) in get_us_federal_holidays(2021)
+    assert get_us_federal_holidays(2021, holiday_types=("JUNETEENTH",), observed=True) == [dt.date(2021, 6, 18)]
 
 
 def test_get_us_federal_holidays_filter_fixed() -> None:
@@ -1269,14 +1263,14 @@ def test_get_us_federal_holidays_filter_fixed() -> None:
     fixed_types = ("NEW_YEARS_DAY", "JUNETEENTH", "INDEPENDENCE_DAY", "VETERANS_DAY", "CHRISTMAS")
     holidays = get_us_federal_holidays(2024, holiday_types=fixed_types)
     assert len(holidays) == 5
-    assert datetime.date(2024, 1, 1) in holidays
-    assert datetime.date(2024, 6, 19) in holidays
-    assert datetime.date(2024, 7, 4) in holidays
-    assert datetime.date(2024, 11, 11) in holidays
-    assert datetime.date(2024, 12, 25) in holidays
+    assert dt.date(2024, 1, 1) in holidays
+    assert dt.date(2024, 6, 19) in holidays
+    assert dt.date(2024, 7, 4) in holidays
+    assert dt.date(2024, 11, 11) in holidays
+    assert dt.date(2024, 12, 25) in holidays
     # Ensure floating are excluded
-    assert datetime.date(2024, 1, 15) not in holidays  # MLK Day
-    assert datetime.date(2024, 11, 28) not in holidays  # Thanksgiving
+    assert dt.date(2024, 1, 15) not in holidays  # MLK Day
+    assert dt.date(2024, 11, 28) not in holidays  # Thanksgiving
 
 
 def test_get_us_federal_holidays_filter_floating() -> None:
@@ -1284,15 +1278,15 @@ def test_get_us_federal_holidays_filter_floating() -> None:
     floating_types = ("MLK_DAY", "PRESIDENTS_DAY", "MEMORIAL_DAY", "LABOR_DAY", "COLUMBUS_DAY", "THANKSGIVING")
     holidays = get_us_federal_holidays(2024, holiday_types=floating_types)
     assert len(holidays) == 6
-    assert datetime.date(2024, 1, 15) in holidays
-    assert datetime.date(2024, 2, 19) in holidays
-    assert datetime.date(2024, 5, 27) in holidays
-    assert datetime.date(2024, 9, 2) in holidays
-    assert datetime.date(2024, 10, 14) in holidays
-    assert datetime.date(2024, 11, 28) in holidays
+    assert dt.date(2024, 1, 15) in holidays
+    assert dt.date(2024, 2, 19) in holidays
+    assert dt.date(2024, 5, 27) in holidays
+    assert dt.date(2024, 9, 2) in holidays
+    assert dt.date(2024, 10, 14) in holidays
+    assert dt.date(2024, 11, 28) in holidays
     # Ensure fixed are excluded
-    assert datetime.date(2024, 1, 1) not in holidays  # New Year's Day
-    assert datetime.date(2024, 7, 4) not in holidays  # Independence Day
+    assert dt.date(2024, 1, 1) not in holidays  # New Year's Day
+    assert dt.date(2024, 7, 4) not in holidays  # Independence Day
 
 
 def test_get_us_federal_holidays_filter_subset() -> None:
@@ -1300,11 +1294,11 @@ def test_get_us_federal_holidays_filter_subset() -> None:
     subset_types = ("THANKSGIVING", "CHRISTMAS", "NEW_YEARS_DAY")
     holidays = get_us_federal_holidays(2024, holiday_types=subset_types)
     assert len(holidays) == 3
-    assert datetime.date(2024, 11, 28) in holidays  # Thanksgiving
-    assert datetime.date(2024, 12, 25) in holidays  # Christmas
-    assert datetime.date(2024, 1, 1) in holidays  # New Year's Day
-    assert datetime.date(2024, 7, 4) not in holidays  # Independence Day (not requested)
-    assert datetime.date(2024, 1, 15) not in holidays  # MLK Day (not requested)
+    assert dt.date(2024, 11, 28) in holidays  # Thanksgiving
+    assert dt.date(2024, 12, 25) in holidays  # Christmas
+    assert dt.date(2024, 1, 1) in holidays  # New Year's Day
+    assert dt.date(2024, 7, 4) not in holidays  # Independence Day (not requested)
+    assert dt.date(2024, 1, 15) not in holidays  # MLK Day (not requested)
 
 
 def test_get_us_federal_holidays_filter_empty() -> None:
@@ -1322,7 +1316,7 @@ def test_get_us_federal_holidays_filter_invalid_type() -> None:
 def test_get_us_federal_holidays_filter_deduplicates_types() -> None:
     """Duplicate holiday types should not produce duplicate dates."""
     holidays = get_us_federal_holidays(2024, holiday_types=("CHRISTMAS", "CHRISTMAS", "NEW_YEARS_DAY"))
-    assert holidays == [datetime.date(2024, 1, 1), datetime.date(2024, 12, 25)]
+    assert holidays == [dt.date(2024, 1, 1), dt.date(2024, 12, 25)]
 
 
 def test_get_us_federal_holidays_observed_shifts_weekend_fixed_dates() -> None:
@@ -1331,20 +1325,20 @@ def test_get_us_federal_holidays_observed_shifts_weekend_fixed_dates() -> None:
     assert len(holidays) == 11
 
     # Weekend fixed dates in 2021 are shifted to observed weekdays.
-    assert datetime.date(2021, 6, 18) in holidays  # Juneteenth observed (Jun 19 is Saturday)
-    assert datetime.date(2021, 7, 5) in holidays  # Independence Day observed (Jul 4 is Sunday)
-    assert datetime.date(2021, 12, 24) in holidays  # Christmas observed (Dec 25 is Saturday)
+    assert dt.date(2021, 6, 18) in holidays  # Juneteenth observed (Jun 19 is Saturday)
+    assert dt.date(2021, 7, 5) in holidays  # Independence Day observed (Jul 4 is Sunday)
+    assert dt.date(2021, 12, 24) in holidays  # Christmas observed (Dec 25 is Saturday)
 
     # Actual weekend fixed dates should not be present in observed mode.
-    assert datetime.date(2021, 6, 19) not in holidays
-    assert datetime.date(2021, 7, 4) not in holidays
-    assert datetime.date(2021, 12, 25) not in holidays
+    assert dt.date(2021, 6, 19) not in holidays
+    assert dt.date(2021, 7, 4) not in holidays
+    assert dt.date(2021, 12, 25) not in holidays
 
 
 def test_get_us_federal_holidays_observed_new_years_cross_year_boundary() -> None:
     """Observed New Year's Day may fall in the previous calendar year."""
     holidays = get_us_federal_holidays(2022, holiday_types=("NEW_YEARS_DAY",), observed=True)
-    assert holidays == [datetime.date(2021, 12, 31)]
+    assert holidays == [dt.date(2021, 12, 31)]
 
 
 def test_get_us_federal_holidays_returns_copy() -> None:
@@ -1365,13 +1359,13 @@ def test_get_us_federal_holidays_returns_copy() -> None:
 @pytest.mark.parametrize(
     "date_input",
     [
-        datetime.date(2024, 1, 1),  # New Year
-        datetime.date(2024, 2, 29),  # Leap day
-        datetime.date(2024, 3, 15),  # Regular day
-        datetime.date(2024, 12, 31),  # Year end
+        dt.date(2024, 1, 1),  # New Year
+        dt.date(2024, 2, 29),  # Leap day
+        dt.date(2024, 3, 15),  # Regular day
+        dt.date(2024, 12, 31),  # Year end
     ],
 )
-def test_date_add_business_days_properties(date_input: datetime.date) -> None:
+def test_date_add_business_days_properties(date_input: dt.date) -> None:
     """Test mathematical properties of adding business days."""
     from dateutils import add_business_days
 
@@ -1414,14 +1408,14 @@ def test_is_leap_year_properties(year: int, expected: bool) -> None:
     ("date1", "date2", "expected_days"),
     [
         # One week apart, 5 business days
-        (datetime.date(2024, 3, 25), datetime.date(2024, 3, 29), 5),
+        (dt.date(2024, 3, 25), dt.date(2024, 3, 29), 5),
         # Weekend in between
-        (datetime.date(2024, 3, 22), datetime.date(2024, 3, 25), 2),
+        (dt.date(2024, 3, 22), dt.date(2024, 3, 25), 2),
         # Same day
-        (datetime.date(2024, 3, 26), datetime.date(2024, 3, 26), 1),
+        (dt.date(2024, 3, 26), dt.date(2024, 3, 26), 1),
     ],
 )
-def test_workdays_between_properties(date1: datetime.date, date2: datetime.date, expected_days: int) -> None:
+def test_workdays_between_properties(date1: dt.date, date2: dt.date, expected_days: int) -> None:
     """Test mathematical properties of counting business days."""
     from dateutils import workdays_between
 
@@ -1451,8 +1445,8 @@ def test_workdays_between_properties(date1: datetime.date, date2: datetime.date,
 def test_start_of_quarter_validation() -> None:
     """Test that start_of_quarter validates quarter input."""
     # Valid quarters should work
-    assert start_of_quarter(2024, 1) == datetime.datetime(2024, 1, 1)
-    assert start_of_quarter(2024, 4) == datetime.datetime(2024, 10, 1)
+    assert start_of_quarter(2024, 1) == dt.datetime(2024, 1, 1)
+    assert start_of_quarter(2024, 4) == dt.datetime(2024, 10, 1)
 
     # Invalid quarters should raise ValueError
     with pytest.raises(ValueError, match="Quarter must be between 1 and 4, got 0"):
@@ -1468,8 +1462,8 @@ def test_start_of_quarter_validation() -> None:
 def test_end_of_quarter_validation() -> None:
     """Test that end_of_quarter validates quarter input."""
     # Valid quarters should work
-    assert end_of_quarter(2024, 1) == datetime.datetime(2024, 3, 31, 23, 59, 59, 999999)
-    assert end_of_quarter(2024, 4) == datetime.datetime(2024, 12, 31, 23, 59, 59, 999999)
+    assert end_of_quarter(2024, 1) == dt.datetime(2024, 3, 31, 23, 59, 59, 999999)
+    assert end_of_quarter(2024, 4) == dt.datetime(2024, 12, 31, 23, 59, 59, 999999)
 
     # Invalid quarters should raise ValueError
     with pytest.raises(ValueError, match="Quarter must be between 1 and 4, got 0"):
@@ -1481,8 +1475,8 @@ def test_end_of_quarter_validation() -> None:
 
 def test_workdays_between_validation() -> None:
     """Test that workdays_between validates date ordering."""
-    start = datetime.date(2024, 1, 1)
-    end = datetime.date(2024, 1, 10)
+    start = dt.date(2024, 1, 1)
+    end = dt.date(2024, 1, 10)
 
     # Valid order should work
     assert workdays_between(start, end) >= 0
@@ -1494,7 +1488,7 @@ def test_workdays_between_validation() -> None:
 
 def test_add_business_days_validation() -> None:
     """Test that add_business_days validates num_days range."""
-    start_date = datetime.date(2024, 1, 1)
+    start_date = dt.date(2024, 1, 1)
 
     # Valid ranges should work
     assert add_business_days(start_date, 100) is not None
@@ -1511,8 +1505,8 @@ def test_add_business_days_validation() -> None:
 def test_month_function_validation() -> None:
     """Test that month functions validate year and month inputs."""
     # Valid inputs should work
-    assert start_of_month(2024, 6) == datetime.datetime(2024, 6, 1)
-    assert end_of_month(2024, 6) == datetime.datetime(2024, 6, 30, 23, 59, 59, 999999)
+    assert start_of_month(2024, 6) == dt.datetime(2024, 6, 1)
+    assert end_of_month(2024, 6) == dt.datetime(2024, 6, 30, 23, 59, 59, 999999)
     assert get_days_in_month(2024, 6) == 30
 
     # Invalid month should raise ValueError
@@ -1575,8 +1569,8 @@ def test_utc_functions_error_handling() -> None:
 
 def test_date_range_validation() -> None:
     """Test that date_range validates inputs and size limits."""
-    start = datetime.date(2024, 1, 1)
-    end = datetime.date(2024, 1, 10)
+    start = dt.date(2024, 1, 1)
+    end = dt.date(2024, 1, 10)
 
     # Valid range should work
     dates = date_range(start, end)
@@ -1589,28 +1583,28 @@ def test_date_range_validation() -> None:
         date_range(end, start)
 
     # Large range should raise ValueError
-    large_end = start + datetime.timedelta(days=4000)
+    large_end = start + dt.timedelta(days=4000)
     with pytest.raises(ValueError, match="Date range too large .* Consider using a generator"):
         date_range(start, large_end)
 
 
 def test_date_range_allows_ten_calendar_years() -> None:
     """The list-range limit is ten calendar years, including leap-day handling."""
-    decade = date_range(datetime.date(2000, 1, 1), datetime.date(2010, 1, 1))
-    assert decade[0] == datetime.date(2000, 1, 1)
-    assert decade[-1] == datetime.date(2010, 1, 1)
+    decade = date_range(dt.date(2000, 1, 1), dt.date(2010, 1, 1))
+    assert decade[0] == dt.date(2000, 1, 1)
+    assert decade[-1] == dt.date(2010, 1, 1)
 
     with pytest.raises(ValueError, match="Date range too large"):
-        date_range(datetime.date(2000, 1, 1), datetime.date(2010, 1, 2))
+        date_range(dt.date(2000, 1, 1), dt.date(2010, 1, 2))
 
-    leap_decade = date_range(datetime.date(2000, 2, 29), datetime.date(2010, 2, 28))
-    assert leap_decade[-1] == datetime.date(2010, 2, 28)
+    leap_decade = date_range(dt.date(2000, 2, 29), dt.date(2010, 2, 28))
+    assert leap_decade[-1] == dt.date(2010, 2, 28)
 
     with pytest.raises(ValueError, match="Date range too large"):
-        date_range(datetime.date(2000, 2, 29), datetime.date(2010, 3, 1))
+        date_range(dt.date(2000, 2, 29), dt.date(2010, 3, 1))
 
-    near_max = date_range(datetime.date(9990, 1, 1), datetime.date.max)
-    assert near_max[-1] == datetime.date.max
+    near_max = date_range(dt.date(9990, 1, 1), dt.date.max)
+    assert near_max[-1] == dt.date.max
 
 
 ##################
@@ -1621,98 +1615,98 @@ def test_date_range_allows_ten_calendar_years() -> None:
 def test_is_business_day() -> None:
     """Test the is_business_day function."""
     # Monday is a business day
-    monday = datetime.date(2024, 7, 22)
+    monday = dt.date(2024, 7, 22)
     assert is_business_day(monday) is True
 
     # Friday is a business day
-    friday = datetime.date(2024, 7, 26)
+    friday = dt.date(2024, 7, 26)
     assert is_business_day(friday) is True
 
     # Saturday is not a business day
-    saturday = datetime.date(2024, 7, 27)
+    saturday = dt.date(2024, 7, 27)
     assert is_business_day(saturday) is False
 
     # Sunday is not a business day
-    sunday = datetime.date(2024, 7, 28)
+    sunday = dt.date(2024, 7, 28)
     assert is_business_day(sunday) is False
 
     # Business day with holiday (list)
-    july_4th = datetime.date(2024, 7, 4)  # Thursday
+    july_4th = dt.date(2024, 7, 4)  # Thursday
     assert is_business_day(july_4th) is True  # Without holidays
     assert is_business_day(july_4th, holidays=[july_4th]) is False  # With holiday as list
 
     # Business day with holiday (set) - O(1) lookup
-    holiday_set = {july_4th, datetime.date(2024, 12, 25)}
+    holiday_set = {july_4th, dt.date(2024, 12, 25)}
     assert is_business_day(july_4th, holidays=holiday_set) is False
-    assert is_business_day(datetime.date(2024, 7, 5), holidays=holiday_set) is True  # Friday, not a holiday
+    assert is_business_day(dt.date(2024, 7, 5), holidays=holiday_set) is True  # Friday, not a holiday
 
     # Business day with holiday (tuple)
-    holiday_tuple = (july_4th, datetime.date(2024, 12, 25))
+    holiday_tuple = (july_4th, dt.date(2024, 12, 25))
     assert is_business_day(july_4th, holidays=holiday_tuple) is False
 
     # Business day with holiday (frozenset)
-    holiday_frozenset = frozenset({july_4th, datetime.date(2024, 12, 25)})
+    holiday_frozenset = frozenset({july_4th, dt.date(2024, 12, 25)})
     assert is_business_day(july_4th, holidays=holiday_frozenset) is False
 
     # Business day with holiday (generator)
     def holiday_gen():
         yield july_4th
-        yield datetime.date(2024, 12, 25)
+        yield dt.date(2024, 12, 25)
 
     assert is_business_day(july_4th, holidays=holiday_gen()) is False
-    assert is_business_day(datetime.date(2024, 7, 5), holidays=holiday_gen()) is True
+    assert is_business_day(dt.date(2024, 7, 5), holidays=holiday_gen()) is True
 
 
 def test_days_until_weekend() -> None:
     """Test the days_until_weekend function."""
     # Monday (0) -> 5 days until Saturday
-    monday = datetime.date(2024, 7, 22)
+    monday = dt.date(2024, 7, 22)
     assert days_until_weekend(monday) == 5
 
     # Friday (4) -> 1 day until Saturday
-    friday = datetime.date(2024, 7, 26)
+    friday = dt.date(2024, 7, 26)
     assert days_until_weekend(friday) == 1
 
     # Saturday (5) -> 0 days (already weekend)
-    saturday = datetime.date(2024, 7, 27)
+    saturday = dt.date(2024, 7, 27)
     assert days_until_weekend(saturday) == 0
 
     # Sunday (6) -> 0 days (already weekend)
-    sunday = datetime.date(2024, 7, 28)
+    sunday = dt.date(2024, 7, 28)
     assert days_until_weekend(sunday) == 0
 
 
 def test_days_since_weekend() -> None:
     """Test the days_since_weekend function."""
     # Monday (0) -> 1 day since Sunday
-    monday = datetime.date(2024, 7, 22)
+    monday = dt.date(2024, 7, 22)
     assert days_since_weekend(monday) == 1
 
     # Friday (4) -> 5 days since Sunday
-    friday = datetime.date(2024, 7, 26)
+    friday = dt.date(2024, 7, 26)
     assert days_since_weekend(friday) == 5
 
     # Saturday (5) -> 0 days (currently weekend)
-    saturday = datetime.date(2024, 7, 27)
+    saturday = dt.date(2024, 7, 27)
     assert days_since_weekend(saturday) == 0
 
     # Sunday (6) -> 0 days (currently weekend)
-    sunday = datetime.date(2024, 7, 28)
+    sunday = dt.date(2024, 7, 28)
     assert days_since_weekend(sunday) == 0
 
 
 def test_get_week_number() -> None:
     """Test the get_week_number function."""
     # January 1, 2024 is in week 1
-    jan_1 = datetime.date(2024, 1, 1)
+    jan_1 = dt.date(2024, 1, 1)
     assert get_week_number(jan_1) == 1
 
     # July 22, 2024 is in week 30
-    july_22 = datetime.date(2024, 7, 22)
+    july_22 = dt.date(2024, 7, 22)
     assert get_week_number(july_22) == 30
 
     # December 31, 2024 is in week 1 of 2025 (ISO week date)
-    dec_31 = datetime.date(2024, 12, 31)
+    dec_31 = dt.date(2024, 12, 31)
     assert get_week_number(dec_31) == 1
 
 
@@ -1724,27 +1718,27 @@ def test_get_week_number_jan1_in_previous_year_week() -> None:
     if it falls on a Friday, Saturday, or Sunday.
     """
     # Jan 1, 2016 is Friday - belongs to week 53 of 2015
-    jan1_2016 = datetime.date(2016, 1, 1)
+    jan1_2016 = dt.date(2016, 1, 1)
     assert get_week_number(jan1_2016) == 53
     assert jan1_2016.isocalendar() == (2015, 53, 5)  # (year, week, day)
 
     # Jan 1, 2021 is Friday - belongs to week 53 of 2020
-    jan1_2021 = datetime.date(2021, 1, 1)
+    jan1_2021 = dt.date(2021, 1, 1)
     assert get_week_number(jan1_2021) == 53
     assert jan1_2021.isocalendar() == (2020, 53, 5)
 
     # Jan 1, 2022 is Saturday - belongs to week 52 of 2021
-    jan1_2022 = datetime.date(2022, 1, 1)
+    jan1_2022 = dt.date(2022, 1, 1)
     assert get_week_number(jan1_2022) == 52
     assert jan1_2022.isocalendar() == (2021, 52, 6)
 
     # Jan 1, 2023 is Sunday - belongs to week 52 of 2022
-    jan1_2023 = datetime.date(2023, 1, 1)
+    jan1_2023 = dt.date(2023, 1, 1)
     assert get_week_number(jan1_2023) == 52
     assert jan1_2023.isocalendar() == (2022, 52, 7)
 
     # Jan 1, 2024 is Monday - belongs to week 1 of 2024 (normal case)
-    jan1_2024 = datetime.date(2024, 1, 1)
+    jan1_2024 = dt.date(2024, 1, 1)
     assert get_week_number(jan1_2024) == 1
     assert jan1_2024.isocalendar() == (2024, 1, 1)
 
@@ -1753,13 +1747,13 @@ def test_get_quarter_start_end() -> None:
     """Test the get_quarter_start_end function."""
     # Q1 2024
     start, end = get_quarter_start_end(2024, 1)
-    assert start == datetime.date(2024, 1, 1)
-    assert end == datetime.date(2024, 3, 31)
+    assert start == dt.date(2024, 1, 1)
+    assert end == dt.date(2024, 3, 31)
 
     # Q4 2024
     start, end = get_quarter_start_end(2024, 4)
-    assert start == datetime.date(2024, 10, 1)
-    assert end == datetime.date(2024, 12, 31)
+    assert start == dt.date(2024, 10, 1)
+    assert end == dt.date(2024, 12, 31)
 
     # Invalid quarter should raise ValueError
     with pytest.raises(ValueError, match="Quarter must be between 1 and 4, got 5"):
@@ -1768,37 +1762,37 @@ def test_get_quarter_start_end() -> None:
 
 def test_age_in_years() -> None:
     """Test the age_in_years function."""
-    birth_date = datetime.date(1990, 6, 15)
+    birth_date = dt.date(1990, 6, 15)
 
     # Age on exact birthday
-    birthday_2024 = datetime.date(2024, 6, 15)
+    birthday_2024 = dt.date(2024, 6, 15)
     assert age_in_years(birth_date, birthday_2024) == 34
 
     # Age before birthday
-    before_birthday = datetime.date(2024, 6, 14)
+    before_birthday = dt.date(2024, 6, 14)
     assert age_in_years(birth_date, before_birthday) == 33
 
     # Age after birthday
-    after_birthday = datetime.date(2024, 6, 16)
+    after_birthday = dt.date(2024, 6, 16)
     assert age_in_years(birth_date, after_birthday) == 34
 
     # Future birth date should raise ValueError
-    future_birth = datetime.date(2025, 1, 1)
+    future_birth = dt.date(2025, 1, 1)
     with pytest.raises(ValueError, match="Birth date cannot be in the future"):
-        age_in_years(future_birth, datetime.date(2024, 1, 1))
+        age_in_years(future_birth, dt.date(2024, 1, 1))
 
 
 @freeze_time("2024-07-22")
 def test_age_in_years_without_as_of_date() -> None:
     """Test age_in_years without providing as_of_date (uses today)."""
     # Birth date - will calculate age as of frozen date (2024-07-22)
-    birth_date = datetime.date(1990, 7, 22)
+    birth_date = dt.date(1990, 7, 22)
     assert age_in_years(birth_date) == 34  # Exact birthday
 
-    birth_date_before = datetime.date(1990, 7, 23)
+    birth_date_before = dt.date(1990, 7, 23)
     assert age_in_years(birth_date_before) == 33  # Birthday tomorrow
 
-    birth_date_after = datetime.date(1990, 7, 21)
+    birth_date_after = dt.date(1990, 7, 21)
     assert age_in_years(birth_date_after) == 34  # Birthday was yesterday
 
 
@@ -1810,128 +1804,128 @@ def test_age_in_years_leap_year_birthday() -> None:
     meaning on Feb 28 of a non-leap year, the person has already had their birthday.
     """
     # Born on Feb 29, 2000 (leap year)
-    leap_birthday = datetime.date(2000, 2, 29)
+    leap_birthday = dt.date(2000, 2, 29)
 
     # === In a leap year (2024) ===
     # Day before birthday (Feb 28)
-    assert age_in_years(leap_birthday, datetime.date(2024, 2, 28)) == 23
+    assert age_in_years(leap_birthday, dt.date(2024, 2, 28)) == 23
 
     # Exact birthday (Feb 29)
-    assert age_in_years(leap_birthday, datetime.date(2024, 2, 29)) == 24
+    assert age_in_years(leap_birthday, dt.date(2024, 2, 29)) == 24
 
     # Day after birthday (Mar 1)
-    assert age_in_years(leap_birthday, datetime.date(2024, 3, 1)) == 24
+    assert age_in_years(leap_birthday, dt.date(2024, 3, 1)) == 24
 
     # === In a non-leap year (2023) ===
     # Feb 27 - day before the effective birthday (Feb 28)
-    assert age_in_years(leap_birthday, datetime.date(2023, 2, 27)) == 22
+    assert age_in_years(leap_birthday, dt.date(2023, 2, 27)) == 22
 
     # Feb 28 - the effective birthday in non-leap year (birthday has occurred)
-    assert age_in_years(leap_birthday, datetime.date(2023, 2, 28)) == 23
+    assert age_in_years(leap_birthday, dt.date(2023, 2, 28)) == 23
 
     # Mar 1 - day after effective birthday
-    assert age_in_years(leap_birthday, datetime.date(2023, 3, 1)) == 23
+    assert age_in_years(leap_birthday, dt.date(2023, 3, 1)) == 23
 
     # === Edge case: born on Feb 29, checking on Feb 29 of same year ===
-    assert age_in_years(leap_birthday, datetime.date(2000, 2, 29)) == 0
+    assert age_in_years(leap_birthday, dt.date(2000, 2, 29)) == 0
 
     # === Edge case: one year later in non-leap year (2001) ===
     # Feb 27, 2001: birthday (treated as Feb 28) hasn't occurred yet
-    assert age_in_years(leap_birthday, datetime.date(2001, 2, 27)) == 0
+    assert age_in_years(leap_birthday, dt.date(2001, 2, 27)) == 0
 
     # Feb 28, 2001: birthday (treated as Feb 28) has occurred
-    assert age_in_years(leap_birthday, datetime.date(2001, 2, 28)) == 1
+    assert age_in_years(leap_birthday, dt.date(2001, 2, 28)) == 1
 
     # Mar 1, 2001: after birthday
-    assert age_in_years(leap_birthday, datetime.date(2001, 3, 1)) == 1
+    assert age_in_years(leap_birthday, dt.date(2001, 3, 1)) == 1
 
     # === Verify leap vs non-leap year boundary behavior ===
     # Someone born Feb 29, 2000 turning 4 years old
     # In leap year 2004: birthday is Feb 29
-    assert age_in_years(leap_birthday, datetime.date(2004, 2, 28)) == 3  # Day before
-    assert age_in_years(leap_birthday, datetime.date(2004, 2, 29)) == 4  # Birthday
-    assert age_in_years(leap_birthday, datetime.date(2004, 3, 1)) == 4  # Day after
+    assert age_in_years(leap_birthday, dt.date(2004, 2, 28)) == 3  # Day before
+    assert age_in_years(leap_birthday, dt.date(2004, 2, 29)) == 4  # Birthday
+    assert age_in_years(leap_birthday, dt.date(2004, 3, 1)) == 4  # Day after
 
 
 @freeze_time("2024-07-22 10:00:00")
 def test_time_until_next_occurrence() -> None:
     """Test the time_until_next_occurrence function."""
     # Target time today at 14:00
-    target = datetime.datetime(2024, 7, 22, 14, 0, 0)
+    target = dt.datetime(2024, 7, 22, 14, 0, 0)
     delta = time_until_next_occurrence(target)
-    assert delta == datetime.timedelta(hours=4)
+    assert delta == dt.timedelta(hours=4)
 
     # Target time that already passed today (should be tomorrow)
-    past_target = datetime.datetime(2024, 7, 22, 8, 0, 0)
+    past_target = dt.datetime(2024, 7, 22, 8, 0, 0)
     delta = time_until_next_occurrence(past_target)
-    assert delta == datetime.timedelta(hours=22)  # Next day at 8:00
+    assert delta == dt.timedelta(hours=22)  # Next day at 8:00
 
 
 def test_next_occurrence_returns_the_next_naive_datetime() -> None:
     """The datetime API should preserve the time-until function's strictly-future policy."""
-    from_time = datetime.datetime(2024, 7, 22, 10, 0, 0)
+    from_time = dt.datetime(2024, 7, 22, 10, 0, 0)
 
-    assert next_occurrence(datetime.time(14, 0), from_time) == datetime.datetime(2024, 7, 22, 14, 0)
-    assert next_occurrence(datetime.datetime(2024, 1, 1, 10, 0), from_time) == datetime.datetime(2024, 7, 23, 10, 0)
+    assert next_occurrence(dt.time(14, 0), from_time) == dt.datetime(2024, 7, 22, 14, 0)
+    assert next_occurrence(dt.datetime(2024, 1, 1, 10, 0), from_time) == dt.datetime(2024, 7, 23, 10, 0)
 
 
 def test_next_occurrence_applies_dst_policy() -> None:
     """The datetime API should return the same normalized DST occurrence used for durations."""
     ny_tz = ZoneInfo("America/New_York")
-    from_time = datetime.datetime(2024, 3, 10, 3, 15, 0, tzinfo=ny_tz)
-    gap_target = datetime.datetime(2024, 1, 1, 2, 30, 0, tzinfo=ny_tz)
+    from_time = dt.datetime(2024, 3, 10, 3, 15, 0, tzinfo=ny_tz)
+    gap_target = dt.datetime(2024, 1, 1, 2, 30, 0, tzinfo=ny_tz)
 
-    assert next_occurrence(gap_target, from_time) == datetime.datetime(2024, 3, 10, 3, 30, 0, tzinfo=ny_tz)
+    assert next_occurrence(gap_target, from_time) == dt.datetime(2024, 3, 10, 3, 30, 0, tzinfo=ny_tz)
 
-    fall_back_from = datetime.datetime(2024, 11, 3, 0, 30, 0, tzinfo=ny_tz)
-    second_occurrence = datetime.datetime(2024, 1, 1, 1, 30, 0, tzinfo=ny_tz).replace(fold=1)
+    fall_back_from = dt.datetime(2024, 11, 3, 0, 30, 0, tzinfo=ny_tz)
+    second_occurrence = dt.datetime(2024, 1, 1, 1, 30, 0, tzinfo=ny_tz).replace(fold=1)
     result = next_occurrence(second_occurrence, fall_back_from)
 
-    assert result == datetime.datetime(2024, 11, 3, 1, 30, 0, tzinfo=ny_tz).replace(fold=1)
+    assert result == dt.datetime(2024, 11, 3, 1, 30, 0, tzinfo=ny_tz).replace(fold=1)
     assert result.fold == 1
 
 
 def test_time_until_next_occurrence_timezone_branches() -> None:
     """Test time_until_next_occurrence with various timezone combinations."""
     # Test when from_time is None and target_time has tzinfo
-    target_with_tz = datetime.datetime(2024, 7, 22, 14, 0, 0, tzinfo=datetime.timezone.utc)
+    target_with_tz = dt.datetime(2024, 7, 22, 14, 0, 0, tzinfo=dt.timezone.utc)
     # This path uses datetime.now(target_time.tzinfo) internally
     delta = time_until_next_occurrence(target_with_tz)
-    assert isinstance(delta, datetime.timedelta)
+    assert isinstance(delta, dt.timedelta)
 
     # Test when from_time is None and target_time has no tzinfo
-    target_naive = datetime.datetime(2024, 7, 22, 14, 0, 0)
+    target_naive = dt.datetime(2024, 7, 22, 14, 0, 0)
     delta = time_until_next_occurrence(target_naive)
-    assert isinstance(delta, datetime.timedelta)
+    assert isinstance(delta, dt.timedelta)
 
     # Test when target_time has no tzinfo but from_time does
-    target_naive = datetime.datetime(2024, 7, 22, 14, 0, 0)
-    from_time_with_tz = datetime.datetime(2024, 7, 22, 10, 0, 0, tzinfo=datetime.timezone.utc)
+    target_naive = dt.datetime(2024, 7, 22, 14, 0, 0)
+    from_time_with_tz = dt.datetime(2024, 7, 22, 10, 0, 0, tzinfo=dt.timezone.utc)
     delta = time_until_next_occurrence(target_naive, from_time_with_tz)
-    assert delta == datetime.timedelta(hours=4)
+    assert delta == dt.timedelta(hours=4)
 
     # Test when target_time has tzinfo but from_time doesn't
-    target_with_tz = datetime.datetime(2024, 7, 22, 14, 0, 0, tzinfo=datetime.timezone.utc)
-    from_time_naive = datetime.datetime(2024, 7, 22, 10, 0, 0)
+    target_with_tz = dt.datetime(2024, 7, 22, 14, 0, 0, tzinfo=dt.timezone.utc)
+    from_time_naive = dt.datetime(2024, 7, 22, 10, 0, 0)
     delta = time_until_next_occurrence(target_with_tz, from_time_naive)
-    assert delta == datetime.timedelta(hours=4)
+    assert delta == dt.timedelta(hours=4)
 
 
 def test_time_until_next_occurrence_accepts_time_objects() -> None:
     """A time object should be accepted directly when only the time-of-day matters."""
-    from_time = datetime.datetime(2024, 7, 22, 10, 0, 0)
+    from_time = dt.datetime(2024, 7, 22, 10, 0, 0)
 
-    delta = time_until_next_occurrence(datetime.time(14, 0, 0), from_time)
-    assert delta == datetime.timedelta(hours=4)
+    delta = time_until_next_occurrence(dt.time(14, 0, 0), from_time)
+    assert delta == dt.timedelta(hours=4)
 
-    past_delta = time_until_next_occurrence(datetime.time(8, 0, 0), from_time)
-    assert past_delta == datetime.timedelta(hours=22)
+    past_delta = time_until_next_occurrence(dt.time(8, 0, 0), from_time)
+    assert past_delta == dt.timedelta(hours=22)
 
 
 def test_next_occurrence_treats_indeterminate_datetimes_as_naive() -> None:
     """Datetime targets and references without offsets follow naive scheduling behavior."""
-    target = datetime.datetime(2024, 1, 1, 14, 0, tzinfo=_IndeterminateTimezone())
-    from_time = datetime.datetime(2024, 7, 22, 10, 0, tzinfo=_IndeterminateTimezone())
+    target = dt.datetime(2024, 1, 1, 14, 0, tzinfo=_IndeterminateTimezone())
+    from_time = dt.datetime(2024, 7, 22, 10, 0, tzinfo=_IndeterminateTimezone())
 
     assert next_occurrence(target, from_time) == next_occurrence(
         target.replace(tzinfo=None), from_time.replace(tzinfo=None)
@@ -1940,8 +1934,8 @@ def test_next_occurrence_treats_indeterminate_datetimes_as_naive() -> None:
 
 def test_next_occurrence_treats_indeterminate_time_objects_as_naive() -> None:
     """Time targets without an offset follow naive scheduling after date resolution."""
-    target = datetime.time(14, 0, tzinfo=_IndeterminateTimezone())
-    from_time = datetime.datetime(2024, 7, 22, 10, 0)
+    target = dt.time(14, 0, tzinfo=_IndeterminateTimezone())
+    from_time = dt.datetime(2024, 7, 22, 10, 0)
 
     assert next_occurrence(target, from_time) == next_occurrence(target.replace(tzinfo=None), from_time)
 
@@ -1949,85 +1943,85 @@ def test_next_occurrence_treats_indeterminate_time_objects_as_naive() -> None:
 def test_next_occurrence_preserves_zoneinfo_time_support() -> None:
     """A standalone ZoneInfo time remains aware once combined with its reference date."""
     ny_tz = ZoneInfo("America/New_York")
-    target = datetime.time(14, 0, tzinfo=ny_tz)
-    from_time = datetime.datetime(2024, 7, 22, 10, 0, tzinfo=ny_tz)
+    target = dt.time(14, 0, tzinfo=ny_tz)
+    from_time = dt.datetime(2024, 7, 22, 10, 0, tzinfo=ny_tz)
 
-    assert next_occurrence(target, from_time) == datetime.datetime(2024, 7, 22, 14, 0, tzinfo=ny_tz)
+    assert next_occurrence(target, from_time) == dt.datetime(2024, 7, 22, 14, 0, tzinfo=ny_tz)
 
 
 def test_time_until_next_occurrence_across_timezones() -> None:
     """Cross-timezone comparisons should never produce negative durations."""
-    target_auckland = datetime.datetime(2023, 6, 1, 9, 30, 0, tzinfo=ZoneInfo("Pacific/Auckland"))
-    from_utc = datetime.datetime(2024, 1, 1, 21, 0, 0, tzinfo=datetime.timezone.utc)
+    target_auckland = dt.datetime(2023, 6, 1, 9, 30, 0, tzinfo=ZoneInfo("Pacific/Auckland"))
+    from_utc = dt.datetime(2024, 1, 1, 21, 0, 0, tzinfo=dt.timezone.utc)
 
     delta = time_until_next_occurrence(target_auckland, from_utc)
-    assert delta == datetime.timedelta(hours=23, minutes=30)
+    assert delta == dt.timedelta(hours=23, minutes=30)
 
     time_delta = time_until_next_occurrence(target_auckland.timetz(), from_utc)
-    assert time_delta == datetime.timedelta(hours=23, minutes=30)
+    assert time_delta == dt.timedelta(hours=23, minutes=30)
 
 
 def test_time_until_next_occurrence_normalizes_dst_gap_forward() -> None:
     """Nonexistent spring-forward target times should roll to the next valid local time."""
     ny_tz = ZoneInfo("America/New_York")
-    target = datetime.datetime(2024, 1, 1, 2, 30, 0, tzinfo=ny_tz)
-    from_time = datetime.datetime(2024, 3, 10, 3, 15, 0, tzinfo=ny_tz)
+    target = dt.datetime(2024, 1, 1, 2, 30, 0, tzinfo=ny_tz)
+    from_time = dt.datetime(2024, 3, 10, 3, 15, 0, tzinfo=ny_tz)
 
     delta = time_until_next_occurrence(target, from_time)
-    assert delta == datetime.timedelta(minutes=15)
+    assert delta == dt.timedelta(minutes=15)
 
 
 def test_time_until_next_occurrence_clears_inherited_fold_for_dst_gap() -> None:
     """Spring-forward gap targets should ignore inherited fold=1 state."""
     ny_tz = ZoneInfo("America/New_York")
-    from_time = datetime.datetime(2024, 3, 10, 0, 0, 0, tzinfo=ny_tz)
-    inherited_fold = datetime.datetime(2024, 11, 3, 1, 30, 0, tzinfo=ny_tz).replace(fold=1)
+    from_time = dt.datetime(2024, 3, 10, 0, 0, 0, tzinfo=ny_tz)
+    inherited_fold = dt.datetime(2024, 11, 3, 1, 30, 0, tzinfo=ny_tz).replace(fold=1)
     target = inherited_fold.replace(year=2024, month=1, day=1, hour=2, minute=30)
 
     assert target.fold == 1
-    assert time_until_next_occurrence(target, from_time) == datetime.timedelta(hours=2, minutes=30)
+    assert time_until_next_occurrence(target, from_time) == dt.timedelta(hours=2, minutes=30)
 
 
 def test_time_until_next_occurrence_counts_fall_back_extra_hour() -> None:
     """Elapsed time should be computed on the UTC timeline across fall-back transitions."""
     ny_tz = ZoneInfo("America/New_York")
-    target = datetime.datetime(2024, 1, 1, 2, 30, 0, tzinfo=ny_tz)
-    from_time = datetime.datetime(2024, 11, 3, 0, 30, 0, tzinfo=ny_tz)
+    target = dt.datetime(2024, 1, 1, 2, 30, 0, tzinfo=ny_tz)
+    from_time = dt.datetime(2024, 11, 3, 0, 30, 0, tzinfo=ny_tz)
 
     delta = time_until_next_occurrence(target, from_time)
-    assert delta == datetime.timedelta(hours=3)
+    assert delta == dt.timedelta(hours=3)
 
 
 def test_time_until_next_occurrence_honors_fold_for_ambiguous_times() -> None:
     """Ambiguous fall-back times default to the first occurrence unless fold=1 is set."""
     ny_tz = ZoneInfo("America/New_York")
-    from_time = datetime.datetime(2024, 11, 3, 0, 30, 0, tzinfo=ny_tz)
+    from_time = dt.datetime(2024, 11, 3, 0, 30, 0, tzinfo=ny_tz)
 
-    first_target = datetime.datetime(2024, 1, 1, 1, 30, 0, tzinfo=ny_tz)
+    first_target = dt.datetime(2024, 1, 1, 1, 30, 0, tzinfo=ny_tz)
     second_target = first_target.replace(fold=1)
 
-    assert time_until_next_occurrence(first_target, from_time) == datetime.timedelta(hours=1)
-    assert time_until_next_occurrence(second_target, from_time) == datetime.timedelta(hours=2)
+    assert time_until_next_occurrence(first_target, from_time) == dt.timedelta(hours=1)
+    assert time_until_next_occurrence(second_target, from_time) == dt.timedelta(hours=2)
 
 
 def test_date_range_generator() -> None:
     """Test the date_range_generator function."""
-    start = datetime.date(2024, 1, 1)
-    end = datetime.date(2024, 1, 5)
+    start = dt.date(2024, 1, 1)
+    end = dt.date(2024, 1, 5)
 
     # Generate dates and convert to list
     dates = list(date_range_generator(start, end))
     assert len(dates) == 5
     assert dates[0] == start
     assert dates[-1] == end
-    assert dates[2] == datetime.date(2024, 1, 3)
+    assert dates[2] == dt.date(2024, 1, 3)
 
     # Invalid order should raise ValueError
     with pytest.raises(ValueError, match="start_date .* must be <= end_date"):
         list(date_range_generator(end, start))
 
     # Test memory efficiency for large ranges (generator shouldn't consume memory upfront)
-    large_end = start + datetime.timedelta(days=10000)
+    large_end = start + dt.timedelta(days=10000)
     gen = date_range_generator(start, large_end)
     # Just getting the generator shouldn't raise or consume memory
     first_date = next(gen)
@@ -2036,7 +2030,7 @@ def test_date_range_generator() -> None:
 
 def test_date_range_generator_stops_at_date_max() -> None:
     """The inclusive endpoint is yielded without stepping past date.max."""
-    assert list(date_range_generator(datetime.date.max, datetime.date.max)) == [datetime.date.max]
+    assert list(date_range_generator(dt.date.max, dt.date.max)) == [dt.date.max]
 
 
 def test_get_us_federal_holidays_list_wrapper() -> None:
@@ -2044,8 +2038,8 @@ def test_get_us_federal_holidays_list_wrapper() -> None:
     # Test with list (should work via wrapper)
     holidays_list = get_us_federal_holidays_list(2024, ["NEW_YEARS_DAY", "CHRISTMAS"])
     assert len(holidays_list) == 2
-    assert datetime.date(2024, 1, 1) in holidays_list
-    assert datetime.date(2024, 12, 25) in holidays_list
+    assert dt.date(2024, 1, 1) in holidays_list
+    assert dt.date(2024, 12, 25) in holidays_list
 
     # Test without arguments (should get all holidays)
     all_holidays = get_us_federal_holidays_list(2024)
