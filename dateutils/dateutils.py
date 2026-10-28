@@ -809,8 +809,21 @@ def _date_from_holiday_rule(year: int, rule: _HolidayRule, *, observed: bool = F
     return _nth_weekday_in_month(year, rule.month, rule.weekday, rule.occurrence, from_end=rule.from_end)
 
 
+def _normalize_holiday_types(holiday_types: Iterable[str] | None) -> tuple[str, ...] | None:
+    """Return holiday type names as a hashable tuple for the cached lookup."""
+    if holiday_types is None:
+        return None
+    if isinstance(holiday_types, str):
+        raise TypeError("holiday_types must be an iterable of holiday type names, not a single string")
+    names = tuple(holiday_types)
+    for name in names:
+        if not isinstance(name, str):
+            raise TypeError(f"holiday_types must contain strings, got {type(name).__name__}")
+    return names
+
+
 def get_us_federal_holidays(
-    year: int, holiday_types: tuple[str, ...] | None = None, observed: bool = False
+    year: int, holiday_types: Iterable[str] | None = None, observed: bool = False
 ) -> list[date]:
     """
     Get a list of US federal holidays for a given year.
@@ -833,7 +846,7 @@ def get_us_federal_holidays(
 
     Args:
         year: The year for which to get the holidays.
-        holiday_types: Optional tuple of holiday types to include. If None, all holidays are included.
+        holiday_types: Optional iterable (tuple, list, set, ...) of holiday types to include. If None, all holidays are included.
                       Historically inactive holiday types are valid but omitted for years before they existed.
                       Valid values: "NEW_YEARS_DAY", "MLK_DAY", "PRESIDENTS_DAY", "MEMORIAL_DAY",
                       "JUNETEENTH", "INDEPENDENCE_DAY", "LABOR_DAY", "COLUMBUS_DAY",
@@ -847,6 +860,7 @@ def get_us_federal_holidays(
 
     Raises:
         ValueError: If `year` is before 1971 or `holiday_types` contains unknown holiday names.
+        TypeError: If holiday_types is a single string or contains non-string values.
 
     Examples:
         >>> from datetime import date
@@ -875,6 +889,11 @@ def get_us_federal_holidays(
         The returned list is a copy of the cached holiday data, so modifying it
         will not affect future calls or pollute the cache.
 
+        With ``observed=True``, an observed New Year's Day can fall on December 31
+        of the previous year; it is returned in the list for the year it is
+        observed *for*. For business-day calculations over a date range, use
+        :func:`get_us_federal_holidays_between`, which handles this boundary.
+
     Implementation Note:
         Holiday calculations are cached (LRU cache with maxsize=32) for performance.
         This cache holds up to 32 year/holiday_type/observed combinations. For
@@ -886,7 +905,7 @@ def get_us_federal_holidays(
         The LRU cache is thread-safe. Concurrent calls with the same parameters
         safely share cached results.
     """
-    return list(_get_us_federal_holidays_cached(year, holiday_types, observed))
+    return list(_get_us_federal_holidays_cached(year, _normalize_holiday_types(holiday_types), observed))
 
 
 @lru_cache(maxsize=32)
@@ -930,9 +949,8 @@ def get_us_federal_holidays_list(
     year: int, holiday_types: list[str] | None = None, observed: bool = False
 ) -> list[date]:
     """
-    Convenience wrapper for get_us_federal_holidays that accepts a list instead of tuple.
+    Backward-compatible alias for get_us_federal_holidays; that function now accepts lists directly.
 
-    This function converts the list to a tuple and calls the cached version.
     Unknown holiday types raise ValueError.
 
     Args:
@@ -940,9 +958,64 @@ def get_us_federal_holidays_list(
         holiday_types: Optional list of holiday type names to include.
         observed: If True, shift weekend fixed-date holidays to observed weekdays.
     """
-    if holiday_types is None:
-        return get_us_federal_holidays(year, None, observed)
-    return get_us_federal_holidays(year, tuple(holiday_types), observed)
+    return get_us_federal_holidays(year, holiday_types, observed)
+
+
+def get_us_federal_holidays_between(
+    start_date: date,
+    end_date: date,
+    holiday_types: Iterable[str] | None = None,
+    observed: bool = False,
+) -> list[date]:
+    """
+    Get US federal holidays that fall between two dates, inclusive.
+
+    Unlike calling get_us_federal_holidays() per year, this includes observed
+    holidays that cross a year boundary, such as New Year's Day observed on
+    Friday, December 31 of the previous year.
+
+    Args:
+        start_date: The start date (inclusive). Datetimes use their calendar date.
+        end_date: The end date (inclusive). Datetimes use their calendar date.
+        holiday_types: Optional iterable of holiday types to include. See
+            get_us_federal_holidays() for valid values.
+        observed: If True, fixed-date holidays that fall on Saturday/Sunday are
+            shifted to their federally observed weekday (Friday/Monday).
+
+    Returns:
+        list[date]: Holidays within the range, sorted chronologically.
+
+    Raises:
+        ValueError: If start_date is after end_date, the range starts before
+            1971, or holiday_types contains unknown holiday names.
+        TypeError: If holiday_types is a single string or contains non-string values.
+
+    Examples:
+        >>> from datetime import date
+        >>> get_us_federal_holidays_between(date(2027, 12, 1), date(2027, 12, 31), observed=True)
+        [datetime.date(2027, 12, 24), datetime.date(2027, 12, 31)]
+
+        >>> december = get_us_federal_holidays_between(date(2027, 12, 1), date(2027, 12, 31), observed=True)
+        >>> workdays_between(date(2027, 12, 1), date(2027, 12, 31), holidays=december)
+        21
+    """
+    start_date = _as_date(start_date)
+    end_date = _as_date(end_date)
+    if start_date > end_date:
+        raise ValueError(f"start_date ({start_date}) must be <= end_date ({end_date})")
+
+    normalized_types = _normalize_holiday_types(holiday_types)
+    # An observed New Year's Day can fall on December 31 of the previous year,
+    # so the year after end_date may contribute a holiday inside the range.
+    last_year = min(end_date.year + 1, date.max.year) if observed else end_date.year
+    holidays_in_range: set[date] = set()
+    for year in range(start_date.year, last_year + 1):
+        holidays_in_range.update(
+            holiday
+            for holiday in _get_us_federal_holidays_cached(year, normalized_types, observed)
+            if start_date <= holiday <= end_date
+        )
+    return sorted(holidays_in_range)
 
 
 def workdays_between(start_date: date, end_date: date, holidays: Iterable[date | datetime] | None = None) -> int:

@@ -116,21 +116,23 @@ prev_bday = previous_business_day(date(2024, 6, 3))  # Monday -> Friday
 ```python
 from datetime import date
 
-from dateutils import get_us_federal_holidays, get_us_federal_holidays_list, workdays_between
+from dateutils import get_us_federal_holidays, get_us_federal_holidays_between, workdays_between
 
 # Get all US federal holidays for a year (cached for performance)
 holidays_2024 = get_us_federal_holidays(2024)  # Returns 11 holidays
 
-# Get observed holidays for business-day calculations (weekend holidays shift to Fri/Mon)
+# Get observed holidays (weekend holidays shift to Fri/Mon)
 observed_2021 = get_us_federal_holidays(2021, observed=True)
 
-# Get specific holiday types
-fixed_holidays = get_us_federal_holidays(2024, ("NEW_YEARS_DAY", "CHRISTMAS"))
+# Get specific holiday types (any iterable of names)
+fixed_holidays = get_us_federal_holidays(2024, ["NEW_YEARS_DAY", "CHRISTMAS"])
 
-# Use with business day functions
-start = date(2024, 6, 1)
-end = date(2024, 6, 10)
-workdays = workdays_between(start, end, holidays=holidays_2024)
+# For business-day math over a date range, fetch holidays for the range itself.
+# This includes New Year's Day 2028, observed on Friday 2027-12-31.
+start = date(2027, 12, 1)
+end = date(2027, 12, 31)
+december = get_us_federal_holidays_between(start, end, observed=True)
+workdays = workdays_between(start, end, holidays=december)  # 21
 ```
 
 US federal holiday calculations support 1971 and later. The calendar models rule

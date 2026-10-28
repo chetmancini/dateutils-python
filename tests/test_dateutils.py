@@ -32,6 +32,7 @@ from dateutils import (
     get_days_in_month,
     get_quarter_start_end,
     get_us_federal_holidays,
+    get_us_federal_holidays_between,
     get_us_federal_holidays_list,
     get_week_number,
     httpdate,
@@ -1339,6 +1340,73 @@ def test_get_us_federal_holidays_observed_new_years_cross_year_boundary() -> Non
     """Observed New Year's Day may fall in the previous calendar year."""
     holidays = get_us_federal_holidays(2022, holiday_types=("NEW_YEARS_DAY",), observed=True)
     assert holidays == [dt.date(2021, 12, 31)]
+
+
+def test_get_us_federal_holidays_between_includes_observed_new_year_from_next_year() -> None:
+    """Observed New Year's Day 2028 (Fri 2027-12-31) is included in a December 2027 range."""
+    holidays = get_us_federal_holidays_between(dt.date(2027, 12, 1), dt.date(2027, 12, 31), observed=True)
+    assert holidays == [dt.date(2027, 12, 24), dt.date(2027, 12, 31)]
+
+
+def test_get_us_federal_holidays_between_unobserved_uses_actual_dates() -> None:
+    """Without observed=True, holidays keep their actual calendar dates."""
+    holidays = get_us_federal_holidays_between(dt.date(2027, 12, 1), dt.date(2027, 12, 31), observed=False)
+    assert holidays == [dt.date(2027, 12, 25)]
+
+
+def test_get_us_federal_holidays_between_matches_union_of_years() -> None:
+    """A multi-year range equals the union of the per-year holiday lists."""
+    holidays = get_us_federal_holidays_between(dt.date(2023, 1, 1), dt.date(2024, 12, 31))
+    assert holidays == sorted(get_us_federal_holidays(2023) + get_us_federal_holidays(2024))
+
+
+def test_get_us_federal_holidays_between_fixes_workdays_at_year_boundary() -> None:
+    """Using the range helper avoids counting the observed New Year's Day as a workday."""
+    start, end = dt.date(2027, 12, 1), dt.date(2027, 12, 31)
+    holidays = get_us_federal_holidays_between(start, end, observed=True)
+    assert workdays_between(start, end, holidays=holidays) == 21
+
+
+def test_get_us_federal_holidays_between_filters_types_and_accepts_datetimes() -> None:
+    """Datetimes use their calendar date and holiday_types filters the result."""
+    holidays = get_us_federal_holidays_between(dt.datetime(2024, 1, 1, 9), dt.datetime(2024, 12, 31, 17), ["CHRISTMAS"])
+    assert holidays == [dt.date(2024, 12, 25)]
+
+
+def test_get_us_federal_holidays_between_rejects_reversed_range() -> None:
+    """A start date after the end date is rejected."""
+    with pytest.raises(ValueError, match=r"must be <= end_date"):
+        get_us_federal_holidays_between(dt.date(2024, 12, 31), dt.date(2024, 1, 1))
+
+
+def test_get_us_federal_holidays_between_rejects_years_before_1971() -> None:
+    """Ranges starting before 1971 are unsupported."""
+    with pytest.raises(ValueError, match="supported from 1971"):
+        get_us_federal_holidays_between(dt.date(1970, 12, 1), dt.date(1971, 12, 31))
+
+
+def test_get_us_federal_holidays_between_handles_date_max_when_observed() -> None:
+    """Observed lookups at date.max must not request year 10000."""
+    holidays = get_us_federal_holidays_between(dt.date(9999, 12, 1), dt.date.max, observed=True)
+    assert holidays[-1] == dt.date(9999, 12, 24)
+
+
+def test_get_us_federal_holidays_accepts_any_iterable_of_types() -> None:
+    """Lists and sets of holiday types are accepted, not just tuples."""
+    assert get_us_federal_holidays(2024, ["MLK_DAY"]) == [dt.date(2024, 1, 15)]
+    assert get_us_federal_holidays(2024, {"MLK_DAY"}) == [dt.date(2024, 1, 15)]
+
+
+def test_get_us_federal_holidays_rejects_string_holiday_types() -> None:
+    """A bare string is rejected instead of being split into characters."""
+    with pytest.raises(TypeError, match="not a single string"):
+        get_us_federal_holidays(2024, cast(Any, "MLK_DAY"))
+
+
+def test_get_us_federal_holidays_rejects_non_string_holiday_types() -> None:
+    """Non-string holiday type entries are rejected."""
+    with pytest.raises(TypeError, match="must contain strings, got int"):
+        get_us_federal_holidays(2024, cast(Any, ["MLK_DAY", 1]))
 
 
 def test_get_us_federal_holidays_returns_copy() -> None:
