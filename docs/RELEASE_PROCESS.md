@@ -52,9 +52,12 @@ GitHub release containing the built files.
 
 After the draft release exists, review the release notes and artifacts in
 GitHub. Publishing that draft release starts `.github/workflows/publish.yml`,
-which checks out the release tag, rebuilds and validates the distribution, and
-publishes it to PyPI. This keeps publishing independent of the timing of
-release-asset uploads.
+which downloads the wheel and sdist attached to the release (the same files the
+release workflow smoke-tested on every supported Python version), verifies their
+names against the tag, re-runs `twine check` and the installed-wheel smoke test,
+and publishes exactly those files to PyPI. Do not add, remove, or replace release
+assets before publishing; the publish job fails unless the release has exactly
+one matching wheel and one matching sdist.
 
 ## Important Behavior
 

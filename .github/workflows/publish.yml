@@ -33,10 +33,30 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: python3 scripts/validate_release_tag.py "$RELEASE_TAG"
 
-      - name: Build distribution packages from the release tag
+      - name: Download the tested distribution packages from the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: >-
+          gh release download "$RELEASE_TAG"
+          --repo "$GITHUB_REPOSITORY"
+          --dir dist
+          --pattern '*.whl'
+          --pattern '*.tar.gz'
+
+      - name: Verify the downloaded distribution packages
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          uv sync --all-extras --dev
-          make build-check
+          set -eu
+          version="${RELEASE_TAG#v}"
+          ls -l dist
+          test "$(find dist -maxdepth 1 -type f | wc -l)" -eq 2
+          test -f "dist/dateutils_python-${version}-py3-none-any.whl"
+          test -f "dist/dateutils_python-${version}.tar.gz"
+          uv sync --locked --all-extras --dev
+          uv run twine check dist/*
+          make smoke-test-built-dist
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
