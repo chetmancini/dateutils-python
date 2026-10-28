@@ -79,7 +79,7 @@ today = utc_today()  # e.g., datetime.date(2024, 6, 6)
 from datetime import datetime
 
 dt = datetime(2024, 6, 6, 12, 30, 0)
-ts = epoch_s(dt)  # 1717677000
+ts = epoch_s(dt)  # 1717677000 (naive datetimes are treated as UTC)
 ```
 
 ### Business Day Calculations
@@ -290,10 +290,11 @@ for dt in date_gen:
 
 ```python
 from dateutils import pretty_date
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
-# Format a datetime as a human-readable string
-now = datetime.now()
+# pretty_date compares against the current UTC time. Pass timezone-aware
+# datetimes: naive datetimes are treated as UTC, not as local time.
+now = datetime.now(timezone.utc)
 an_hour_ago = now - timedelta(hours=1)
 a_day_ago = now - timedelta(days=1)
 

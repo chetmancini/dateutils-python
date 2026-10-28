@@ -1911,6 +1911,15 @@ def test_time_until_next_occurrence_timezone_branches() -> None:
     assert delta == dt.timedelta(hours=4)
 
 
+def test_time_until_next_occurrence_can_exceed_24_hours_across_dst_fall_back() -> None:
+    """A DST fall-back between now and the next occurrence adds an hour."""
+    new_york = ZoneInfo("America/New_York")
+    target = dt.datetime(2024, 11, 2, 15, 0, tzinfo=new_york)
+    from_time = dt.datetime(2024, 11, 2, 15, 0, 0, 1, tzinfo=new_york)
+
+    assert time_until_next_occurrence(target, from_time) == dt.timedelta(hours=25, microseconds=-1)
+
+
 def test_time_until_next_occurrence_accepts_time_objects() -> None:
     """A time object should be accepted directly when only the time-of-day matters."""
     from_time = dt.datetime(2024, 7, 22, 10, 0, 0)

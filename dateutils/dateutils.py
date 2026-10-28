@@ -1048,7 +1048,8 @@ def add_business_days(dt: date, num_days: int, holidays: Iterable[date | datetim
         num_days: Number of business days to add (can be negative).
         holidays: Optional collection of holiday dates/datetimes to skip (list,
             set, tuple, etc.).
-            Using a set provides O(1) lookup performance for large holiday lists.
+            The collection is normalized on every call (linear in its size), so pass
+            only holidays relevant to the dates involved.
             **Note:** Generators are consumed on first use.
 
     Returns:
@@ -1157,7 +1158,8 @@ def next_business_day(dt: date, holidays: Iterable[date | datetime] | None = Non
     Args:
         dt: The starting date.
         holidays: Optional collection of holiday dates to skip (list, set, tuple, etc.).
-            Using a set provides O(1) lookup performance for large holiday lists.
+            The collection is normalized on every call (linear in its size), so pass
+            only holidays relevant to the dates involved.
 
     Returns:
         The next business day.
@@ -1187,7 +1189,8 @@ def previous_business_day(dt: date, holidays: Iterable[date | datetime] | None =
     Args:
         dt: The starting date.
         holidays: Optional collection of holiday dates to skip (list, set, tuple, etc.).
-            Using a set provides O(1) lookup performance for large holiday lists.
+            The collection is normalized on every call (linear in its size), so pass
+            only holidays relevant to the dates involved.
 
     Returns:
         The previous business day.
@@ -1405,8 +1408,9 @@ def is_business_day(dt: date, holidays: Iterable[date | datetime] | None = None)
     Args:
         dt: Date to check
         holidays: Optional collection of holiday dates/datetimes (list, set,
-            tuple, generator, etc.). Generators will be consumed. Internally
-            converted to a set for O(1) lookup.
+            tuple, generator, etc.). Generators will be consumed. The collection
+            is normalized on every call (linear in its size), so pass only
+            holidays relevant to the dates involved.
 
     Returns:
         bool: True if the date is a business day, False otherwise
@@ -1670,7 +1674,8 @@ def time_until_next_occurrence(target_time: datetime | time, from_time: datetime
 
     Returns:
         timedelta: Duration until the next occurrence of the target time-of-day.
-            Always positive (0 < result <= 24 hours).
+            Always positive. Usually at most 24 hours, but up to 25 hours when
+            a DST fall-back transition in the target timezone lies in between.
 
     Timezone Handling:
         - If both datetimes have the same timezone handling (both aware or both naive),
