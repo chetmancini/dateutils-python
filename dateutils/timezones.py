@@ -13,6 +13,18 @@ _SECONDS_IN_MINUTE = 60
 _SECONDS_IN_HOUR = 60 * _SECONDS_IN_MINUTE
 
 
+class InvalidTimezoneError(ValueError, ZoneInfoNotFoundError):
+    """Raised when a timezone name cannot be resolved.
+
+    Subclasses both ``ValueError`` and ``zoneinfo.ZoneInfoNotFoundError`` so
+    callers catching either exception keep working.
+    """
+
+    def __str__(self) -> str:
+        # ZoneInfoNotFoundError inherits KeyError.__str__, which quotes the message.
+        return Exception.__str__(self)
+
+
 @lru_cache(maxsize=1)
 def _get_available_timezones_cached() -> tuple[str, ...]:
     """Cache timezone names to avoid repeated full-database sorting."""
@@ -36,7 +48,7 @@ def _resolve_timezone(tz: str | tzinfo) -> tzinfo:
         try:
             return ZoneInfo(tz)
         except ZoneInfoNotFoundError as e:
-            raise ValueError(
+            raise InvalidTimezoneError(
                 f"Invalid timezone name '{tz}'. Use get_available_timezones() to see valid options."
             ) from e
     if isinstance(tz, tzinfo):
@@ -56,10 +68,11 @@ def now_in_timezone(tz: str | tzinfo) -> datetime:
         Current datetime in the specified timezone
 
     Raises:
-        zoneinfo.ZoneInfoNotFoundError: If the timezone name is invalid.
+        InvalidTimezoneError: If the timezone name is invalid. Subclasses both
+            ``ValueError`` and ``zoneinfo.ZoneInfoNotFoundError``.
         TypeError: If ``tz`` is neither a timezone name nor a ``tzinfo`` instance.
     """
-    return datetime.now(ZoneInfo(tz) if isinstance(tz, str) else _resolve_timezone(tz))
+    return datetime.now(_resolve_timezone(tz))
 
 
 def today_in_timezone(tz: str | tzinfo) -> date:
@@ -74,7 +87,8 @@ def today_in_timezone(tz: str | tzinfo) -> date:
         Current date in the specified timezone
 
     Raises:
-        zoneinfo.ZoneInfoNotFoundError: If the timezone name is invalid.
+        InvalidTimezoneError: If the timezone name is invalid. Subclasses both
+            ``ValueError`` and ``zoneinfo.ZoneInfoNotFoundError``.
         TypeError: If ``tz`` is neither a timezone name nor a ``tzinfo`` instance.
     """
     return now_in_timezone(tz).date()

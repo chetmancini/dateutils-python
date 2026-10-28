@@ -6,6 +6,7 @@ import pytest
 from freezegun import freeze_time
 
 from dateutils import (
+    InvalidTimezoneError,
     convert_timezone,
     datetime_to_utc,
     format_timezone_offset,
@@ -485,7 +486,7 @@ def test_timezone_error_handling() -> None:
     assert now_in_timezone("UTC") is not None
     assert today_in_timezone("America/New_York") is not None
 
-    # now_in_timezone/today_in_timezone propagate ZoneInfoNotFoundError from zoneinfo
+    # now_in_timezone/today_in_timezone still satisfy ZoneInfoNotFoundError handlers
     with pytest.raises(ZoneInfoNotFoundError):
         now_in_timezone("Invalid/Timezone")
 
@@ -497,6 +498,29 @@ def test_timezone_error_handling() -> None:
 
     with pytest.raises(ValueError, match="Invalid timezone name 'Bad_TZ'"):
         format_timezone_offset("Bad_TZ")
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        now_in_timezone,
+        today_in_timezone,
+        get_timezone_offset,
+        format_timezone_offset,
+        lambda tz: localize_datetime(dt.datetime(2024, 7, 22, 10, 30), tz),
+        lambda tz: convert_timezone(dt.datetime(2024, 7, 22, 10, 30, tzinfo=dt.timezone.utc), tz),
+    ],
+)
+def test_invalid_timezone_names_raise_invalid_timezone_error(call: Any) -> None:
+    """Every timezone-name entry point raises the same ValueError/ZoneInfoNotFoundError subclass."""
+    with pytest.raises(InvalidTimezoneError) as exc_info:
+        call("Invalid/Zone")
+
+    assert isinstance(exc_info.value, ValueError)
+    assert isinstance(exc_info.value, ZoneInfoNotFoundError)
+    assert str(exc_info.value) == (
+        "Invalid timezone name 'Invalid/Zone'. Use get_available_timezones() to see valid options."
+    )
 
 
 def test_convert_timezone_validation() -> None:

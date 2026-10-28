@@ -312,7 +312,6 @@ do not convert timezone-aware inputs to another timezone first.
 
 ```python
 from datetime import date
-from zoneinfo import ZoneInfoNotFoundError
 
 from dateutils import ParseError, now_in_timezone, parse_date, start_of_quarter, workdays_between
 
@@ -334,11 +333,12 @@ try:
 except ParseError as e:
     print(e)  # "Failed to parse date from '2024-99-99': ..."
 
-# Invalid timezone names raise ZoneInfoNotFoundError
+# Invalid timezone names raise InvalidTimezoneError, a ValueError subclass
+# (it also subclasses zoneinfo.ZoneInfoNotFoundError for compatibility)
 try:
     now_in_timezone("Invalid/Timezone")
-except ZoneInfoNotFoundError as e:
-    print(e)  # e.g., "No time zone found with key Invalid/Timezone"
+except ValueError as e:
+    print(e)  # "Invalid timezone name 'Invalid/Timezone'. Use get_available_timezones() to see valid options."
 ```
 
 ## Performance Features

@@ -86,6 +86,7 @@ format_date = _parsing.format_date
 format_datetime = _parsing.format_datetime
 to_iso8601 = _parsing.to_iso8601
 
+InvalidTimezoneError = _timezones.InvalidTimezoneError
 _get_available_timezones_cached = _timezones._get_available_timezones_cached
 get_available_timezones = _timezones.get_available_timezones
 now_in_timezone = _timezones.now_in_timezone
