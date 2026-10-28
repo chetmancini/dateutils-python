@@ -172,6 +172,14 @@ def categorize_changes(commits: list[Commit], changed_files: set[str]) -> dict[s
     return changes
 
 
+def _format_changelog_item(item: str) -> str:
+    """Capitalize a changelog item and ensure it ends with sentence punctuation."""
+    formatted_item = item[0].upper() + item[1:] if item else ""
+    if formatted_item and not formatted_item.endswith((".", "!", "?")):
+        formatted_item += "."
+    return formatted_item
+
+
 def format_changelog_entry(version: str, date: str, changes: dict[str, list[str]]) -> str:
     """Format the changelog entry."""
     entry = f"## [{version}] - {date}\n\n"
@@ -181,21 +189,83 @@ def format_changelog_entry(version: str, date: str, changes: dict[str, list[str]
         entry += f"### {section}\n"
         if items:
             for item in items:
-                # Ensure item starts with capital letter and ends with period if it doesn't already
-                formatted_item = item[0].upper() + item[1:] if item else ""
-                if formatted_item and not formatted_item.endswith((".", "!", "?")):
-                    formatted_item += "."
-                entry += f"- {formatted_item}\n"
+                entry += f"- {_format_changelog_item(item)}\n"
         else:
             entry += "-\n"
+        entry += "\n"
+
+    # Emit any non-standard subsections (they only exist when they have items)
+    for section, items in changes.items():
+        if section in _STANDARD_SECTION_KEYS:
+            continue
+        entry += f"### {section}\n"
+        for item in items:
+            entry += f"- {_format_changelog_item(item)}\n"
         entry += "\n"
 
     return entry
 
 
+def merge_changes(curated: dict[str, list[str]], generated: dict[str, list[str]]) -> dict[str, list[str]]:
+    """Combine curated and generated items, curated first, dropping formatted duplicates."""
+    merged: dict[str, list[str]] = {"added": [], "changed": [], "fixed": []}
+    for source in (curated, generated):
+        for key, items in source.items():
+            bucket = merged.setdefault(key, [])
+            seen = {_format_changelog_item(existing) for existing in bucket}
+            for item in items:
+                if _format_changelog_item(item) not in seen:
+                    bucket.append(item)
+                    seen.add(_format_changelog_item(item))
+    return merged
+
+
 def _extract_section_names(content: str) -> list[str]:
     """Return second-level changelog section names in document order."""
     return re.findall(r"^## \[([^\]]+)\]", content, flags=re.MULTILINE)
+
+
+_UNRELEASED_BODY_PATTERN = re.compile(r"^## \[Unreleased\][^\n]*\n(.*?)(?=^## \[|\Z)", re.MULTILINE | re.DOTALL)
+_STANDARD_SECTION_KEYS = ("added", "changed", "fixed")
+
+
+def extract_unreleased_notes(content: str) -> dict[str, list[str]]:
+    """Return hand-written Unreleased bullet items keyed by subsection.
+
+    Standard subsections use the lowercase keys ``added``/``changed``/``fixed``;
+    any other ``### Heading`` keeps its heading text as the key. Bare ``-``
+    placeholder lines are ignored. Indented continuation lines stay attached
+    to the preceding bullet.
+    """
+    match = _UNRELEASED_BODY_PATTERN.search(content)
+    if match is None:
+        return {}
+
+    notes: dict[str, list[str]] = {}
+    current_key: str | None = None
+    current_bullet: tuple[str, int] | None = None  # (key, index) of the bullet being built
+
+    for line in match.group(1).split("\n"):
+        stripped = line.strip()
+        if line.startswith("### "):
+            heading = line[4:].strip()
+            current_key = heading.lower() if heading.lower() in _STANDARD_SECTION_KEYS else heading
+            current_bullet = None
+        elif stripped in ("", "-"):
+            current_bullet = None
+        elif line.startswith("- "):
+            if current_key is None:
+                raise ValueError("Unreleased notes must be under a ### subsection heading")
+            bucket = notes.setdefault(current_key, [])
+            bucket.append(line[2:].rstrip())
+            current_bullet = (current_key, len(bucket) - 1)
+        elif current_bullet is not None:
+            key, index = current_bullet
+            notes[key][index] += "\n" + line.rstrip()
+        else:
+            raise ValueError("Unreleased notes must be bullet items under a ### subsection heading")
+
+    return notes
 
 
 def validate_changelog_content(content: str) -> None:
@@ -224,6 +294,15 @@ def validate_changelog_file(path: Path = CHANGELOG_PATH) -> None:
         raise FileNotFoundError(f"{path} not found")
 
     validate_changelog_content(path.read_text(encoding="utf-8"))
+
+
+def _merge_curated_notes(content: str, changes: dict[str, list[str]]) -> dict[str, list[str]]:
+    """Merge hand-written Unreleased notes from the changelog into the generated changes."""
+    curated = extract_unreleased_notes(content)
+    curated_count = sum(len(items) for items in curated.values())
+    if curated_count:
+        print(f"📝 Preserved {curated_count} hand-written Unreleased note(s)")
+    return merge_changes(curated, changes)
 
 
 def update_changelog(version: str, date: str | None = None) -> None:
@@ -264,6 +343,9 @@ def update_changelog(version: str, date: str | None = None) -> None:
 
     # Read current changelog
     content = CHANGELOG_PATH.read_text(encoding="utf-8")
+
+    # Carry hand-written Unreleased notes into the new version entry, ahead of generated ones
+    changes = _merge_curated_notes(content, changes)
 
     # Create the new version entry
     new_version_entry = format_changelog_entry(version, date, changes)

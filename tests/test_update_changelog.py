@@ -579,3 +579,125 @@ def test_main_passes_supplied_version_and_date_to_updater(monkeypatch: pytest.Mo
     update_changelog_script.main()
 
     assert calls == [("0.6.1", "2026-04-20")]
+
+
+def _run_update_with_unreleased(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    unreleased_body: str,
+    commits: list[Any],
+) -> tuple[Path, str]:
+    """Write a changelog with the given Unreleased body, run the updater, and return path and original text."""
+    changelog_path = tmp_path / "CHANGELOG.md"
+    original = (
+        "# Changelog\n\n"
+        "All notable changes to this project will be documented in this file.\n\n"
+        f"## [Unreleased]\n\n{unreleased_body}"
+        "## [0.6.0] - 2026-02-22\n\n### Added\n-\n\n### Changed\n-\n\n### Fixed\n-\n"
+    )
+    changelog_path.write_text(original, encoding="utf-8")
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(update_changelog_script, "get_latest_tag", lambda: "v0.6.0")
+    monkeypatch.setattr(update_changelog_script, "get_commits_since_tag", lambda _tag: commits)
+    monkeypatch.setattr(update_changelog_script, "get_changed_files", lambda _tag: set())
+    monkeypatch.setattr(update_changelog_script, "CHANGELOG_PATH", Path("CHANGELOG.md"))
+
+    update_changelog_script.update_changelog("0.6.1", "2026-04-20")
+    return changelog_path, original
+
+
+def _release_entry(content: str) -> str:
+    return content.split("## [0.6.1] - 2026-04-20", maxsplit=1)[1].split("## [0.6.0]", maxsplit=1)[0]
+
+
+def test_update_changelog_preserves_curated_unreleased_notes(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    commit = update_changelog_script.Commit(hash="a1", subject="fix: handle leap day", body="")
+    changelog_path, _ = _run_update_with_unreleased(
+        monkeypatch,
+        tmp_path,
+        "### Added\n- Range holiday helper.\n\n### Changed\n-\n\n### Fixed\n- Observed New Year boundary.\n\n",
+        [commit],
+    )
+
+    content = changelog_path.read_text(encoding="utf-8")
+    entry = _release_entry(content)
+    assert "- Range holiday helper." in entry.split("### Changed")[0]
+    fixed = entry.split("### Fixed")[1]
+    assert fixed.index("- Observed New Year boundary.") < fixed.index("- Handle leap day.")
+    assert update_changelog_script.UNRELEASED_SECTION in content
+    assert content.count("Range holiday helper.") == 1
+
+
+def test_update_changelog_preserves_extra_unreleased_sections(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    changelog_path, _ = _run_update_with_unreleased(
+        monkeypatch,
+        tmp_path,
+        "### Security\n- Pin build backend.\n\n",
+        [],
+    )
+
+    entry = _release_entry(changelog_path.read_text(encoding="utf-8"))
+    assert "### Security\n- Pin build backend.\n" in entry
+    assert entry.index("### Fixed") < entry.index("### Security")
+
+
+def test_update_changelog_deduplicates_curated_and_generated(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    commit = update_changelog_script.Commit(hash="a1", subject="fix: handle leap day", body="")
+    changelog_path, _ = _run_update_with_unreleased(
+        monkeypatch,
+        tmp_path,
+        "### Fixed\n- Handle leap day.\n\n",
+        [commit],
+    )
+
+    assert changelog_path.read_text(encoding="utf-8").count("- Handle leap day.") == 1
+
+
+def test_update_changelog_keeps_continuation_lines(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    changelog_path, _ = _run_update_with_unreleased(
+        monkeypatch,
+        tmp_path,
+        "### Added\n- Parse ISO dates\n  with spaces.\n\n",
+        [],
+    )
+
+    entry = _release_entry(changelog_path.read_text(encoding="utf-8"))
+    assert "- Parse ISO dates\n  with spaces.\n" in entry
+
+
+def test_update_changelog_rejects_unstructured_unreleased_text(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    changelog_path = tmp_path / "CHANGELOG.md"
+    original = (
+        "# Changelog\n\n## [Unreleased]\n\nJust some free text.\n\n"
+        "## [0.6.0] - 2026-02-22\n\n### Added\n-\n\n### Changed\n-\n\n### Fixed\n-\n"
+    )
+    changelog_path.write_text(original, encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(update_changelog_script, "get_latest_tag", lambda: "v0.6.0")
+    monkeypatch.setattr(update_changelog_script, "get_commits_since_tag", lambda _tag: [])
+    monkeypatch.setattr(update_changelog_script, "get_changed_files", lambda _tag: set())
+    monkeypatch.setattr(update_changelog_script, "CHANGELOG_PATH", Path("CHANGELOG.md"))
+
+    with pytest.raises(ValueError, match="### subsection heading"):
+        update_changelog_script.update_changelog("0.6.1", "2026-04-20")
+
+    assert changelog_path.read_text(encoding="utf-8") == original
+
+
+def test_extract_unreleased_notes_rejects_orphan_text_under_heading() -> None:
+    content = "## [Unreleased]\n\n### Added\nstray text\n\n## [0.6.0] - 2026-02-22\n"
+
+    with pytest.raises(ValueError, match="bullet items"):
+        update_changelog_script.extract_unreleased_notes(content)
+
+
+def test_extract_unreleased_notes_returns_empty_without_unreleased_section() -> None:
+    assert update_changelog_script.extract_unreleased_notes("# Changelog\n\n## [0.6.0] - 2026-02-22\n") == {}
+
+
+def test_extract_unreleased_notes_rejects_bullet_before_any_heading() -> None:
+    content = "## [Unreleased]\n\n- Orphan bullet.\n\n## [0.6.0] - 2026-02-22\n"
+
+    with pytest.raises(ValueError, match="### subsection heading"):
+        update_changelog_script.extract_unreleased_notes(content)

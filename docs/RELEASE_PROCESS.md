@@ -35,6 +35,7 @@ The selected `version-*` target:
 - Reads the current version from `pyproject.toml`
 - Runs `bump2version` for the selected bump type
 - Updates `CHANGELOG.md` with `make update-changelog VERSION=<new-version>`
+  - Bullets written under ## [Unreleased] are carried into the new version entry, ahead of commit-derived notes.
 - Refreshes `uv.lock`
 - Validates that `v<new-version>` matches the version in `pyproject.toml`
 - Runs `make check` before creating the release commit
