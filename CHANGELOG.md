@@ -13,6 +13,24 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 -
 
+## [0.9.0] - 2026-10-27
+
+### Added
+- Add get_us_federal_holidays_between for observed holidays across year boundaries.
+- Add InvalidTimezoneError and raise it from every timezone function.
+
+### Changed
+- Gitignore.
+- Drop Python 3.10 support and test on Python 3.15.
+- Change publish workflow to upload the tested release assets.
+
+### Fixed
+- Fix parse_iso8601 rejecting space separators, HH:MM times, and lowercase t/z.
+- Apply ruff pyupgrade fixes for Python 3.11 target.
+- Fix pretty_date rejecting float timestamps and printing 12 months.
+- Fix changelog update discarding hand-written Unreleased notes.
+- Fix misleading pretty_date README example and docstring claims.
+
 ## [0.8.4] - 2026-10-26
 
 ### Added
