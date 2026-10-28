@@ -840,6 +840,45 @@ def test_pretty_date_past_extended() -> None:
     assert result == "2 years ago"
 
 
+def test_pretty_date_accepts_float_timestamps() -> None:
+    """Test pretty_date accepts float Unix timestamps."""
+    from dateutils import pretty_date
+
+    assert pretty_date(1711540800.0 - 3600.5, now_override=1711540800.0) == "an hour ago"
+    assert pretty_date(1711540800 - 30.25, now_override=1711540800) == "30 seconds ago"
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf")])
+def test_pretty_date_rejects_non_finite_float_timestamps(value: float) -> None:
+    """Test pretty_date rejects NaN and infinite timestamps."""
+    from dateutils import pretty_date
+
+    with pytest.raises(ValueError, match="Invalid timestamp"):
+        pretty_date(value, now_override=1711540800)
+
+
+def test_pretty_date_rejects_unsupported_timestamp_types() -> None:
+    """Test pretty_date rejects unsupported timestamp types."""
+    from dateutils import pretty_date
+
+    with pytest.raises(TypeError, match=r"got str"):
+        pretty_date(cast(Any, "yesterday"))
+
+
+def test_pretty_date_caps_months_below_one_year() -> None:
+    """Test pretty_date never prints 12 months before the one year threshold."""
+    from dateutils import pretty_date
+
+    now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
+    day = 86400
+
+    assert pretty_date(now_ts - 330 * day, now_override=now_ts) == "11 months ago"
+    assert pretty_date(now_ts - 360 * day, now_override=now_ts) == "11 months ago"
+    assert pretty_date(now_ts - 364 * day, now_override=now_ts) == "11 months ago"
+    assert pretty_date(now_ts + 364 * day, now_override=now_ts) == "in 11 months"
+    assert pretty_date(now_ts - 365 * day, now_override=now_ts) == "1 year ago"
+
+
 def test_httpdate_with_utc_aware_datetime() -> None:
     """Test httpdate with a UTC-aware datetime."""
     dt_utc = dt.datetime(2015, 4, 14, 19, 16, 44, tzinfo=dt.timezone.utc)

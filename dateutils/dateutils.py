@@ -1284,7 +1284,7 @@ def previous_business_day(dt: date, holidays: Iterable[date | datetime] | None =
     return add_business_days(dt, -1, holidays)
 
 
-def _ts_difference(timestamp: int | datetime | None = None, now_override: int | None = None) -> timedelta:
+def _ts_difference(timestamp: float | datetime | None = None, now_override: float | None = None) -> timedelta:
     """Helper function to calculate time difference for pretty_date."""
     if now_override is not None:
         try:
@@ -1296,7 +1296,7 @@ def _ts_difference(timestamp: int | datetime | None = None, now_override: int | 
 
     if timestamp is None:
         return timedelta(0)
-    if isinstance(timestamp, int):
+    if isinstance(timestamp, (int, float)):
         try:
             ts_dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
         except (ValueError, OSError, OverflowError) as e:
@@ -1305,8 +1305,9 @@ def _ts_difference(timestamp: int | datetime | None = None, now_override: int | 
     if isinstance(timestamp, datetime):
         # Assume UTC for datetimes without a usable offset (matches epoch_s).
         return now - datetime_to_utc(timestamp)
-    # Runtime callers may still violate type hints.
-    raise TypeError(f"timestamp must be int, datetime, or None; got {type(timestamp).__name__}")  # pragma: no cover
+    raise TypeError(
+        f"timestamp must be a Unix timestamp (int or float), datetime, or None; got {type(timestamp).__name__}"
+    )
 
 
 def _format_relative_count(count: int, unit: str, *, future: bool) -> str:
@@ -1342,11 +1343,13 @@ def _format_relative_day_or_longer(day_diff: int, *, future: bool) -> str:
     if day_diff < DAYS_IN_MONTH_MAX:
         return _format_relative_count(day_diff // DAYS_IN_WEEK, "week", future=future)
     if day_diff < DAYS_IN_YEAR:
-        return _format_relative_count(day_diff // DAYS_IN_MONTH_APPROX, "month", future=future)
+        # 360-364 days would otherwise floor to "12 months"; years start at 365 days.
+        months = min(day_diff // DAYS_IN_MONTH_APPROX, MONTHS_IN_YEAR - 1)
+        return _format_relative_count(months, "month", future=future)
     return _format_relative_count(day_diff // DAYS_IN_YEAR, "year", future=future)
 
 
-def pretty_date(timestamp: int | datetime | None = None, now_override: int | None = None) -> str:
+def pretty_date(timestamp: float | datetime | None = None, now_override: float | None = None) -> str:
     """
     Format a timestamp as a human-readable relative time string.
 
@@ -1356,7 +1359,7 @@ def pretty_date(timestamp: int | datetime | None = None, now_override: int | Non
 
     Args:
         timestamp: The time to format. Accepts three types:
-            - int: Unix timestamp (seconds since epoch). Interpreted as UTC.
+            - int or float: Unix timestamp (seconds since epoch), e.g. time.time(). Interpreted as UTC.
             - datetime: A datetime object. If it has no usable UTC offset, it is
               assumed to be UTC. Otherwise it is converted to UTC for comparison.
             - None: Returns "just now".
@@ -1379,7 +1382,7 @@ def pretty_date(timestamp: int | datetime | None = None, now_override: int | Non
 
     Raises:
         ValueError: If `timestamp` or `now_override` is an invalid Unix timestamp.
-        TypeError: If `timestamp` is not an int, datetime, or None.
+        TypeError: If `timestamp` is not an int, float, datetime, or None.
 
     Examples:
         >>> from datetime import datetime, timezone
@@ -1409,7 +1412,7 @@ def pretty_date(timestamp: int | datetime | None = None, now_override: int | Non
     Note:
         The function uses **approximate values** for longer periods:
 
-        - 1 month = 30 days (actual months vary 28-31 days)
+        - 1 month = 30 days (actual months vary 28-31 days), capped at 11 months below one year
         - 1 year = 365 days (ignores leap years)
 
         This means "2 months ago" represents exactly 60 days ago, regardless of
