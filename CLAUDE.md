@@ -49,7 +49,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - `dateutils/_awareness.py` (internal, formerly `_datetime.py`): Shared private datetime-awareness predicate (`is_aware_datetime`)
   - `dateutils/__init__.py`: Public top-level re-exports for the library API
 - **Standard Library Only**: No external dependencies beyond Python's standard library at runtime
-- **Full Type Annotations**: Complete type hints using Python 3.10+ typing features
+- **Full Type Annotations**: Complete type hints using Python 3.11+ typing features
 - **Comprehensive Testing**: Focused package test suites (`tests/test_dateutils.py`, `tests/test_parsing.py`, `tests/test_timezones.py`) and release tooling tests (`tests/test_update_changelog.py`, `tests/test_validate_docs.py`, `tests/test_validate_release_tag.py`)
 
 ### Key Components
