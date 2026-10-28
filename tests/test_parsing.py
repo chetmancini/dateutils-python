@@ -427,23 +427,19 @@ def test_parse_iso8601() -> None:
     assert half_hour_offset.tzinfo is not None
     assert half_hour_offset.tzinfo.utcoffset(None) == dt.timedelta(hours=-5, minutes=-30)
 
-    # Test basic format without T separator (should fail)
-    with pytest.raises(ParseError):
-        parse_iso8601("2024-03-27 14:30:45")
+    # Space separator (RFC 3339)
+    assert parse_iso8601("2024-03-27 14:30:45") == dt.datetime(2024, 3, 27, 14, 30, 45)
 
     # Test with partial time specification
     with pytest.raises(ParseError):
         parse_iso8601("2024-03-27T14")
-    with pytest.raises(ParseError):
-        parse_iso8601("2024-03-27T14:30")
+    assert parse_iso8601("2024-03-27T14:30") == dt.datetime(2024, 3, 27, 14, 30)
 
     # Test invalid patterns
     with pytest.raises(ParseError):
         parse_iso8601("not iso8601")
     with pytest.raises(ParseError):
         parse_iso8601("2024/03/27")  # Wrong date separator
-    with pytest.raises(ParseError):
-        parse_iso8601("2024-03-27 14:30:45")  # Space instead of T
     with pytest.raises(ParseError):
         parse_iso8601("2024-03-27+0200")  # Timezone without time
     with pytest.raises(ParseError):
@@ -454,6 +450,40 @@ def test_parse_iso8601() -> None:
         parse_iso8601("2024-03-27.123")  # Fractional seconds without time
     with pytest.raises(ParseError):
         parse_iso8601("2024-03-27.123Z")  # Fractional + timezone without time
+
+
+def test_parse_iso8601_accepts_rfc3339_variants() -> None:
+    """Lowercase t/z, space separators, and optional seconds are accepted."""
+    assert parse_iso8601("2024-03-27t14:30:45z") == dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.UTC)
+
+    plus_two = parse_iso8601("2024-03-27 14:30+02:00")
+    assert plus_two.hour == 14
+    assert plus_two.minute == 30
+    assert plus_two.utcoffset() == dt.timedelta(hours=2)
+
+    minus_half = parse_iso8601("2024-03-27T14:30-0530")
+    assert minus_half.utcoffset() == -dt.timedelta(hours=5, minutes=30)
+
+    assert parse_iso8601("2024-03-27 14:30:45.123456789Z").microsecond == 123456
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "2024-03-27T14",
+        "2024-03-27T14:30.5",
+        "20240327T143045",
+        "2024-03-27  14:30",
+        "2024-03-27T14:30:45,5",
+        "2024-03-27T14:30:45.+05:00",
+        "2024-03-27 14:30+25:00",
+        "2024-03-27 25:00",
+    ],
+)
+def test_parse_iso8601_rejects_shapes_outside_contract(value: str) -> None:
+    """Shapes outside the supported contract raise ParseError."""
+    with pytest.raises(ParseError):
+        parse_iso8601(value)
 
 
 def test_parse_iso8601_malformed_edge_cases() -> None:
@@ -549,7 +579,7 @@ def test_parse_iso8601_errors_include_details() -> None:
     )
 
     with pytest.raises(ParseError, match="supported pattern"):
-        parse_iso8601("2024-03-27 14:30:45")
+        parse_iso8601("2024-03-27T14")
 
     with pytest.raises(ParseError, match="timezone offset is out of range"):
         parse_iso8601("2024-03-27T14:30:45+25:00")

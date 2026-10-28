@@ -161,6 +161,7 @@ except ParseError:
 # Parse ISO 8601 datetime
 dt = parse_iso8601("2024-06-06T12:30:45Z")  # With timezone
 dt = parse_iso8601("2024-06-06")  # Date only
+dt = parse_iso8601("2024-06-06 12:30Z")  # RFC 3339 space separator, seconds optional
 
 # Parse with explicit error handling
 try:

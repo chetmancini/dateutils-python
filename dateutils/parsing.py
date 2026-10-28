@@ -5,7 +5,7 @@ Date parsing and formatting helpers.
 import locale
 import re
 from collections.abc import Iterable
-from datetime import UTC, date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime
 from typing import Literal
 
 from ._awareness import is_aware_datetime as _is_aware_datetime
@@ -14,15 +14,17 @@ _MAX_TZ_OFFSET_HOURS = 23
 _MAX_TZ_OFFSET_MINUTES = 59
 _MAX_MONTH_NUMBER = 12
 
-# Compiled regex for ISO 8601 parsing (verbose mode for readability)
+# Compiled regex defining the ISO 8601 / RFC 3339 shapes parse_iso8601 accepts
+# (verbose mode for readability). datetime.fromisoformat does the conversion, but
+# its grammar varies across Python versions, so this pattern is the contract.
 _ISO8601_PATTERN = re.compile(
     r"""
     ^
-    (\d{4}-\d{2}-\d{2})           # Date part: YYYY-MM-DD (required)
+    (?P<date>\d{4}-\d{2}-\d{2})                        # Date part: YYYY-MM-DD (required)
     (?:
-        T(\d{2}:\d{2}:\d{2})      # Time part: THH:MM:SS (optional)
-        (\.\d+)?                  # Fractional seconds: .123456 (optional)
-        (Z | [+-]\d{2}:?\d{2})?   # Timezone: Z or ±HH:MM or ±HHMM (optional)
+        [Tt ]                                          # Separator: T, t, or one space
+        (?P<time>\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)     # HH:MM, HH:MM:SS, or HH:MM:SS.fraction
+        (?P<tz>[Zz]|[+-]\d{2}:?\d{2})?                 # Timezone: Z, ±HH:MM, or ±HHMM (optional)
     )?
     $
     """,
@@ -425,16 +427,21 @@ def parse_iso8601(iso_str: str) -> datetime:
     """
     Parse an ISO 8601 formatted date/time string.
 
-    This handles various ISO 8601 formats including:
+    This handles these ISO 8601 / RFC 3339 shapes:
     - Date only: 2023-01-31
-    - Date and time: 2023-01-31T14:30:45
-    - With milliseconds: 2023-01-31T14:30:45.123
-    - With timezone: 2023-01-31T14:30:45+02:00
+    - Date and time: 2023-01-31T14:30:45, 2023-01-31T14:30 (seconds optional)
+    - Space or lowercase separator: 2023-01-31 14:30:45, 2023-01-31t14:30:45
+    - With fractional seconds: 2023-01-31T14:30:45.123
+    - With timezone: 2023-01-31T14:30:45Z (or z), +02:00, -0500
 
     Note:
         Fractional seconds are limited to microsecond precision (6 digits).
         Any digits beyond 6 are silently truncated. For example,
         ".123456789" (nanoseconds) becomes ".123456" (microseconds).
+
+    Examples:
+        >>> parse_iso8601("2024-06-06 12:30Z")
+        datetime.datetime(2024, 6, 6, 12, 30, tzinfo=datetime.timezone.utc)
 
     Args:
         iso_str: The ISO 8601 string to parse
@@ -456,46 +463,21 @@ def _parse_iso8601_unchecked(iso_str: str) -> datetime:
     """Parse ISO 8601 string and raise ValueError on invalid inputs."""
     match = _ISO8601_PATTERN.match(iso_str)
     if not match:
-        raise ValueError("value does not match supported pattern YYYY-MM-DD[THH:MM:SS[.fraction][Z|±HH:MM|±HHMM]]")
+        raise ValueError("value does not match supported pattern YYYY-MM-DD[THH:MM[:SS[.fraction]][Z|±HH:MM|±HHMM]]")
 
-    date_part, time_part, ms_part, tz_part = match.groups()
+    tz_part = match.group("tz")
+    if tz_part and tz_part.upper() != "Z":
+        tz_digits = tz_part.replace(":", "")
+        hours = int(tz_digits[1:3])
+        minutes = int(tz_digits[3:5])
+        if hours > _MAX_TZ_OFFSET_HOURS or minutes > _MAX_TZ_OFFSET_MINUTES:
+            raise ValueError(f"timezone offset is out of range: {tz_part}")
 
-    if time_part is None:
-        # Date only (regex guarantees ms_part and tz_part are also None)
-        return datetime.strptime(date_part, "%Y-%m-%d")
-
-    # Combine date and time
-    dt_str = f"{date_part}T{time_part}"
-    dt_format = "%Y-%m-%dT%H:%M:%S"
-
-    if ms_part:
-        # Truncate to microsecond precision (6 digits max after the decimal point)
-        max_fractional_len = 7  # ".XXXXXX" (1 dot + 6 digits)
-        if len(ms_part) > max_fractional_len:
-            ms_part = ms_part[:max_fractional_len]
-        dt_str += ms_part
-        dt_format += ".%f"
-
-    dt = datetime.strptime(dt_str, dt_format)
-
-    # Handle timezone
-    if tz_part:
-        if tz_part == "Z":
-            dt = dt.replace(tzinfo=UTC)
-        else:
-            # Convert +HH:MM or +HHMM to ±HHMM and validate components
-            tz_digits = tz_part.replace(":", "")
-            sign = -1 if tz_digits[0] == "-" else 1
-            hours = int(tz_digits[1:3])
-            minutes = int(tz_digits[3:5])
-
-            if hours > _MAX_TZ_OFFSET_HOURS or minutes > _MAX_TZ_OFFSET_MINUTES:
-                raise ValueError(f"timezone offset is out of range: {tz_part}")
-
-            offset = sign * timedelta(hours=hours, minutes=minutes)
-            dt = dt.replace(tzinfo=timezone(offset))
-
-    return dt
+    normalized = match.group("date")
+    if match.group("time") is not None:
+        normalized += f"T{match.group('time')}{(tz_part or '').upper()}"
+    # fromisoformat truncates fractional seconds beyond microseconds on 3.11+.
+    return datetime.fromisoformat(normalized)
 
 
 def format_date(dt: date | datetime, format_str: str = "%Y-%m-%d") -> str:
