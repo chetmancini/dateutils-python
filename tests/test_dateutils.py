@@ -153,13 +153,13 @@ def test_epoch_s() -> None:
 
 def test_epoch_s_handles_fractional_seconds_without_float_rounding() -> None:
     """Whole epoch seconds should floor exactly on both sides of the epoch."""
-    just_before_epoch = dt.datetime(1969, 12, 31, 23, 59, 59, 999999, tzinfo=dt.timezone.utc)
+    just_before_epoch = dt.datetime(1969, 12, 31, 23, 59, 59, 999999, tzinfo=dt.UTC)
     assert epoch_s(just_before_epoch) == -1
 
-    latest = dt.datetime.max.replace(tzinfo=dt.timezone.utc)
+    latest = dt.datetime.max.replace(tzinfo=dt.UTC)
     latest_whole_second = 253402300799
     assert epoch_s(latest) == latest_whole_second
-    assert utc_from_timestamp(latest_whole_second) == dt.datetime(9999, 12, 31, 23, 59, 59, tzinfo=dt.timezone.utc)
+    assert utc_from_timestamp(latest_whole_second) == dt.datetime(9999, 12, 31, 23, 59, 59, tzinfo=dt.UTC)
 
 
 def test_epoch_s_treats_indeterminate_timezones_as_naive_utc() -> None:
@@ -183,7 +183,7 @@ def test_utc_from_timestamp() -> None:
     assert result.hour == 15
     assert result.minute == 30
     assert result.second == 45
-    assert result.tzinfo == dt.timezone.utc
+    assert result.tzinfo == dt.UTC
 
 
 def test_datetime_start_of_day() -> None:
@@ -481,7 +481,7 @@ def test_date_to_quarter() -> None:
 
 def test_date_to_start_of_quarter() -> None:
     def to_datetime(m: int, d: int) -> dt.datetime:
-        return dt.datetime(2018, m, d, 12, 34, 56, tzinfo=dt.timezone.utc)
+        return dt.datetime(2018, m, d, 12, 34, 56, tzinfo=dt.UTC)
 
     assert dt.date(2018, 1, 1) == date_to_start_of_quarter(to_datetime(1, 6))
     assert dt.date(2018, 1, 1) == date_to_start_of_quarter(to_datetime(3, 31))
@@ -509,7 +509,7 @@ def test_date_only_apis_normalize_datetime_inputs() -> None:
     assert add_business_days(start, 1, holidays=[july_fourth]) == dt.date(2024, 7, 5)
     assert next_business_day(start, holidays=[july_fourth]) == dt.date(2024, 7, 5)
     assert previous_business_day(end, holidays=[july_fourth]) == dt.date(2024, 7, 3)
-    assert not is_business_day(dt.datetime(2024, 7, 4, 12, tzinfo=dt.timezone.utc), holidays=[july_fourth])
+    assert not is_business_day(dt.datetime(2024, 7, 4, 12, tzinfo=dt.UTC), holidays=[july_fourth])
 
 
 def test_start_of_quarter() -> None:
@@ -772,30 +772,30 @@ def test_pretty_date_future_extended() -> None:
     now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
 
     # Test "in X minutes"
-    minutes_future = dt.datetime(2024, 3, 27, 12, 15, 0, tzinfo=dt.timezone.utc)
+    minutes_future = dt.datetime(2024, 3, 27, 12, 15, 0, tzinfo=dt.UTC)
     assert pretty_date(minutes_future, now_override=now_ts) == "in 15 minutes"
 
     # Test "in an hour"
-    one_hour_future = dt.datetime(2024, 3, 27, 13, 30, 0, tzinfo=dt.timezone.utc)
+    one_hour_future = dt.datetime(2024, 3, 27, 13, 30, 0, tzinfo=dt.UTC)
     assert pretty_date(one_hour_future, now_override=now_ts) == "in an hour"
 
     # Test singular forms for weeks/months/years
-    week_future = dt.datetime(2024, 4, 3, 12, 0, 0, tzinfo=dt.timezone.utc)
+    week_future = dt.datetime(2024, 4, 3, 12, 0, 0, tzinfo=dt.UTC)
     assert pretty_date(week_future, now_override=now_ts) == "in 1 week"
 
-    month_future = dt.datetime(2024, 4, 27, 12, 0, 0, tzinfo=dt.timezone.utc)
+    month_future = dt.datetime(2024, 4, 27, 12, 0, 0, tzinfo=dt.UTC)
     assert pretty_date(month_future, now_override=now_ts) == "in 1 month"
 
-    year_future = dt.datetime(2025, 3, 27, 12, 0, 0, tzinfo=dt.timezone.utc)
+    year_future = dt.datetime(2025, 3, 27, 12, 0, 0, tzinfo=dt.UTC)
     assert pretty_date(year_future, now_override=now_ts) == "in 1 year"
 
     # Test "in X months"
-    months_future = dt.datetime(2024, 6, 27, 12, 0, 0, tzinfo=dt.timezone.utc)
+    months_future = dt.datetime(2024, 6, 27, 12, 0, 0, tzinfo=dt.UTC)
     result = pretty_date(months_future, now_override=now_ts)
     assert result == "in 3 months"
 
     # Test "in X years"
-    years_future = dt.datetime(2026, 3, 27, 12, 0, 0, tzinfo=dt.timezone.utc)
+    years_future = dt.datetime(2026, 3, 27, 12, 0, 0, tzinfo=dt.UTC)
     result = pretty_date(years_future, now_override=now_ts)
     assert result == "in 2 years"
 
@@ -807,35 +807,35 @@ def test_pretty_date_past_extended() -> None:
     now_ts = 1711540800  # 2024-03-27 12:00:00 UTC
 
     # Test "X minutes ago"
-    minutes_ago = dt.datetime(2024, 3, 27, 11, 45, 0, tzinfo=dt.timezone.utc)
+    minutes_ago = dt.datetime(2024, 3, 27, 11, 45, 0, tzinfo=dt.UTC)
     assert pretty_date(minutes_ago, now_override=now_ts) == "15 minutes ago"
 
     # Test "an hour ago"
-    one_hour_ago = dt.datetime(2024, 3, 27, 10, 30, 0, tzinfo=dt.timezone.utc)
+    one_hour_ago = dt.datetime(2024, 3, 27, 10, 30, 0, tzinfo=dt.UTC)
     assert pretty_date(one_hour_ago, now_override=now_ts) == "an hour ago"
 
     # Test singular forms for weeks/months/years
-    week_ago = dt.datetime(2024, 3, 20, 12, 0, 0, tzinfo=dt.timezone.utc)
+    week_ago = dt.datetime(2024, 3, 20, 12, 0, 0, tzinfo=dt.UTC)
     assert pretty_date(week_ago, now_override=now_ts) == "1 week ago"
 
-    month_ago = dt.datetime(2024, 2, 25, 12, 0, 0, tzinfo=dt.timezone.utc)
+    month_ago = dt.datetime(2024, 2, 25, 12, 0, 0, tzinfo=dt.UTC)
     assert pretty_date(month_ago, now_override=now_ts) == "1 month ago"
 
-    year_ago = dt.datetime(2023, 3, 28, 12, 0, 0, tzinfo=dt.timezone.utc)
+    year_ago = dt.datetime(2023, 3, 28, 12, 0, 0, tzinfo=dt.UTC)
     assert pretty_date(year_ago, now_override=now_ts) == "1 year ago"
 
     # Test "X weeks ago"
-    weeks_ago = dt.datetime(2024, 3, 13, 12, 0, 0, tzinfo=dt.timezone.utc)
+    weeks_ago = dt.datetime(2024, 3, 13, 12, 0, 0, tzinfo=dt.UTC)
     result = pretty_date(weeks_ago, now_override=now_ts)
     assert result == "2 weeks ago"
 
     # Test "X months ago"
-    months_ago = dt.datetime(2023, 12, 27, 12, 0, 0, tzinfo=dt.timezone.utc)
+    months_ago = dt.datetime(2023, 12, 27, 12, 0, 0, tzinfo=dt.UTC)
     result = pretty_date(months_ago, now_override=now_ts)
     assert result == "3 months ago"
 
     # Test "X years ago"
-    years_ago = dt.datetime(2022, 3, 27, 12, 0, 0, tzinfo=dt.timezone.utc)
+    years_ago = dt.datetime(2022, 3, 27, 12, 0, 0, tzinfo=dt.UTC)
     result = pretty_date(years_ago, now_override=now_ts)
     assert result == "2 years ago"
 
@@ -881,7 +881,7 @@ def test_pretty_date_caps_months_below_one_year() -> None:
 
 def test_httpdate_with_utc_aware_datetime() -> None:
     """Test httpdate with a UTC-aware datetime."""
-    dt_utc = dt.datetime(2015, 4, 14, 19, 16, 44, tzinfo=dt.timezone.utc)
+    dt_utc = dt.datetime(2015, 4, 14, 19, 16, 44, tzinfo=dt.UTC)
     result = httpdate(dt_utc)
     assert result == "Tue, 14 Apr 2015 19:16:44 GMT"
 
@@ -909,7 +909,7 @@ def test_httpdate_with_non_utc_timezone() -> None:
 
 def test_httpdate_edge_case_leap_year() -> None:
     """Test httpdate with a leap year date."""
-    dt_leap = dt.datetime(2020, 2, 29, 12, 0, 0, tzinfo=dt.timezone.utc)
+    dt_leap = dt.datetime(2020, 2, 29, 12, 0, 0, tzinfo=dt.UTC)
     result = httpdate(dt_leap)
     assert result == "Sat, 29 Feb 2020 12:00:00 GMT"
 
@@ -922,7 +922,7 @@ def test_httpdate_invalid_input() -> None:
 
 def test_httpdate_locale_independence() -> None:
     """httpdate should not be affected by the process locale."""
-    test_dt = dt.datetime(2024, 7, 22, 14, 30, 0, tzinfo=dt.timezone.utc)
+    test_dt = dt.datetime(2024, 7, 22, 14, 30, 0, tzinfo=dt.UTC)
 
     original_locale = locale.setlocale(locale.LC_TIME)
     try:
@@ -1995,7 +1995,7 @@ def test_next_occurrence_applies_dst_policy() -> None:
 def test_time_until_next_occurrence_timezone_branches() -> None:
     """Test time_until_next_occurrence with various timezone combinations."""
     # Test when from_time is None and target_time has tzinfo
-    target_with_tz = dt.datetime(2024, 7, 22, 14, 0, 0, tzinfo=dt.timezone.utc)
+    target_with_tz = dt.datetime(2024, 7, 22, 14, 0, 0, tzinfo=dt.UTC)
     # This path uses datetime.now(target_time.tzinfo) internally
     delta = time_until_next_occurrence(target_with_tz)
     assert isinstance(delta, dt.timedelta)
@@ -2007,12 +2007,12 @@ def test_time_until_next_occurrence_timezone_branches() -> None:
 
     # Test when target_time has no tzinfo but from_time does
     target_naive = dt.datetime(2024, 7, 22, 14, 0, 0)
-    from_time_with_tz = dt.datetime(2024, 7, 22, 10, 0, 0, tzinfo=dt.timezone.utc)
+    from_time_with_tz = dt.datetime(2024, 7, 22, 10, 0, 0, tzinfo=dt.UTC)
     delta = time_until_next_occurrence(target_naive, from_time_with_tz)
     assert delta == dt.timedelta(hours=4)
 
     # Test when target_time has tzinfo but from_time doesn't
-    target_with_tz = dt.datetime(2024, 7, 22, 14, 0, 0, tzinfo=dt.timezone.utc)
+    target_with_tz = dt.datetime(2024, 7, 22, 14, 0, 0, tzinfo=dt.UTC)
     from_time_naive = dt.datetime(2024, 7, 22, 10, 0, 0)
     delta = time_until_next_occurrence(target_with_tz, from_time_naive)
     assert delta == dt.timedelta(hours=4)
@@ -2068,7 +2068,7 @@ def test_next_occurrence_preserves_zoneinfo_time_support() -> None:
 def test_time_until_next_occurrence_across_timezones() -> None:
     """Cross-timezone comparisons should never produce negative durations."""
     target_auckland = dt.datetime(2023, 6, 1, 9, 30, 0, tzinfo=ZoneInfo("Pacific/Auckland"))
-    from_utc = dt.datetime(2024, 1, 1, 21, 0, 0, tzinfo=dt.timezone.utc)
+    from_utc = dt.datetime(2024, 1, 1, 21, 0, 0, tzinfo=dt.UTC)
 
     delta = time_until_next_occurrence(target_auckland, from_utc)
     assert delta == dt.timedelta(hours=23, minutes=30)

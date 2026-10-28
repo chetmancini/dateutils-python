@@ -47,7 +47,7 @@ print(workdays)
 
 import calendar
 from collections.abc import Generator, Iterable
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 from email.utils import format_datetime as _format_http_datetime
 from functools import lru_cache
 from typing import NamedTuple
@@ -76,7 +76,7 @@ WEEKDAYS_IN_WEEK = 5
 _FEBRUARY = 2
 _LEAP_DAY = 29
 _FEB_28 = 28
-_UNIX_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+_UNIX_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 ParseError = _parsing.ParseError
 parse_date = _parsing.parse_date
@@ -113,7 +113,7 @@ def utc_now_seconds() -> int:
     Returns:
         int: Current UTC time as Unix timestamp (seconds since epoch)
     """
-    return int(datetime.now(timezone.utc).timestamp())
+    return int(datetime.now(UTC).timestamp())
 
 
 def utc_today() -> date:
@@ -123,7 +123,7 @@ def utc_today() -> date:
     Returns:
         date: Current UTC date
     """
-    return datetime.now(timezone.utc).date()
+    return datetime.now(UTC).date()
 
 
 def utc_truncate_epoch_day(ts: int) -> int:
@@ -140,7 +140,7 @@ def utc_truncate_epoch_day(ts: int) -> int:
         ValueError: If timestamp is invalid
     """
     try:
-        dt = datetime.fromtimestamp(ts, timezone.utc)
+        dt = datetime.fromtimestamp(ts, UTC)
         dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
         return epoch_s(dt)
     except (ValueError, OSError, OverflowError) as e:
@@ -161,7 +161,7 @@ def utc_from_timestamp(ts: int) -> datetime:
         ValueError: If timestamp is invalid
     """
     try:
-        return datetime.fromtimestamp(ts, timezone.utc)
+        return datetime.fromtimestamp(ts, UTC)
     except (ValueError, OSError, OverflowError) as e:
         raise ValueError(f"Invalid timestamp: {ts}") from e
 
@@ -1288,17 +1288,17 @@ def _ts_difference(timestamp: float | datetime | None = None, now_override: floa
     """Helper function to calculate time difference for pretty_date."""
     if now_override is not None:
         try:
-            now = datetime.fromtimestamp(now_override, tz=timezone.utc)
+            now = datetime.fromtimestamp(now_override, tz=UTC)
         except (ValueError, OSError, OverflowError) as e:
             raise ValueError(f"Invalid now_override timestamp: {now_override}") from e
     else:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
     if timestamp is None:
         return timedelta(0)
     if isinstance(timestamp, (int, float)):
         try:
-            ts_dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+            ts_dt = datetime.fromtimestamp(timestamp, tz=UTC)
         except (ValueError, OSError, OverflowError) as e:
             raise ValueError(f"Invalid timestamp: {timestamp}") from e
         return now - ts_dt
@@ -1622,7 +1622,7 @@ def age_in_years(birth_date: date, as_of_date: date | None = None) -> int:
 
 def _round_trip_through_utc(occurrence: datetime) -> datetime:
     """Normalize an aware local datetime by converting through the UTC timeline."""
-    return occurrence.astimezone(timezone.utc).astimezone(occurrence.tzinfo)
+    return occurrence.astimezone(UTC).astimezone(occurrence.tzinfo)
 
 
 def _matches_requested_occurrence(normalized: datetime, local_date: date, target_time_of_day: time) -> bool:
@@ -1689,11 +1689,11 @@ def _next_occurrence_details(target_time: datetime | time, from_time: datetime |
     )
 
     if target_time_of_day.tzinfo is not None:
-        from_time_utc = from_time_in_target_tz.astimezone(timezone.utc)
+        from_time_utc = from_time_in_target_tz.astimezone(UTC)
         candidate_date = from_time_in_target_tz.date()
         occurrence = _aware_occurrence_on_date(candidate_date, target_time_of_day)
 
-        if occurrence.astimezone(timezone.utc) <= from_time_utc:
+        if occurrence.astimezone(UTC) <= from_time_utc:
             occurrence = _aware_occurrence_on_date(candidate_date + timedelta(days=1), target_time_of_day)
 
         return occurrence, from_time_utc
@@ -1787,5 +1787,5 @@ def time_until_next_occurrence(target_time: datetime | time, from_time: datetime
     """
     occurrence, reference_time = _next_occurrence_details(target_time, from_time)
     if occurrence.tzinfo is not None:
-        return occurrence.astimezone(timezone.utc) - reference_time
+        return occurrence.astimezone(UTC) - reference_time
     return occurrence - reference_time

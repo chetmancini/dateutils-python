@@ -94,7 +94,7 @@ def test_today_in_timezone() -> None:
 def test_convert_timezone() -> None:
     """Test converting datetime between timezones."""
     # Create a datetime in UTC
-    utc_dt = dt.datetime(2024, 3, 27, 12, 0, 0, tzinfo=dt.timezone.utc)
+    utc_dt = dt.datetime(2024, 3, 27, 12, 0, 0, tzinfo=dt.UTC)
 
     # Convert to New York (EDT in March 2024, UTC-4)
     ny_dt = convert_timezone(utc_dt, "America/New_York")
@@ -138,9 +138,9 @@ def test_localize_datetime() -> None:
 
 def test_localize_datetime_accepts_tzinfo_instances() -> None:
     """A tzinfo instance can be used instead of an IANA timezone name."""
-    localized = localize_datetime(dt.datetime(2024, 7, 22, 10, 30), dt.timezone.utc)
+    localized = localize_datetime(dt.datetime(2024, 7, 22, 10, 30), dt.UTC)
 
-    assert localized == dt.datetime(2024, 7, 22, 10, 30, tzinfo=dt.timezone.utc)
+    assert localized == dt.datetime(2024, 7, 22, 10, 30, tzinfo=dt.UTC)
 
 
 def test_localize_datetime_accepts_indeterminate_timezones() -> None:
@@ -157,9 +157,9 @@ def test_timezone_functions_accept_tzinfo_instances() -> None:
     """All public timezone-parameter APIs accept tzinfo instances as well as names."""
     fixed_offset = dt.timezone(dt.timedelta(hours=5, minutes=30))
 
-    assert now_in_timezone(dt.timezone.utc).tzinfo == dt.timezone.utc
-    assert today_in_timezone(dt.timezone.utc) == dt.date(2024, 7, 22)
-    assert convert_timezone(dt.datetime(2024, 7, 22, 10, 30, tzinfo=dt.timezone.utc), fixed_offset) == dt.datetime(
+    assert now_in_timezone(dt.UTC).tzinfo == dt.UTC
+    assert today_in_timezone(dt.UTC) == dt.date(2024, 7, 22)
+    assert convert_timezone(dt.datetime(2024, 7, 22, 10, 30, tzinfo=dt.UTC), fixed_offset) == dt.datetime(
         2024, 7, 22, 16, 0, tzinfo=fixed_offset
     )
     assert get_timezone_offset(fixed_offset) == dt.timedelta(hours=5, minutes=30)
@@ -169,7 +169,7 @@ def test_timezone_functions_accept_tzinfo_instances() -> None:
 def test_localize_datetime_rejects_aware_datetimes_and_invalid_timezones() -> None:
     """Localization only attaches a timezone to naive values."""
     with pytest.raises(ValueError, match="must be naive"):
-        localize_datetime(dt.datetime(2024, 7, 22, 10, 30, tzinfo=dt.timezone.utc), "America/New_York")
+        localize_datetime(dt.datetime(2024, 7, 22, 10, 30, tzinfo=dt.UTC), "America/New_York")
 
     with pytest.raises(ValueError, match="Invalid timezone name"):
         localize_datetime(dt.datetime(2024, 7, 22, 10, 30), "Invalid/Timezone")
@@ -189,8 +189,8 @@ def test_localize_datetime_requires_an_ambiguous_time_policy() -> None:
     latest = localize_datetime(ambiguous, "America/New_York", ambiguous="latest")
     assert earliest.fold == 0
     assert latest.fold == 1
-    assert datetime_to_utc(earliest) == dt.datetime(2024, 11, 3, 5, 30, tzinfo=dt.timezone.utc)
-    assert datetime_to_utc(latest) == dt.datetime(2024, 11, 3, 6, 30, tzinfo=dt.timezone.utc)
+    assert datetime_to_utc(earliest) == dt.datetime(2024, 11, 3, 5, 30, tzinfo=dt.UTC)
+    assert datetime_to_utc(latest) == dt.datetime(2024, 11, 3, 6, 30, tzinfo=dt.UTC)
 
 
 def test_localize_datetime_requires_a_nonexistent_time_policy() -> None:
@@ -228,13 +228,13 @@ def test_datetime_to_utc() -> None:
     # Test with timezone-aware datetime
     ny_dt = dt.datetime(2024, 3, 27, 8, 0, 0, tzinfo=ZoneInfo("America/New_York"))
     utc_dt = datetime_to_utc(ny_dt)
-    assert utc_dt.tzinfo == dt.timezone.utc
+    assert utc_dt.tzinfo == dt.UTC
     assert utc_dt.hour == 12  # 8 EDT = 12 UTC
 
     # Test with naive datetime (assumes UTC, consistent with epoch_s)
     naive_dt = dt.datetime(2024, 3, 27, 12, 0, 0)
     result = datetime_to_utc(naive_dt)
-    assert result.tzinfo == dt.timezone.utc
+    assert result.tzinfo == dt.UTC
     assert result.hour == 12  # Naive datetime assumed to be UTC, so hour unchanged
 
 
@@ -405,7 +405,7 @@ def test_dst_midnight_boundary() -> None:
 
     # Test convert_timezone across midnight during DST transition
     # 11:30 PM EST on March 9 -> should be 11:30 PM same day
-    pre_midnight_utc = dt.datetime(2024, 3, 10, 4, 30, 0, tzinfo=dt.timezone.utc)
+    pre_midnight_utc = dt.datetime(2024, 3, 10, 4, 30, 0, tzinfo=dt.UTC)
     pre_midnight_ny = convert_timezone(pre_midnight_utc, "America/New_York")
     assert pre_midnight_ny.hour == 23
     assert pre_midnight_ny.day == 9  # Still March 9 in NY
@@ -447,7 +447,7 @@ def test_convert_timezone_dst_nonexistent_time() -> None:
 
     # Create a UTC time that would be 2:30 AM EST (which doesn't exist on March 10, 2024)
     # 2:30 AM EST would be 7:30 UTC, but 7:30 UTC on March 10 is actually 3:30 AM EDT
-    utc_time = dt.datetime(2024, 3, 10, 7, 30, 0, tzinfo=dt.timezone.utc)
+    utc_time = dt.datetime(2024, 3, 10, 7, 30, 0, tzinfo=dt.UTC)
     ny_time = convert_timezone(utc_time, "America/New_York")
 
     # 7:30 UTC = 3:30 EDT (since DST has occurred)
@@ -467,7 +467,7 @@ def test_convert_timezone_normalizes_nonexistent_source_time_forward(fold: int) 
     assert normalized.fold == 0
 
     as_utc = convert_timezone(nonexistent, "UTC")
-    assert as_utc == dt.datetime(2024, 3, 10, 7, 30, tzinfo=dt.timezone.utc)
+    assert as_utc == dt.datetime(2024, 3, 10, 7, 30, tzinfo=dt.UTC)
 
 
 def test_convert_timezone_preserves_ambiguous_source_fold() -> None:
@@ -476,8 +476,8 @@ def test_convert_timezone_preserves_ambiguous_source_fold() -> None:
     first = dt.datetime(2024, 11, 3, 1, 30, tzinfo=ny_tz)
     second = first.replace(fold=1)
 
-    assert convert_timezone(first, "UTC") == dt.datetime(2024, 11, 3, 5, 30, tzinfo=dt.timezone.utc)
-    assert convert_timezone(second, "UTC") == dt.datetime(2024, 11, 3, 6, 30, tzinfo=dt.timezone.utc)
+    assert convert_timezone(first, "UTC") == dt.datetime(2024, 11, 3, 5, 30, tzinfo=dt.UTC)
+    assert convert_timezone(second, "UTC") == dt.datetime(2024, 11, 3, 6, 30, tzinfo=dt.UTC)
 
 
 def test_timezone_error_handling() -> None:
@@ -508,7 +508,7 @@ def test_timezone_error_handling() -> None:
         get_timezone_offset,
         format_timezone_offset,
         lambda tz: localize_datetime(dt.datetime(2024, 7, 22, 10, 30), tz),
-        lambda tz: convert_timezone(dt.datetime(2024, 7, 22, 10, 30, tzinfo=dt.timezone.utc), tz),
+        lambda tz: convert_timezone(dt.datetime(2024, 7, 22, 10, 30, tzinfo=dt.UTC), tz),
     ],
 )
 def test_invalid_timezone_names_raise_invalid_timezone_error(call: Any) -> None:
@@ -525,7 +525,7 @@ def test_invalid_timezone_names_raise_invalid_timezone_error(call: Any) -> None:
 
 def test_convert_timezone_validation() -> None:
     """Test that convert_timezone validates inputs properly."""
-    utc_dt = dt.datetime(2024, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc)
+    utc_dt = dt.datetime(2024, 1, 1, 12, 0, 0, tzinfo=dt.UTC)
 
     # Valid conversion should work
     result = convert_timezone(utc_dt, "America/New_York")

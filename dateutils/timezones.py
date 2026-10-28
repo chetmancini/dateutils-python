@@ -2,7 +2,7 @@
 Timezone utilities.
 """
 
-from datetime import date, datetime, timedelta, timezone, tzinfo
+from datetime import UTC, date, datetime, timedelta, tzinfo
 from functools import lru_cache
 from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
@@ -154,13 +154,13 @@ def localize_datetime(
 
     first = dt.replace(tzinfo=target_tz, fold=0)
     second = dt.replace(tzinfo=target_tz, fold=1)
-    first_round_trip = first.astimezone(timezone.utc).astimezone(target_tz).replace(tzinfo=None)
-    second_round_trip = second.astimezone(timezone.utc).astimezone(target_tz).replace(tzinfo=None)
+    first_round_trip = first.astimezone(UTC).astimezone(target_tz).replace(tzinfo=None)
+    second_round_trip = second.astimezone(UTC).astimezone(target_tz).replace(tzinfo=None)
 
     if dt not in (first_round_trip, second_round_trip):
         if nonexistent == "raise":
             raise ValueError(f"Local time {dt!s} does not exist in timezone {tz!r}")
-        return first.astimezone(timezone.utc).astimezone(target_tz)
+        return first.astimezone(UTC).astimezone(target_tz)
 
     if first.utcoffset() != second.utcoffset():
         if ambiguous == "raise":
@@ -225,14 +225,14 @@ def convert_timezone(dt: datetime, to_tz: str | tzinfo) -> datetime:
         raise ValueError("Input datetime must include timezone information")
 
     target_tz = _resolve_timezone(to_tz)
-    source_utc = dt.astimezone(timezone.utc)
+    source_utc = dt.astimezone(UTC)
     source_round_trip = source_utc.astimezone(dt.tzinfo)
 
     # A mismatched wall time means the source was inside a spring-forward
     # gap. Normalize with fold=0 so inherited fold state cannot move the
     # nonexistent time backward.
     if source_round_trip.replace(tzinfo=None) != dt.replace(tzinfo=None):
-        source_utc = dt.replace(fold=0).astimezone(timezone.utc)
+        source_utc = dt.replace(fold=0).astimezone(UTC)
 
     return source_utc.astimezone(target_tz)
 
@@ -281,9 +281,9 @@ def datetime_to_utc(dt: datetime) -> datetime:
     """
     if not _is_aware_datetime(dt):
         # Assume UTC for datetimes without a usable offset (consistent with epoch_s).
-        return dt.replace(tzinfo=timezone.utc)
+        return dt.replace(tzinfo=UTC)
 
-    return dt.astimezone(timezone.utc)
+    return dt.astimezone(UTC)
 
 
 def get_timezone_offset(tz: str | tzinfo) -> timedelta:

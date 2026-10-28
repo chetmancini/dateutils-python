@@ -269,7 +269,7 @@ def test_parse_date_errors_include_details() -> None:
 
 def test_parse_datetime() -> None:
     """Test parsing datetime strings in various formats."""
-    assert parse_datetime(" 2024-03-27T14:30:45Z ") == dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.timezone.utc)
+    assert parse_datetime(" 2024-03-27T14:30:45Z ") == dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.UTC)
 
     # Test ISO format with space separator
     assert parse_datetime("2024-03-27 14:30:45") == dt.datetime(2024, 3, 27, 14, 30, 45)
@@ -283,11 +283,11 @@ def test_parse_datetime() -> None:
 
     # Test with timezone designator Z
     with_z = parse_datetime("2024-03-27T14:30:45Z")
-    assert with_z == dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.timezone.utc)
+    assert with_z == dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.UTC)
 
     # Test with microseconds and Z
     with_ms_z = parse_datetime("2024-03-27T14:30:45.123456Z")
-    assert with_ms_z == dt.datetime(2024, 3, 27, 14, 30, 45, 123456, tzinfo=dt.timezone.utc)
+    assert with_ms_z == dt.datetime(2024, 3, 27, 14, 30, 45, 123456, tzinfo=dt.UTC)
 
     # Test with timezone offset with colon (ISO)
     with_tz_colon = parse_datetime("2024-03-27T14:30:45+02:00")
@@ -365,7 +365,7 @@ def test_parse_datetime_invalid_calendar_date_preserves_reason() -> None:
 
 def test_parse_datetime_errors_include_details() -> None:
     """Datetime parsing should raise ParseError with format details on failure."""
-    assert parse_datetime("2024-03-27T14:30:45Z") == dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.timezone.utc)
+    assert parse_datetime("2024-03-27T14:30:45Z") == dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.UTC)
 
     with pytest.raises(ParseError, match="Failed to parse datetime"):
         parse_datetime("not a datetime")
@@ -384,7 +384,7 @@ def test_parse_datetime_errors_include_details() -> None:
 
 def test_parse_iso8601() -> None:
     """Test parsing ISO 8601 formatted strings."""
-    assert parse_iso8601(" 2024-03-27T14:30:45Z ") == dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.timezone.utc)
+    assert parse_iso8601(" 2024-03-27T14:30:45Z ") == dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.UTC)
 
     # Test date only
     assert parse_iso8601("2024-03-27") == dt.datetime(2024, 3, 27)
@@ -398,7 +398,7 @@ def test_parse_iso8601() -> None:
 
     # Test with timezone designator Z
     with_z = parse_iso8601("2024-03-27T14:30:45Z")
-    assert with_z == dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.timezone.utc)
+    assert with_z == dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.UTC)
 
     # Test with timezone offset with colon
     with_tz_colon = parse_iso8601("2024-03-27T14:30:45+02:00")
@@ -519,7 +519,7 @@ def test_parse_iso8601_nanosecond_truncation() -> None:
     result = parse_iso8601("2024-03-27T14:30:45.123456789Z")
     assert result is not None
     assert result.microsecond == 123456
-    assert result.tzinfo == dt.timezone.utc
+    assert result.tzinfo == dt.UTC
 
 
 def test_parse_iso8601_invalid_values_raise() -> None:
@@ -595,7 +595,7 @@ def test_format_datetime() -> None:
     assert format_datetime(test_datetime, "%B %d, %Y, %I:%M %p") == "March 27, 2024, 02:30 PM"
 
     # With timezone
-    test_datetime_tz = dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.timezone.utc)
+    test_datetime_tz = dt.datetime(2024, 3, 27, 14, 30, 45, tzinfo=dt.UTC)
     assert format_datetime(test_datetime_tz, "%Y-%m-%d %H:%M:%S %Z") == "2024-03-27 14:30:45 UTC"
 
 

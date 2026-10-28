@@ -5,7 +5,7 @@ Date parsing and formatting helpers.
 import locale
 import re
 from collections.abc import Iterable
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 from typing import Literal
 
 from ._awareness import is_aware_datetime as _is_aware_datetime
@@ -187,7 +187,7 @@ def _parse_date_from_formats(date_str: str, parse_formats: Iterable[str]) -> tup
     for fmt in parse_formats:
         try:
             return datetime.strptime(date_str, fmt).date(), None
-        except ValueError as e:  # noqa: PERF203
+        except ValueError as e:
             if calendar_error is None and _is_calendar_date_value_error(e):
                 calendar_error = e
             continue
@@ -351,9 +351,9 @@ def _parse_datetime_from_formats(
             dt = datetime.strptime(datetime_str, fmt)
             # Handle ISO 8601 format with timezone designator
             if datetime_str.endswith("Z"):
-                dt = dt.replace(tzinfo=timezone.utc)
+                dt = dt.replace(tzinfo=UTC)
             return dt, None
-        except ValueError as e:  # noqa: PERF203
+        except ValueError as e:
             if calendar_error is None and _is_calendar_date_value_error(e):
                 calendar_error = e
             continue
@@ -481,7 +481,7 @@ def _parse_iso8601_unchecked(iso_str: str) -> datetime:
     # Handle timezone
     if tz_part:
         if tz_part == "Z":
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         else:
             # Convert +HH:MM or +HHMM to ±HHMM and validate components
             tz_digits = tz_part.replace(":", "")
@@ -545,6 +545,6 @@ def to_iso8601(dt: date | datetime) -> str:
     # It's a datetime
     if not _is_aware_datetime(dt):
         # Assume UTC for datetimes without a usable UTC offset.
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
 
     return dt.isoformat()
