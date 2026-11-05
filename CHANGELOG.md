@@ -5,10 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
--
+- Add Python 3.16 (3.16.0a1) to the CI test matrix (non-blocking).
 
 ### Changed
--
+- Bump the development Python from 3.14.8 to 3.14.10.
 
 ### Fixed
 -

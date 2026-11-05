@@ -353,7 +353,7 @@ except ValueError as e:
 
 ## Running Tests
 
-Development uses Python 3.14.8 (pinned in `.python-version`) and uv 0.12.23 or newer.
+Development uses Python 3.14.10 (pinned in `.python-version`) and uv 0.12.23 or newer.
 
 ### Makefile
 ```sh

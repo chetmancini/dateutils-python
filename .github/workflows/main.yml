@@ -22,7 +22,7 @@ jobs:
           version: "0.12.23"
           enable-cache: true
           cache-dependency-glob: "uv.lock"
-          python-version: "3.14.8"
+          python-version: "3.14.10"
 
       - name: Install the project
         run: uv sync --locked --all-extras --dev
@@ -48,7 +48,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15", "3.16"]
+    # 3.16 is an alpha (3.16.0a1); track it without gating the build.
+    continue-on-error: ${{ matrix.python-version == '3.16' }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
