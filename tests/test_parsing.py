@@ -352,6 +352,55 @@ def test_parse_datetime() -> None:
         parse_datetime("2024-03-27T14:30:45+25:00")  # Invalid timezone offset
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("2024-03-27 14:30:45.123456", dt.datetime(2024, 3, 27, 14, 30, 45, 123456)),
+        ("2024/03/27 14:30:45.123456", dt.datetime(2024, 3, 27, 14, 30, 45, 123456)),
+        (
+            "2024-03-27 14:30:45.123456+02:00",
+            dt.datetime(2024, 3, 27, 14, 30, 45, 123456, tzinfo=dt.timezone(dt.timedelta(hours=2))),
+        ),
+        (
+            "2024-03-27 14:30:45.123456-0500",
+            dt.datetime(2024, 3, 27, 14, 30, 45, 123456, tzinfo=dt.timezone(dt.timedelta(hours=-5))),
+        ),
+        (
+            "2024-03-27 14:30:45.123456 +02:00",
+            dt.datetime(2024, 3, 27, 14, 30, 45, 123456, tzinfo=dt.timezone(dt.timedelta(hours=2))),
+        ),
+    ],
+)
+def test_parse_datetime_space_fractional_seconds(value: str, expected: dt.datetime) -> None:
+    assert parse_datetime(value) == expected
+
+
+@pytest.mark.parametrize(
+    ("dayfirst", "expected"),
+    [
+        (False, dt.datetime(2024, 3, 4, 12, 0, 0, 123456)),
+        (True, dt.datetime(2024, 4, 3, 12, 0, 0, 123456)),
+    ],
+)
+def test_parse_datetime_space_fractional_respects_dayfirst(dayfirst: bool, expected: dt.datetime) -> None:
+    assert parse_datetime("03/04/2024 12:00:00.123456", dayfirst=dayfirst) == expected
+
+
+def test_parse_datetime_space_fractional_ambiguity() -> None:
+    assert parse_datetime("22/07/2024 12:00:00.123456", ambiguous="reject") == dt.datetime(
+        2024, 7, 22, 12, 0, 0, 123456
+    )
+    with pytest.raises(ParseError, match="ambiguous numeric date"):
+        parse_datetime("03/04/2024 12:00:00.123456", ambiguous="reject")
+
+
+def test_parse_datetime_space_fractional_invalid_calendar_date() -> None:
+    with pytest.raises(ParseError) as exc_info:
+        parse_datetime("2024-02-30 12:00:00.123456")
+
+    assert "invalid calendar date" in _parse_error(exc_info).reason
+
+
 def test_parse_datetime_invalid_calendar_date_preserves_reason() -> None:
     """Invalid but recognizable datetime calendar dates should raise a specific ParseError."""
     with pytest.raises(ParseError) as exc_info:
