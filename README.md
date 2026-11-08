@@ -211,6 +211,16 @@ timezones = get_available_timezones()  # List of all available timezone names
 offset = get_timezone_offset("America/New_York")  # Returns timedelta
 offset_str = format_timezone_offset("America/New_York")  # Returns "-05:00" or "-04:00" (DST)
 
+# An aware `at` is an instant and converts to the target zone; a naive `at`
+# is target-zone wall time, where fold selects a repeated occurrence and
+# DST gaps normalize forward.
+summer_instant = datetime(2024, 7, 15, 12, 0, tzinfo=timezone.utc)
+summer_offset = get_timezone_offset("America/New_York", at=summer_instant)  # timedelta(hours=-4)
+summer_offset_str = format_timezone_offset("America/New_York", at=summer_instant)  # "-04:00"
+
+winter_wall_time = datetime(2024, 1, 15, 12, 0)
+winter_offset_str = format_timezone_offset("America/New_York", at=winter_wall_time)  # "-05:00"
+
 # Every timezone function that accepts a name or tzinfo instance raises
 # InvalidTimezoneError for an unknown name (a ValueError subclass)
 try:

@@ -1,4 +1,5 @@
 import datetime as dt
+import inspect
 from typing import Any, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -327,6 +328,92 @@ def test_format_timezone_offset_dst_variance() -> None:
         assert format_timezone_offset("UTC") == "+00:00"
     with freeze_time("2024-07-15 12:00:00", tz_offset=0):
         assert format_timezone_offset("UTC") == "+00:00"
+
+
+def test_get_timezone_offset_uses_current_moment_by_default() -> None:
+    """No-`at` calls keep current-moment behavior for get_timezone_offset."""
+    with freeze_time("2024-01-15 12:00:00", tz_offset=0):
+        assert get_timezone_offset("America/New_York") == dt.timedelta(hours=-5)
+    with freeze_time("2024-07-15 12:00:00", tz_offset=0):
+        assert get_timezone_offset("America/New_York") == dt.timedelta(hours=-4)
+
+
+def test_timezone_offset_explicit_winter_and_summer_wall_times() -> None:
+    """Naive explicit `at` values are New York wall times, not UTC instants."""
+    assert get_timezone_offset("America/New_York", at=dt.datetime(2024, 1, 15, 12)) == dt.timedelta(hours=-5)
+    assert format_timezone_offset("America/New_York", at=dt.datetime(2024, 1, 15, 12)) == "-05:00"
+    assert get_timezone_offset("America/New_York", at=dt.datetime(2024, 7, 15, 12)) == dt.timedelta(hours=-4)
+    assert format_timezone_offset("America/New_York", at=dt.datetime(2024, 7, 15, 12)) == "-04:00"
+
+
+def test_timezone_offset_aware_at_converts_across_zones() -> None:
+    """An aware `at` is an instant; its source-zone local fields do not matter."""
+    tokyo = ZoneInfo("Asia/Tokyo")
+    summer_instant = dt.datetime(2024, 7, 15, 21, tzinfo=tokyo)  # 12:00 UTC
+    winter_instant = dt.datetime(2024, 1, 15, 21, tzinfo=tokyo)  # 12:00 UTC
+    assert get_timezone_offset("America/New_York", at=summer_instant) == dt.timedelta(hours=-4)
+    assert format_timezone_offset("America/New_York", at=summer_instant) == "-04:00"
+    assert get_timezone_offset("America/New_York", at=winter_instant) == dt.timedelta(hours=-5)
+
+
+def test_timezone_offset_naive_at_matches_localized_equivalent() -> None:
+    """A naive non-transition wall time equals its explicitly localized equivalent."""
+    wall_time = dt.datetime(2024, 4, 10, 10, 30)
+    localized = localize_datetime(wall_time, "America/New_York")
+    assert get_timezone_offset("America/New_York", at=wall_time) == (localized.utcoffset() or dt.timedelta(0))
+
+    fixed = dt.timezone(dt.timedelta(hours=5, minutes=30))
+    assert get_timezone_offset(fixed, at=dt.datetime(2024, 7, 15, 12)) == dt.timedelta(hours=5, minutes=30)
+    assert format_timezone_offset(fixed, at=dt.datetime(2024, 7, 15, 12)) == "+05:30"
+
+
+@pytest.mark.parametrize(
+    ("fold", "expected_offset", "expected_text"),
+    [
+        (0, dt.timedelta(hours=-4), "-04:00"),
+        (1, dt.timedelta(hours=-5), "-05:00"),
+    ],
+)
+def test_timezone_offset_honors_fold_for_ambiguous_wall_times(
+    fold: int, expected_offset: dt.timedelta, expected_text: str
+) -> None:
+    """Repeated fall-back wall times honor `fold` and never raise the ambiguity error."""
+    repeated = dt.datetime(2024, 11, 3, 1, 30).replace(fold=fold)
+    assert get_timezone_offset("America/New_York", at=repeated) == expected_offset
+    assert format_timezone_offset("America/New_York", at=repeated) == expected_text
+
+
+@pytest.mark.parametrize("fold", [0, 1])
+def test_timezone_offset_shifts_nonexistent_wall_time_forward(fold: int) -> None:
+    """Spring-forward gaps normalize forward regardless of inherited fold state."""
+    gap_wall_time = dt.datetime(2024, 3, 10, 2, 30).replace(fold=fold)
+    assert get_timezone_offset("America/New_York", at=gap_wall_time) == dt.timedelta(hours=-4)
+    assert format_timezone_offset("America/New_York", at=gap_wall_time) == "-04:00"
+
+
+@pytest.mark.parametrize("bad_at", [cast(Any, "2024-07-15"), cast(Any, dt.date(2024, 7, 15))])
+def test_timezone_offset_rejects_non_datetime_at(bad_at: Any) -> None:
+    """Both offset APIs reject non-datetime, non-None `at` values."""
+    with pytest.raises(TypeError, match="at must be a datetime or None"):
+        get_timezone_offset("America/New_York", at=bad_at)
+    with pytest.raises(TypeError, match="at must be a datetime or None"):
+        format_timezone_offset("America/New_York", at=bad_at)
+
+
+def test_timezone_offset_at_is_keyword_only() -> None:
+    """Both offset APIs accept `at` only as a keyword argument defaulting to None."""
+    for signature in (inspect.signature(get_timezone_offset), inspect.signature(format_timezone_offset)):
+        at_parameter = signature.parameters["at"]
+        assert at_parameter.kind is inspect.Parameter.KEYWORD_ONLY
+        assert at_parameter.default is None
+
+
+def test_timezone_offset_invalid_zone_with_at_is_unchanged() -> None:
+    """Invalid zone names still raise InvalidTimezoneError when `at` is given."""
+    with pytest.raises(InvalidTimezoneError, match="Invalid timezone name 'Invalid/Zone'"):
+        get_timezone_offset("Invalid/Zone", at=dt.datetime(2024, 7, 15, 12))
+    with pytest.raises(InvalidTimezoneError, match="Invalid timezone name 'Bad_TZ'"):
+        format_timezone_offset("Bad_TZ", at=dt.datetime(2024, 7, 15, 12))
 
 
 def test_dst_transitions() -> None:
