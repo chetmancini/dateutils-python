@@ -346,7 +346,7 @@ business_calendar = BusinessCalendar(
 )
 business_calendar.is_business_day(date(2024, 7, 4))  # False (Independence Day)
 business_calendar.add_business_days(date(2024, 7, 3), 1)  # date(2024, 7, 7)
-business_calendar.workdays_between(date(2024, 7, 1), date(2024, 7, 7))  # 3
+business_calendar.workdays_between(date(2024, 7, 1), date(2024, 7, 7))  # 4
 ```
 
 The five business-day methods match the module-level semantics: inclusive
