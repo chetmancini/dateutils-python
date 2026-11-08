@@ -356,6 +356,16 @@ def test_timezone_offset_aware_at_converts_across_zones() -> None:
     assert get_timezone_offset("America/New_York", at=winter_instant) == dt.timedelta(hours=-5)
 
 
+def test_timezone_offset_aware_gap_instant_preserves_instant() -> None:
+    """Aware values inside a spring-forward gap keep their attached instant."""
+    ny = ZoneInfo("America/New_York")
+    gap_dt = dt.datetime(2024, 3, 10, 3, 30, tzinfo=ny).replace(hour=2, fold=1)  # 02:30-04:00
+    assert gap_dt.astimezone(dt.UTC) == dt.datetime(2024, 3, 10, 6, 30, tzinfo=dt.UTC)
+    # 06:30 UTC is 01:30 EST in New York, before the 07:00 UTC transition.
+    assert get_timezone_offset("America/New_York", at=gap_dt) == dt.timedelta(hours=-5)
+    assert format_timezone_offset("America/New_York", at=gap_dt) == "-05:00"
+
+
 def test_timezone_offset_naive_at_matches_localized_equivalent() -> None:
     """A naive non-transition wall time equals its explicitly localized equivalent."""
     wall_time = dt.datetime(2024, 4, 10, 10, 30)

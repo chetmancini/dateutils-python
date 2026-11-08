@@ -354,7 +354,12 @@ def get_timezone_offset(tz: str | tzinfo, *, at: datetime | None = None) -> time
     if not isinstance(at, datetime):
         raise TypeError("at must be a datetime or None")
     if _is_aware_datetime(at):
-        localized = convert_timezone(at, target_tz)
+        # Interpret the input as an instant via its attached offset. The
+        # UTC hop prevents astimezone from returning self unchanged when the
+        # target resolves to the same ZoneInfo instance, and skips
+        # convert_timezone's wall-time gap normalization, which would
+        # renormalize values constructed inside a spring-forward gap.
+        localized = at.astimezone(UTC).astimezone(target_tz)
     else:
         localized = localize_datetime(
             at,
