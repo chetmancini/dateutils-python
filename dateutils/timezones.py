@@ -313,12 +313,17 @@ def datetime_to_utc(dt: datetime) -> datetime:
     return dt.astimezone(UTC)
 
 
-def get_timezone_offset(tz: str | tzinfo) -> timedelta:
+def get_timezone_offset(tz: str | tzinfo, *, at: datetime | None = None) -> timedelta:
     """
-    Get the current offset from UTC for a timezone
+    Get the offset from UTC for a timezone at a specified instant or wall time
 
     Args:
         tz: IANA timezone name or a ``tzinfo`` instance.
+        at: Optional datetime. Omitted (or ``None``) uses the current moment.
+            An aware value represents an instant and is converted to ``tz``.
+            A value without a usable UTC offset is treated as ``tz`` local
+            wall time; repeated times honor ``fold`` (0 = earliest, 1 =
+            latest) and nonexistent times shift forward.
 
     Returns:
         Timedelta representing the offset from UTC
@@ -327,57 +332,107 @@ def get_timezone_offset(tz: str | tzinfo) -> timedelta:
         InvalidTimezoneError: If the timezone name is invalid. Subclasses both
             ``ValueError`` and ``zoneinfo.ZoneInfoNotFoundError``.
         TypeError: If ``tz`` is neither a timezone name nor a ``tzinfo`` instance.
+        TypeError: If ``at`` is neither a :class:`datetime.datetime` nor ``None``.
 
     Examples:
-        >>> from datetime import timedelta, timezone
+        >>> from datetime import datetime, timedelta, timezone
         >>> get_timezone_offset(timezone(timedelta(hours=5, minutes=45)))
         datetime.timedelta(seconds=20700)
+
+        >>> get_timezone_offset("America/New_York", at=datetime(2024, 1, 15, 12)) == timedelta(hours=-5)
+        True
 
         >>> get_timezone_offset("Invalid/Timezone")
         Traceback (most recent call last):
         ...
         dateutils.timezones.InvalidTimezoneError: Invalid timezone name 'Invalid/Timezone'. Use get_available_timezones() to see valid options.
     """
-    now = datetime.now(_resolve_timezone(tz))
-    return now.utcoffset() or timedelta(0)
+    target_tz = _resolve_timezone(tz)
+    if at is None:
+        now = datetime.now(target_tz)
+        return now.utcoffset() or timedelta(0)
+    if not isinstance(at, datetime):
+        raise TypeError("at must be a datetime or None")
+    if _is_aware_datetime(at):
+        # Interpret the input as an instant via its attached offset. The
+        # UTC hop prevents astimezone from returning self unchanged when the
+        # target resolves to the same ZoneInfo instance, and skips
+        # convert_timezone's wall-time gap normalization, which would
+        # renormalize values constructed inside a spring-forward gap.
+        localized = at.astimezone(UTC).astimezone(target_tz)
+    else:
+        localized = localize_datetime(
+            at,
+            target_tz,
+            ambiguous="latest" if at.fold else "earliest",
+            nonexistent="shift_forward",
+        )
+    return localized.utcoffset() or timedelta(0)
 
 
-def format_timezone_offset(tz: str | tzinfo) -> str:
+def format_timezone_offset(tz: str | tzinfo, *, at: datetime | None = None) -> str:
     """
-    Get the current offset from UTC for a timezone as a formatted string.
+    Get the offset from UTC for a timezone as a formatted string.
 
     Args:
         tz: IANA timezone name or a ``tzinfo`` instance.
+        at: Optional datetime. Omitted (or ``None``) uses the current moment.
+            An aware value represents an instant and is converted to ``tz``.
+            A value without a usable UTC offset is treated as ``tz`` local
+            wall time; repeated times honor ``fold`` (0 = earliest, 1 =
+            latest) and nonexistent times shift forward.
 
     Returns:
-        String in format "+HH:MM" or "-HH:MM"
+        String in format "+HH:MM" or "-HH:MM"; a ":SS" seconds component is
+        included when the offset is not a whole number of minutes, and a
+        ".ffffff" fraction when the offset carries sub-second precision.
 
     Raises:
         InvalidTimezoneError: If the timezone name is invalid. Subclasses both
             ``ValueError`` and ``zoneinfo.ZoneInfoNotFoundError``.
         TypeError: If ``tz`` is neither a timezone name nor a ``tzinfo`` instance.
+        TypeError: If ``at`` is neither a :class:`datetime.datetime` nor ``None``.
 
     Examples:
-        >>> from datetime import timedelta, timezone
+        >>> from datetime import datetime, timedelta, timezone
         >>> format_timezone_offset(timezone(timedelta(hours=5, minutes=45)))
         '+05:45'
 
+        >>> format_timezone_offset("America/New_York", at=datetime(2024, 1, 15, 12))
+        '-05:00'
+
+        >>> format_timezone_offset(timezone(timedelta(hours=5, minutes=45, seconds=30)))
+        '+05:45:30'
+
+        >>> format_timezone_offset(timezone(timedelta(microseconds=-500000)))
+        '-00:00:00.500000'
+
     Note:
-        Returns the offset at the **current moment**. For DST zones, this varies
-        throughout the year. For example, "America/New_York" returns "-05:00" in
-        winter (EST) and "-04:00" in summer (EDT).
+        Returns the offset at the **current moment** unless ``at`` is given.
+        An aware ``at`` represents an instant and is converted to the target
+        zone; a naive ``at`` is target-zone wall time, where ``fold`` selects
+        a repeated occurrence and DST gaps normalize forward. For example::
 
-        To get the offset at a specific time, use::
-
-            dt = datetime(2024, 7, 15, tzinfo=ZoneInfo(tz_name))
-            offset = dt.utcoffset()
+            format_timezone_offset("America/New_York", at=datetime(2024, 7, 15, 12))
     """
-    offset = get_timezone_offset(tz)
+    offset = get_timezone_offset(tz, at=at)
 
-    # Convert timedelta to hours and minutes
-    total_seconds = int(offset.total_seconds())
-    hours, remainder = divmod(abs(total_seconds), _SECONDS_IN_HOUR)
-    minutes, _ = divmod(remainder, _SECONDS_IN_MINUTE)
+    # Convert timedelta to hours, minutes, and seconds without truncation:
+    # int(total_seconds()) would discard sub-second offsets entirely,
+    # flipping the sign of a negative fraction.
+    total = abs(offset)
+    total_seconds = total.days * 86400 + total.seconds
+    hours, remainder = divmod(total_seconds, _SECONDS_IN_HOUR)
+    minutes, seconds = divmod(remainder, _SECONDS_IN_MINUTE)
 
-    sign = "-" if total_seconds < 0 else "+"
+    sign = "-" if offset < timedelta(0) else "+"
+    if total.microseconds:
+        # Caller-supplied tzinfo objects can carry sub-second precision;
+        # keep it exact rather than rounding to the nearest second.
+        return f"{sign}{hours:02d}:{minutes:02d}:{seconds:02d}.{total.microseconds:06d}"
+    if seconds:
+        # Historical or fixed offsets can carry whole seconds (for example,
+        # Africa/Monrovia was -00:44:30 until 1972); dropping them would
+        # silently change the offset.
+        return f"{sign}{hours:02d}:{minutes:02d}:{seconds:02d}"
     return f"{sign}{hours:02d}:{minutes:02d}"
