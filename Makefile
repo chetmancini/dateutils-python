@@ -80,22 +80,24 @@ typecheck: ## Run static type checking with ty
 	@uv run ty check dateutils tests
 
 # Testing
+PYTEST_COV_ARGS = --cov=dateutils --cov=scripts --cov-report=term-missing
+
 test: ## Run tests
 	@echo "${BLUE}Running tests...${NC}"
-	@uv run pytest
+	@uv run pytest $(PYTEST_COV_ARGS)
 
 test-fast: ## Run tests without coverage
 	@echo "${BLUE}Running fast tests...${NC}"
-	@uv run pytest --no-cov
+	@uv run pytest
 
 coverage: ## Run tests with coverage report
 	@echo "${BLUE}Running tests with coverage...${NC}"
-	@uv run pytest --cov=dateutils
+	@uv run pytest $(PYTEST_COV_ARGS)
 	@echo "${GREEN}✓ Coverage report generated${NC}"
 
 coverage-html: ## Generate HTML coverage report
 	@echo "${BLUE}Generating HTML coverage report...${NC}"
-	@uv run pytest --cov=dateutils --cov-report=html
+	@uv run pytest $(PYTEST_COV_ARGS) --cov-report=html
 	@echo "${GREEN}✓ HTML coverage report generated in htmlcov/${NC}"
 
 watch-test: ## Run tests in watch mode (requires entr)

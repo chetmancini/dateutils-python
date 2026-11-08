@@ -145,7 +145,7 @@ def test_get_commits_since_tag_builds_commands_and_parses_output(monkeypatch: py
     ]
 
 
-def test_get_changed_files_builds_commands_and_handles_empty_output(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_added_files_builds_commands_and_handles_empty_output(monkeypatch: pytest.MonkeyPatch) -> None:
     commands: list[list[str]] = []
     outputs = iter(["", "src/dateutils.py\nscripts/update_changelog.py"])
 
@@ -155,14 +155,14 @@ def test_get_changed_files_builds_commands_and_handles_empty_output(monkeypatch:
 
     monkeypatch.setattr(update_changelog_script, "run_git_command", fake_run_git_command)
 
-    assert update_changelog_script.get_changed_files("") == set()
-    assert update_changelog_script.get_changed_files("v0.6.0") == {
+    assert update_changelog_script.get_added_files("") == set()
+    assert update_changelog_script.get_added_files("v0.6.0") == {
         "src/dateutils.py",
         "scripts/update_changelog.py",
     }
     assert commands == [
         ["ls-files"],
-        ["diff", "--name-only", "v0.6.0..HEAD"],
+        ["diff", "--name-only", "--diff-filter=A", "v0.6.0..HEAD"],
     ]
 
 
@@ -215,11 +215,11 @@ def test_categorize_by_keywords_covers_all_categories_and_default() -> None:
     assert update_changelog_script._categorize_by_keywords("document release behavior") == "changed"
 
 
-def test_analyze_file_changes_covers_empty_nonmatching_and_matching_files() -> None:
-    assert update_changelog_script._analyze_file_changes(set()) == []
-    assert update_changelog_script._analyze_file_changes({"", "src/dateutils.py"}) == []
-    assert update_changelog_script._analyze_file_changes({"new_parser.py"}) == ["Added 1 new file"]
-    assert update_changelog_script._analyze_file_changes({"add_parser.py", "new_timezone.py"}) == ["Added 2 new files"]
+def test_analyze_added_files_counts_all_nonblank_paths() -> None:
+    assert update_changelog_script._analyze_added_files(set()) == []
+    assert update_changelog_script._analyze_added_files({""}) == []
+    assert update_changelog_script._analyze_added_files({"dateutils/parsing.py"}) == ["Added 1 new file"]
+    assert update_changelog_script._analyze_added_files({"README.md", "scripts/release.py"}) == ["Added 2 new files"]
 
 
 def test_categorize_changes_handles_empty_inputs() -> None:
@@ -244,7 +244,7 @@ def test_categorize_changes_categorizes_commits_and_suppresses_duplicates() -> N
         update_changelog_script.Commit("10", "   ", ""),
     ]
 
-    changes = update_changelog_script.categorize_changes(commits, {"new_parser.py", "src/dateutils.py"})
+    changes = update_changelog_script.categorize_changes(commits, {"dateutils/parsing.py"})
 
     assert changes == {
         "added": ["add parser", "introduce timezone support", "feat: add parser", "Added 1 new file"],
@@ -429,7 +429,7 @@ All notable changes to this project will be documented in this file.
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(update_changelog_script, "get_latest_tag", lambda: "v0.6.0")
     monkeypatch.setattr(update_changelog_script, "get_commits_since_tag", lambda _tag: [])
-    monkeypatch.setattr(update_changelog_script, "get_changed_files", lambda _tag: set())
+    monkeypatch.setattr(update_changelog_script, "get_added_files", lambda _tag: set())
     monkeypatch.setattr(update_changelog_script, "CHANGELOG_PATH", Path("CHANGELOG.md"))
 
     update_changelog_script.update_changelog("0.6.1", "2026-04-20")
@@ -465,14 +465,14 @@ def test_update_changelog_creates_populated_entry_without_previous_tag(
         "get_commits_since_tag",
         lambda tag: [update_changelog_script.Commit("abc123", "feat: add parser", "")],
     )
-    monkeypatch.setattr(update_changelog_script, "get_changed_files", lambda tag: {"new_parser.py"})
+    monkeypatch.setattr(update_changelog_script, "get_added_files", lambda tag: {"dateutils/parsing.py"})
 
     update_changelog_script.update_changelog("0.6.1")
 
     content = changelog_path.read_text(encoding="utf-8")
     assert "## [0.6.1] - 2026-04-20" in content
     assert "- Add parser.\n" in content
-    assert "- Added 1 new file.\n" in content
+    assert content.count("- Added 1 new file.\n") == 1
     assert content.count("## [Unreleased]") == 1
     assert update_changelog_script._extract_section_names(content)[:2] == ["Unreleased", "0.6.1"]
 
@@ -494,7 +494,7 @@ def test_update_changelog_prepends_to_file_without_recognized_header(
     monkeypatch.setattr(update_changelog_script, "CHANGELOG_PATH", changelog_path)
     monkeypatch.setattr(update_changelog_script, "get_latest_tag", lambda: "v0.6.0")
     monkeypatch.setattr(update_changelog_script, "get_commits_since_tag", lambda _tag: [])
-    monkeypatch.setattr(update_changelog_script, "get_changed_files", lambda _tag: set())
+    monkeypatch.setattr(update_changelog_script, "get_added_files", lambda _tag: set())
 
     update_changelog_script.update_changelog("0.6.1", "2026-04-20")
 
@@ -530,7 +530,7 @@ All notable changes to this project will be documented in this file.
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(update_changelog_script, "get_latest_tag", lambda: "v0.6.0")
     monkeypatch.setattr(update_changelog_script, "get_commits_since_tag", lambda _tag: [])
-    monkeypatch.setattr(update_changelog_script, "get_changed_files", lambda _tag: set())
+    monkeypatch.setattr(update_changelog_script, "get_added_files", lambda _tag: set())
     monkeypatch.setattr(update_changelog_script, "CHANGELOG_PATH", Path("CHANGELOG.md"))
 
     update_changelog_script.update_changelog("0.6.1", "2026-04-20")
@@ -600,7 +600,7 @@ def _run_update_with_unreleased(
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(update_changelog_script, "get_latest_tag", lambda: "v0.6.0")
     monkeypatch.setattr(update_changelog_script, "get_commits_since_tag", lambda _tag: commits)
-    monkeypatch.setattr(update_changelog_script, "get_changed_files", lambda _tag: set())
+    monkeypatch.setattr(update_changelog_script, "get_added_files", lambda _tag: set())
     monkeypatch.setattr(update_changelog_script, "CHANGELOG_PATH", Path("CHANGELOG.md"))
 
     update_changelog_script.update_changelog("0.6.1", "2026-04-20")
@@ -676,7 +676,7 @@ def test_update_changelog_rejects_unstructured_unreleased_text(monkeypatch: pyte
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(update_changelog_script, "get_latest_tag", lambda: "v0.6.0")
     monkeypatch.setattr(update_changelog_script, "get_commits_since_tag", lambda _tag: [])
-    monkeypatch.setattr(update_changelog_script, "get_changed_files", lambda _tag: set())
+    monkeypatch.setattr(update_changelog_script, "get_added_files", lambda _tag: set())
     monkeypatch.setattr(update_changelog_script, "CHANGELOG_PATH", Path("CHANGELOG.md"))
 
     with pytest.raises(ValueError, match="### subsection heading"):

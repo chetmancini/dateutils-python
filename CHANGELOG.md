@@ -9,9 +9,11 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Bump the development Python from 3.14.8 to 3.14.10.
+- Move pytest coverage flags from global addopts into coverage-owning Make targets so focused tests run normally.
 
 ### Fixed
 - Accept fractional seconds in space-separated parse_datetime inputs, including numeric timezone offsets.
+- Derive generated changelog new-file counts from Git addition status instead of filename keywords.
 
 ## [0.9.0] - 2026-10-27
 
