@@ -105,7 +105,7 @@ watch-test: ## Run tests in watch mode (requires entr)
 	@echo "${BLUE}Watching for changes and running tests...${NC}"
 	@{ find dateutils tests scripts -type f -name '*.py' -print; printf '%s\n' pyproject.toml uv.lock; } | entr -c uv run pytest
 
-doctest: ## Run public module doctests and README Python examples
+doctest: ## Run public module doctests and README/API Python examples
 	@echo "${BLUE}Running doctests...${NC}"
 	@uv run python scripts/validate_docs.py
 	@echo "${GREEN}✓ Doctests passed${NC}"

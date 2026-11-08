@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Add point-in-time timezone offset lookup with aware-instant and local wall-time handling.
 - Add start_of_week and end_of_week helpers with Sunday or Monday week starts.
 - Add immutable BusinessCalendar value objects for custom workweeks and fixed holiday sets.
+- Add a complete validated public API reference in `docs/API.md`, covered by `make check`.
 
 ### Changed
 - Bump the development Python from 3.14.8 to 3.14.10.

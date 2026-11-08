@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate public module doctests and executable README examples."""
+"""Validate public module doctests and executable README/API examples."""
 
 import argparse
 import doctest
@@ -15,6 +15,7 @@ from dateutils import timezones as timezones_module
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 README_PATH = REPOSITORY_ROOT / "README.md"
+API_PATH = REPOSITORY_ROOT / "docs" / "API.md"
 PUBLIC_MODULES: tuple[ModuleType, ...] = (dateutils_module, parsing_module, timezones_module)
 
 
@@ -38,17 +39,17 @@ def extract_python_blocks(markdown: str) -> list[str]:
     return blocks
 
 
-def validate_readme_blocks(markdown: str) -> list[str]:
-    """Execute README Python blocks in isolation and return any failure reports."""
+def validate_markdown_blocks(markdown: str, document_name: str) -> list[str]:
+    """Execute a Markdown document's Python blocks in isolation and return any failure reports."""
     failures: list[str] = []
     for index, block in enumerate(extract_python_blocks(markdown), start=1):
         output = io.StringIO()
         try:
             with redirect_stdout(output), redirect_stderr(output):
-                exec(compile(block, f"README.md Python block {index}", "exec"), {})  # noqa: S102
+                exec(compile(block, f"{document_name} Python block {index}", "exec"), {})  # noqa: S102
         except Exception:
             captured_output = output.getvalue()
-            report = f"README Python block {index} failed."
+            report = f"{document_name} Python block {index} failed."
             if captured_output:
                 report += f"\nCaptured output:\n{captured_output}"
             failures.append(f"{report}\n{traceback.format_exc()}")
@@ -75,7 +76,9 @@ def main(argv: list[str] | None = None) -> int:
 
     failures: list[str] = []
     if not args.doctest_only:
-        failures.extend(validate_readme_blocks(README_PATH.read_text(encoding="utf-8")))
+        documents: tuple[Path, ...] = (README_PATH,) if args.readme_only else (README_PATH, API_PATH)
+        for path in documents:
+            failures.extend(validate_markdown_blocks(path.read_text(encoding="utf-8"), path.name))
     if not args.readme_only:
         failures.extend(validate_module_doctests(verbose=True))
 
