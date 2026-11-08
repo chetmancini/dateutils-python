@@ -2571,6 +2571,10 @@ def test_business_calendar_add_business_days_validation() -> None:
         calendar.add_business_days(dt.date(2024, 7, 1), cast(Any, 1.5))
     with pytest.raises(TypeError, match="num_days must be an integer between -10000 and 10000"):
         calendar.add_business_days(dt.date(2024, 7, 1), cast(Any, None))
+    with pytest.raises(TypeError, match="num_days must be an integer between -10000 and 10000"):
+        calendar.add_business_days(dt.date(2024, 7, 1), True)
+    with pytest.raises(TypeError, match="num_days must be an integer between -10000 and 10000"):
+        calendar.add_business_days(dt.date(2024, 7, 1), False)
     with pytest.raises(ValueError, match="num_days must be between -10000 and 10000, got 10001"):
         calendar.add_business_days(dt.date(2024, 7, 1), 10001)
     with pytest.raises(ValueError, match="num_days must be between -10000 and 10000, got -10001"):
@@ -2597,6 +2601,15 @@ def test_business_calendar_methods_normalize_datetimes_to_local_dates() -> None:
     assert calendar.add_business_days(local_monday_night, 1) == dt.date(2024, 7, 2)
     assert calendar.next_business_day(local_monday_night) == dt.date(2024, 7, 2)
     assert calendar.previous_business_day(local_monday_night) == dt.date(2024, 6, 28)
+
+
+def test_business_calendar_readme_example() -> None:
+    """The README Sun-Thursday example: Mon-Thu and Sun are workdays, July 4 is a holiday."""
+    calendar = BusinessCalendar(weekdays={6, 0, 1, 2, 3}, holidays=get_us_federal_holidays(2024))
+    # Mon Jul 1, Tue Jul 2, Wed Jul 3, Thu Jul 4, Sun Jul 7 are the workdays in range; Jul 4 is a holiday.
+    assert calendar.workdays_between(dt.date(2024, 7, 1), dt.date(2024, 7, 7)) == 4
+    assert not calendar.is_business_day(dt.date(2024, 7, 4))
+    assert calendar.add_business_days(dt.date(2024, 7, 3), 1) == dt.date(2024, 7, 7)
 
 
 def test_business_calendar_default_parity_with_module_functions() -> None:

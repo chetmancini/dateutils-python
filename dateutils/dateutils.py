@@ -1205,7 +1205,7 @@ class BusinessCalendar:
         """
         dt = _as_date(dt)
 
-        if not isinstance(num_days, int):
+        if isinstance(num_days, bool) or not isinstance(num_days, int):
             raise TypeError("num_days must be an integer between -10000 and 10000")
         if not -10000 <= num_days <= 10000:  # noqa: PLR2004
             raise ValueError(f"num_days must be between -10000 and 10000, got {num_days}")
