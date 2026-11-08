@@ -103,7 +103,7 @@ coverage-html: ## Generate HTML coverage report
 watch-test: ## Run tests in watch mode (requires entr)
 	@command -v entr >/dev/null 2>&1 || { echo "${RED}Error: entr not found. Install with: brew install entr${NC}"; exit 1; }
 	@echo "${BLUE}Watching for changes and running tests...${NC}"
-	@find . -name "*.py" | entr -c uv run pytest
+	@{ find dateutils tests scripts -type f -name '*.py' -print; printf '%s\n' pyproject.toml uv.lock; } | entr -c uv run pytest
 
 doctest: ## Run public module doctests and README Python examples
 	@echo "${BLUE}Running doctests...${NC}"
