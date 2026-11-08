@@ -318,6 +318,11 @@ a_day_ago = now - timedelta(days=1)
 
 pretty_date(an_hour_ago)  # "an hour ago"
 pretty_date(a_day_ago)  # "Yesterday"
+
+# For deterministic output, pass a datetime reference as now_override.
+# Naive datetimes in either position are treated as UTC; aware datetimes
+# are compared by instant.
+pretty_date(now - timedelta(seconds=30), now_override=now)  # "30 seconds ago"
 ```
 
 ### Error Handling and Validation

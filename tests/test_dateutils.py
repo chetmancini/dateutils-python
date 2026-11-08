@@ -759,6 +759,31 @@ def test_pretty_date_with_invalid_now_override() -> None:
         pretty_date(dt.datetime(2024, 3, 27, 12, 0, 0), now_override=invalid_now)
 
 
+def test_pretty_date_with_datetime_now_override() -> None:
+    """Datetime now_override values follow the same naive-UTC and aware-instant rules as timestamp."""
+    from dateutils import pretty_date
+
+    # Naive references are treated as UTC, not host-local time.
+    naive_reference = dt.datetime(2024, 3, 27, 12, 0, 0)
+    assert pretty_date(dt.datetime(2024, 3, 27, 11, 59, 30), naive_reference) == "30 seconds ago"
+
+    # Aware references are compared by instant: 14:00+02:00 is 12:00 UTC.
+    aware_reference = dt.datetime(2024, 3, 27, 14, 0, 0, tzinfo=dt.timezone(dt.timedelta(hours=2)))
+    assert pretty_date(dt.datetime(2024, 3, 27, 10, 0, 0, tzinfo=dt.UTC), aware_reference) == "2 hours ago"
+    assert pretty_date(dt.datetime(2024, 3, 27, 14, 0, 0, tzinfo=dt.UTC), aware_reference) == "in 2 hours"
+
+
+def test_pretty_date_treats_indeterminate_datetime_now_override_as_naive_utc() -> None:
+    """A datetime reference without a usable offset must match its naive replacement."""
+    from dateutils import pretty_date
+
+    naive_reference = dt.datetime(2024, 3, 27, 12, 0, 0)
+    indeterminate_reference = naive_reference.replace(tzinfo=_IndeterminateTimezone())
+    value = dt.datetime(2024, 3, 27, 11, 59, 30)
+
+    assert pretty_date(value, now_override=indeterminate_reference) == pretty_date(value, now_override=naive_reference)
+
+
 def test_pretty_date_naive_datetime() -> None:
     """Test pretty_date with naive datetime (no tzinfo)."""
     from dateutils import pretty_date
