@@ -202,7 +202,7 @@ assert datetime_to_utc(ny).hour == 14  # 10 EDT = 14 UTC
 
 ### `parse_date`
 
-`parse_date(date_str: str, formats: list[str] | None = None, dayfirst: bool | None = None, *, ambiguous: str = 'locale') -> datetime.date`
+`parse_date(date_str: str, formats: list[str] | None = None, *, dayfirst: bool | None = None, ambiguous: str = 'locale') -> datetime.date`
 
 Parse a date string using common formats, or an explicit `formats` list.
 Ambiguous numeric dates (such as `"03/04/2024"`) follow the current locale

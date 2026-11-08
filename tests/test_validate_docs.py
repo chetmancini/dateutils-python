@@ -78,6 +78,52 @@ def test_real_api_python_blocks_pass() -> None:
     assert validate_docs_script.validate_markdown_blocks(api, "API.md") == []
 
 
+def test_api_signature_validation_accepts_matching_signatures() -> None:
+    markdown = """### `epoch_s`
+
+`epoch_s(dt: datetime.datetime) -> int`
+
+```python
+from datetime import datetime
+from dateutils import epoch_s
+
+assert epoch_s(datetime(2023, 10, 26, 12, 0)) == 1698321600
+```
+"""
+
+    assert validate_docs_script.validate_api_signatures(markdown) == []
+
+
+def test_api_signature_validation_reports_drift() -> None:
+    markdown = """### `epoch_s`
+
+`epoch_s(dt: str) -> str`
+
+Prose.
+"""
+
+    failures = validate_docs_script.validate_api_signatures(markdown)
+
+    assert len(failures) == 1
+    assert "epoch_s: documented signature" in failures[0]
+    assert "does not match" in failures[0]
+
+
+def test_api_signature_validation_skips_non_callable_headings() -> None:
+    markdown = """### `SECONDS_IN_DAY`
+
+The number of seconds in a day (`86400`).
+"""
+
+    assert validate_docs_script.validate_api_signatures(markdown) == []
+
+
+def test_real_api_signatures_match_live_api() -> None:
+    api = validate_docs_script.API_PATH.read_text(encoding="utf-8")
+
+    assert validate_docs_script.validate_api_signatures(api) == []
+
+
 def test_api_reference_documents_every_public_export() -> None:
     api = validate_docs_script.API_PATH.read_text(encoding="utf-8")
 

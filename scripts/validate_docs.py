@@ -3,12 +3,15 @@
 
 import argparse
 import doctest
+import inspect
 import io
+import re
 import traceback
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from types import ModuleType
 
+import dateutils
 from dateutils import dateutils as dateutils_module
 from dateutils import parsing as parsing_module
 from dateutils import timezones as timezones_module
@@ -56,6 +59,36 @@ def validate_markdown_blocks(markdown: str, document_name: str) -> list[str]:
     return failures
 
 
+SIGNATURE_LINE_RE = re.compile(r"^### `([A-Za-z_][A-Za-z0-9_]*)`\n\n`([^`]+)`", flags=re.MULTILINE)
+
+
+def _normalize_signature(signature: str) -> str:
+    """Strip whitespace and ``collections.abc.`` prefixes for drift comparison.
+
+    The documented signatures omit the ``collections.abc`` module path for
+    brevity (``Iterable`` instead of ``collections.abc.Iterable``); this
+    normalization makes both sides comparable.
+    """
+    return re.sub(r"\s+", "", signature).replace("collections.abc.", "")
+
+
+def validate_api_signatures(markdown: str) -> list[str]:
+    """Verify documented signatures under callable headings match the live package."""
+    failures: list[str] = []
+    for match in SIGNATURE_LINE_RE.finditer(markdown):
+        name, documented = match.groups()
+        obj = getattr(dateutils, name, None)
+        if obj is None or not callable(obj):
+            continue
+        try:
+            live = name + str(inspect.signature(obj))
+        except (TypeError, ValueError):
+            continue  # e.g. exception classes without a meaningful signature
+        if _normalize_signature(documented) != _normalize_signature(live):
+            failures.append(f"{name}: documented signature `{documented}` does not match `{live}`")
+    return failures
+
+
 def validate_module_doctests(*, verbose: bool = False) -> list[str]:
     """Run doctests through normal package imports and return failing modules."""
     failures: list[str] = []
@@ -79,6 +112,8 @@ def main(argv: list[str] | None = None) -> int:
         documents: tuple[Path, ...] = (README_PATH,) if args.readme_only else (README_PATH, API_PATH)
         for path in documents:
             failures.extend(validate_markdown_blocks(path.read_text(encoding="utf-8"), path.name))
+        if not args.readme_only:
+            failures.extend(validate_api_signatures(API_PATH.read_text(encoding="utf-8")))
     if not args.readme_only:
         failures.extend(validate_module_doctests(verbose=True))
 

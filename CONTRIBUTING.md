@@ -107,9 +107,10 @@ installed wheel in isolation, and validates the distributions with twine; it is
 not part of `make check`. Ensure `make check` passes before submitting your PR.
 
 The public API is documented in `docs/API.md`, which `make check` validates
-for both completeness (every `dateutils.__all__` export must be documented)
-and executable examples. Update it whenever you add, change, or remove a
-public export.
+for completeness (every `dateutils.__all__` export must be documented),
+signature accuracy (documented signatures are compared against the live
+package), and executable examples with asserted results. Update it whenever
+you add, change, or remove a public export.
 
 ## Release Process
 
