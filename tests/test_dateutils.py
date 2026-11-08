@@ -1,6 +1,6 @@
 import datetime as dt
 import locale
-import re
+import tomllib
 from collections.abc import Callable
 from importlib.metadata import PackageNotFoundError
 from pathlib import Path
@@ -69,10 +69,8 @@ class _IndeterminateTimezone(dt.tzinfo):
 def test_package_version_matches_pyproject() -> None:
     """Package __version__ should be derived from the pyproject source-of-truth."""
     pyproject_path = Path(__file__).resolve().parent.parent / "pyproject.toml"
-    pyproject_contents = pyproject_path.read_text(encoding="utf-8")
-    version_match = re.search(r'^version = "([^"]+)"$', pyproject_contents, re.MULTILINE)
-    assert version_match is not None
-    assert dateutils.__version__ == version_match.group(1)
+    pyproject_version = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))["project"]["version"]
+    assert dateutils.__version__ == pyproject_version
 
 
 def test_version_from_pyproject_helper() -> None:
@@ -116,6 +114,55 @@ def test_resolve_version_returns_unknown_when_no_sources(monkeypatch: pytest.Mon
     monkeypatch.setattr(dateutils, "_distribution_version", _raise_not_found)
     monkeypatch.setattr(dateutils, "_version_from_pyproject", lambda: None)
     assert dateutils._resolve_version() == "0+unknown"
+
+
+@pytest.mark.parametrize(
+    "pyproject_contents",
+    [
+        '[project]\nversion = "1.2.3"\n',
+        "[project]\nversion = '1.2.3'\n",
+        '# leading comment\n[project]  # table comment\nversion = "1.2.3"  # inline comment\n',
+        'version = "9.9.9"\n[tool.example]\nversion = "9.9.9"\n[project]\nversion = "1.2.3"\n',
+        '[project]\nversion = "1.2.3"\n[tool.example]\nversion = "9.9.9"\n',
+    ],
+)
+def test_version_from_pyproject_accepts_valid_toml(monkeypatch: pytest.MonkeyPatch, pyproject_contents: str) -> None:
+    """The fallback should parse any valid PEP 621 spelling of project.version."""
+    monkeypatch.setattr(Path, "read_text", lambda *_args, **_kwargs: pyproject_contents)
+    assert dateutils._version_from_pyproject() == "1.2.3"
+
+
+@pytest.mark.parametrize(
+    "pyproject_contents",
+    [
+        '[project\nversion = "1.2.3"\n',  # malformed TOML
+        '[project]\nname = "example"\n',  # missing version
+        '[project]\nversion = ""\n',  # empty version
+        "[project]\nversion = ''\n",  # empty version
+        "[project]\nversion = 7\n",  # non-string version
+        "[project]\nversion = true\n",  # non-string version
+        "[project]\nversion = ['1.2.3']\n",  # non-string version
+        "",
+        "[]",
+    ],
+)
+def test_version_from_pyproject_returns_none_for_invalid(
+    monkeypatch: pytest.MonkeyPatch, pyproject_contents: str
+) -> None:
+    """The fallback should return None for malformed or versionless content."""
+    monkeypatch.setattr(Path, "read_text", lambda *_args, **_kwargs: pyproject_contents)
+    assert dateutils._version_from_pyproject() is None
+
+
+def test_resolve_version_prefers_distribution_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Distribution metadata wins and the source fallback must not run."""
+
+    def _fail_fallback() -> str:
+        raise AssertionError("fallback must not be called when metadata exists")
+
+    monkeypatch.setattr(dateutils, "_distribution_version", lambda _name: "9.9.9")
+    monkeypatch.setattr(dateutils, "_version_from_pyproject", _fail_fallback)
+    assert dateutils._resolve_version() == "9.9.9"
 
 
 @freeze_time("2024-03-27")

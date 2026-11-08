@@ -2,7 +2,7 @@
 DateUtils Library Entry Point
 """
 
-import re
+import tomllib
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _distribution_version
 from pathlib import Path
@@ -156,15 +156,15 @@ __all__ = [
 def _version_from_pyproject() -> str | None:
     """Read the project version from pyproject.toml when distribution metadata is unavailable."""
     pyproject_path = Path(__file__).resolve().parent.parent / "pyproject.toml"
-    version_pattern = re.compile(r'^version = "([^"]+)"$')
     try:
-        for line in pyproject_path.read_text(encoding="utf-8").splitlines():
-            match = version_pattern.match(line.strip())
-            if match:
-                return match.group(1)
-    except OSError:
+        pyproject = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
         return None
-    return None
+    project = pyproject.get("project")
+    if not isinstance(project, dict):
+        return None
+    version = project.get("version")
+    return version if isinstance(version, str) and version else None
 
 
 def _resolve_version() -> str:
