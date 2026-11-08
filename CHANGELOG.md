@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Accept fractional seconds in space-separated parse_datetime inputs, including numeric timezone offsets.
+- Derive generated changelog new-file counts from Git addition status instead of filename keywords.
 
 ## [0.9.0] - 2026-10-27
 
