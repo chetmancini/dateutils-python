@@ -240,8 +240,8 @@ def datetime_end_of_day(day: date) -> datetime:
 # Quarter operations
 ##################
 def _validate_quarter(quarter: int, *, name: str = "Quarter") -> None:
-    """Validate that a quarter value is between 1 and 4."""
-    if not 1 <= quarter <= QUARTERS_IN_YEAR:
+    """Validate that a quarter value is between 1 and 4 and is not a boolean."""
+    if isinstance(quarter, bool) or not 1 <= quarter <= QUARTERS_IN_YEAR:
         raise ValueError(f"{name} must be between 1 and 4, got {quarter}")
 
 
@@ -280,13 +280,13 @@ def start_of_quarter(year: int, q: int) -> datetime:
 
     Args:
         year: Year to get start of quarter for
-        q: Quarter to get start of (1-4)
+        q: Quarter to get start of (1-4; booleans rejected)
 
     Returns:
         datetime: Datetime at 00:00:00
 
     Raises:
-        ValueError: If quarter is not between 1 and 4
+        ValueError: If quarter is not between 1 and 4 or is a boolean
     """
     _validate_quarter(q)
     return datetime(year, (q - 1) * MONTHS_IN_QUARTER + 1, 1)
@@ -298,13 +298,13 @@ def end_of_quarter(year: int, q: int) -> datetime:
 
     Args:
         year: Year to get end of quarter for
-        q: Quarter to get end of (1-4)
+        q: Quarter to get end of (1-4; booleans rejected)
 
     Returns:
         datetime: Datetime at 23:59:59.999999
 
     Raises:
-        ValueError: If quarter is not between 1 and 4
+        ValueError: If quarter is not between 1 and 4 or is a boolean
     """
     _validate_quarter(q)
     month = q * MONTHS_IN_QUARTER
@@ -347,15 +347,15 @@ def generate_quarters(
 
     Args:
         until_year: Target year.
-        until_q: Target quarter (1-4).
+        until_q: Target quarter (1-4; booleans rejected).
         start_year: Starting year. Defaults to current year.
-        start_quarter: Starting quarter (1-4). Defaults to the current quarter.
+        start_quarter: Starting quarter (1-4; booleans rejected). Defaults to the current quarter.
 
     Yields:
         tuple[int, int]: Tuples of (quarter, year) walking toward the target.
 
     Raises:
-        ValueError: If start or until quarters are not between 1 and 4
+        ValueError: If start or until quarters are not between 1 and 4 or are booleans
     """
     _validate_quarter(until_q, name="until_q")
 
@@ -1286,6 +1286,8 @@ def previous_business_day(dt: date, holidays: Iterable[date | datetime] | None =
 
 def _ts_difference(timestamp: float | datetime | None = None, now_override: float | None = None) -> timedelta:
     """Helper function to calculate time difference for pretty_date."""
+    if isinstance(now_override, bool):
+        raise TypeError("now_override must not be a boolean")
     if now_override is not None:
         try:
             now = datetime.fromtimestamp(now_override, tz=UTC)
@@ -1296,6 +1298,8 @@ def _ts_difference(timestamp: float | datetime | None = None, now_override: floa
 
     if timestamp is None:
         return timedelta(0)
+    if isinstance(timestamp, bool):
+        raise TypeError("timestamp must not be a boolean")
     if isinstance(timestamp, (int, float)):
         try:
             ts_dt = datetime.fromtimestamp(timestamp, tz=UTC)
@@ -1365,6 +1369,7 @@ def pretty_date(timestamp: float | datetime | None = None, now_override: float |
             - None: Returns "just now".
         now_override: Optional Unix timestamp to use as the reference "now" time.
             Primarily useful for testing to ensure deterministic output.
+        Booleans are rejected for both timestamp arguments since `bool` subclasses `int`.
 
     Returns:
         str: Human-readable relative time string. Possible formats include:
@@ -1382,7 +1387,8 @@ def pretty_date(timestamp: float | datetime | None = None, now_override: float |
 
     Raises:
         ValueError: If `timestamp` or `now_override` is an invalid Unix timestamp.
-        TypeError: If `timestamp` is not an int, float, datetime, or None.
+        TypeError: If `timestamp` is not an int, float, datetime, or None, or if
+            either argument is a boolean.
 
     Examples:
         >>> from datetime import datetime, timezone
@@ -1564,13 +1570,13 @@ def get_quarter_start_end(year: int, quarter: int) -> tuple[date, date]:
 
     Args:
         year: Year
-        quarter: Quarter (1-4)
+        quarter: Quarter (1-4; booleans rejected)
 
     Returns:
         tuple[date, date]: Start and end dates of the quarter
 
     Raises:
-        ValueError: If quarter is not between 1 and 4
+        ValueError: If quarter is not between 1 and 4 or is a boolean
     """
     _validate_quarter(quarter)
 

@@ -1,6 +1,7 @@
 import datetime as dt
 import locale
 import re
+from collections.abc import Callable
 from importlib.metadata import PackageNotFoundError
 from pathlib import Path
 from typing import Any, cast
@@ -271,6 +272,20 @@ def test_generate_quarters_invalid_start_quarter() -> None:
 
     with pytest.raises(ValueError, match="start_quarter must be between 1 and 4, got 5"):
         list(generate_quarters(until_year=2024, until_q=1, start_year=2024, start_quarter=5))
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_generate_quarters_rejects_boolean_until_q(value: bool) -> None:
+    """Boolean until_q values must be rejected, not coerced to quarter 0 or 1."""
+    with pytest.raises(ValueError, match="until_q must be between 1 and 4, got"):
+        list(generate_quarters(until_year=2024, until_q=value, start_year=2024, start_quarter=1))
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_generate_quarters_rejects_boolean_start_quarter(value: bool) -> None:
+    """Boolean start_quarter values must be rejected, not coerced to quarter 0 or 1."""
+    with pytest.raises(ValueError, match="start_quarter must be between 1 and 4, got"):
+        list(generate_quarters(until_year=2024, until_q=1, start_year=2024, start_quarter=value))
 
 
 def test_generate_years_honors_zero_start_year() -> None:
@@ -863,6 +878,24 @@ def test_pretty_date_rejects_unsupported_timestamp_types() -> None:
 
     with pytest.raises(TypeError, match=r"got str"):
         pretty_date(cast(Any, "yesterday"))
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_pretty_date_rejects_boolean_timestamp(value: bool) -> None:
+    """Boolean timestamps must be rejected, not coerced to 0 or 1 seconds."""
+    from dateutils import pretty_date
+
+    with pytest.raises(TypeError, match="timestamp must not be a boolean"):
+        pretty_date(value, now_override=1711540800)
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_pretty_date_rejects_boolean_now_override(value: bool) -> None:
+    """Boolean now_override values must be rejected, not coerced to 0 or 1 seconds."""
+    from dateutils import pretty_date
+
+    with pytest.raises(TypeError, match="now_override must not be a boolean"):
+        pretty_date(1711540800, value)
 
 
 def test_pretty_date_caps_months_below_one_year() -> None:
@@ -1578,6 +1611,17 @@ def test_end_of_quarter_validation() -> None:
 
     with pytest.raises(ValueError, match="Quarter must be between 1 and 4, got 6"):
         end_of_quarter(2024, 6)
+
+
+@pytest.mark.parametrize("value", [True, False])
+@pytest.mark.parametrize(
+    "quarter_fn",
+    [start_of_quarter, end_of_quarter, get_quarter_start_end],
+)
+def test_quarter_functions_reject_boolean_values(quarter_fn: Callable[[int, int], object], value: bool) -> None:
+    """Boolean quarter values must be rejected, not coerced to quarter 0 or 1."""
+    with pytest.raises(ValueError, match="Quarter must be between 1 and 4, got"):
+        quarter_fn(2024, value)
 
 
 def test_workdays_between_validation() -> None:
