@@ -51,6 +51,7 @@ from dateutils import (
     utc_truncate_epoch_day,
     workdays_between,
 )
+from dateutils.dateutils import end_of_week, start_of_week
 
 
 class _IndeterminateTimezone(dt.tzinfo):
@@ -522,6 +523,102 @@ def test_generate_weeks_yields_clipped_week_containing_lower_boundary_target() -
         (dt.date(1, 1, 7), dt.date(1, 1, 13)),
         (dt.date.min, dt.date(1, 1, 6)),
     ]
+
+
+def test_start_of_week_defaults_to_sunday_start() -> None:
+    """The default convention runs Sunday to Saturday, matching generate_weeks."""
+    value = dt.date(2024, 7, 17)  # Wednesday
+    assert start_of_week(value) == dt.date(2024, 7, 14)
+    assert end_of_week(value) == dt.date(2024, 7, 20)
+
+
+def test_week_helpers_start_on_monday() -> None:
+    """start_on_monday switches the week to Monday through Sunday."""
+    value = dt.date(2024, 7, 17)  # Wednesday
+    assert start_of_week(value, start_on_monday=True) == dt.date(2024, 7, 15)
+    assert end_of_week(value, start_on_monday=True) == dt.date(2024, 7, 21)
+
+
+def test_week_helpers_accept_boundary_days() -> None:
+    """Dates already on a week boundary are returned unchanged for that side."""
+    sunday = dt.date(2024, 7, 14)
+    monday = dt.date(2024, 7, 15)
+    saturday = dt.date(2024, 7, 20)
+    # Sunday is the default start; Saturday is the default end.
+    assert start_of_week(sunday) == sunday
+    assert start_of_week(monday) == sunday
+    assert end_of_week(sunday) == saturday
+    assert end_of_week(saturday) == saturday
+    # Monday is the Monday-mode start; Sunday is the Monday-mode end.
+    assert start_of_week(monday, start_on_monday=True) == monday
+    assert end_of_week(sunday, start_on_monday=True) == sunday
+
+
+def test_week_helpers_cross_month_and_year_boundaries() -> None:
+    """Weeks spanning a month or year boundary use the enclosing calendar week."""
+    assert start_of_week(dt.date(2024, 1, 3)) == dt.date(2023, 12, 31)
+    assert end_of_week(dt.date(2024, 1, 3)) == dt.date(2024, 1, 6)
+    assert start_of_week(dt.date(2024, 5, 29)) == dt.date(2024, 5, 26)
+    assert end_of_week(dt.date(2024, 5, 29)) == dt.date(2024, 6, 1)
+
+
+def test_week_helpers_use_local_date_of_datetime_input() -> None:
+    """A datetime input is normalized to its local calendar date without UTC conversion."""
+    local_midnight_sunday = dt.datetime(2024, 7, 14, 1, 0, tzinfo=dt.timezone(dt.timedelta(hours=14)))
+    # 2024-07-14 01:00 +14 is 2024-07-13 11:00 UTC; the local Sunday must win.
+    assert start_of_week(local_midnight_sunday) == dt.date(2024, 7, 14)
+
+
+def test_week_helpers_clip_at_representable_limits() -> None:
+    """date.min and date.max follow generate_weeks clipping instead of overflowing."""
+    assert start_of_week(dt.date.min) == dt.date.min
+    assert start_of_week(dt.date.min, start_on_monday=True) == dt.date.min
+    assert end_of_week(dt.date.max) == dt.date.max
+    assert end_of_week(dt.date.max, start_on_monday=True) == dt.date.max
+    # Partial boundary weeks: the end ordinal derives from the unclipped start.
+    assert end_of_week(dt.date.min) == dt.date(1, 1, 6)
+    assert end_of_week(dt.date.min, start_on_monday=True) == dt.date(1, 1, 7)
+    assert start_of_week(dt.date.max) == dt.date(9999, 12, 26)
+    assert start_of_week(dt.date.max, start_on_monday=True) == dt.date(9999, 12, 27)
+
+
+@pytest.mark.parametrize("value", ["2024-07-17", 7, None])
+def test_week_helpers_reject_non_date_inputs(value: Any) -> None:
+    """Non-date values raise TypeError instead of being coerced or defaulted."""
+    with pytest.raises(TypeError, match="dt must be a date or datetime"):
+        start_of_week(value)
+    with pytest.raises(TypeError, match="dt must be a date or datetime"):
+        end_of_week(value)
+
+
+@pytest.mark.parametrize("flag", [1, 0, None])
+def test_week_helpers_require_boolean_start_on_monday(flag: Any) -> None:
+    """Truthy/falsy substitutes are rejected for the keyword-only flag."""
+    with pytest.raises(TypeError, match="start_on_monday must be a bool"):
+        start_of_week(dt.date(2024, 7, 17), start_on_monday=flag)
+    with pytest.raises(TypeError, match="start_on_monday must be a bool"):
+        end_of_week(dt.date(2024, 7, 17), start_on_monday=flag)
+
+
+@pytest.mark.parametrize(
+    ("value", "start_on_monday"),
+    [
+        (dt.date(2024, 7, 17), False),
+        (dt.date(2024, 7, 17), True),
+        (dt.date(2024, 1, 3), False),
+        (dt.date.min, False),
+        (dt.date.min, True),
+        (dt.date.max, False),
+        (dt.date.max, True),
+    ],
+)
+def test_week_helpers_match_first_generated_week(value: dt.date, start_on_monday: bool) -> None:
+    """The helpers agree with generate_weeks for ordinary and boundary dates."""
+    first_week = next(generate_weeks(count=1, start_date=value, start_on_monday=start_on_monday))
+    assert (
+        start_of_week(value, start_on_monday=start_on_monday),
+        end_of_week(value, start_on_monday=start_on_monday),
+    ) == first_week
 
 
 def test_date_to_quarter() -> None:

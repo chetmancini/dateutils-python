@@ -599,6 +599,70 @@ def generate_weeks(
         week_start_ordinal = next_week_start_ordinal
 
 
+def _week_start_ordinal(value: date, start_on_monday: bool) -> int:
+    """Return the ordinal of the start of the week containing ``value``."""
+    anchor = _as_date(value)
+    desired_start = calendar.MONDAY if start_on_monday else calendar.SUNDAY
+    days_since_start = (anchor.weekday() - desired_start) % DAYS_IN_WEEK
+    return anchor.toordinal() - days_since_start
+
+
+def start_of_week(dt: date, *, start_on_monday: bool = False) -> date:
+    """Return the inclusive start of the week containing ``dt``.
+
+    Weeks run Sunday to Saturday by default; set ``start_on_monday=True`` for
+    Monday to Sunday, matching `generate_weeks`. The result is a plain
+    inclusive date, not a clock time. A `datetime` input is normalized to its
+    local calendar date with no UTC conversion. Weeks at the representable
+    date limits clip at `date.min` and `date.max`.
+
+    Args:
+        dt: Date or datetime whose containing week to start.
+        start_on_monday: If True, weeks start on Monday instead of Sunday.
+
+    Returns:
+        The first day of the containing week.
+
+    Raises:
+        TypeError: If `dt` is neither a date nor a datetime.
+        TypeError: If `start_on_monday` is not a bool.
+    """
+    if not isinstance(dt, date):
+        raise TypeError("dt must be a date or datetime")
+    if not isinstance(start_on_monday, bool):
+        raise TypeError("start_on_monday must be a bool")
+    start_ordinal = _week_start_ordinal(dt, start_on_monday)
+    return date.fromordinal(max(start_ordinal, date.min.toordinal()))
+
+
+def end_of_week(dt: date, *, start_on_monday: bool = False) -> date:
+    """Return the inclusive end of the week containing ``dt``.
+
+    Weeks run Sunday to Saturday by default; set ``start_on_monday=True`` for
+    Monday to Sunday, matching `generate_weeks`. The result is a plain
+    inclusive date, not a clock time. A `datetime` input is normalized to its
+    local calendar date with no UTC conversion. Weeks at the representable
+    date limits clip at `date.min` and `date.max`.
+
+    Args:
+        dt: Date or datetime whose containing week to end.
+        start_on_monday: If True, weeks run Monday to Sunday.
+
+    Returns:
+        The last day of the containing week.
+
+    Raises:
+        TypeError: If `dt` is neither a date nor a datetime.
+        TypeError: If `start_on_monday` is not a bool.
+    """
+    if not isinstance(dt, date):
+        raise TypeError("dt must be a date or datetime")
+    if not isinstance(start_on_monday, bool):
+        raise TypeError("start_on_monday must be a bool")
+    start_ordinal = _week_start_ordinal(dt, start_on_monday)
+    return date.fromordinal(min(start_ordinal + DAYS_IN_WEEK - 1, date.max.toordinal()))
+
+
 ##################
 # Day operations
 ##################

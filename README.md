@@ -314,6 +314,21 @@ for dt in date_gen:
         break
 ```
 
+### Week Boundaries
+
+```python
+from datetime import date
+from dateutils import end_of_week, start_of_week
+
+value = date(2024, 7, 17)
+start_of_week(value)  # date(2024, 7, 14) — Sunday
+end_of_week(value)  # date(2024, 7, 20) — Saturday
+start_of_week(value, start_on_monday=True)  # date(2024, 7, 15)
+end_of_week(value, start_on_monday=True)  # date(2024, 7, 21)
+```
+
+Both helpers return inclusive plain dates; a datetime input is normalized to its local calendar date.
+
 ### Human-readable Dates
 
 ```python
