@@ -2,7 +2,7 @@
 """Validate that a release tag matches the project version."""
 
 import argparse
-import re
+import tomllib
 from pathlib import Path
 
 DEFAULT_PYPROJECT_PATH = Path(__file__).resolve().parent.parent / "pyproject.toml"
@@ -11,15 +11,15 @@ DEFAULT_PYPROJECT_PATH = Path(__file__).resolve().parent.parent / "pyproject.tom
 def read_project_version(pyproject_path: Path = DEFAULT_PYPROJECT_PATH) -> str:
     """Read and validate the project version from pyproject.toml."""
     content = pyproject_path.read_text(encoding="utf-8")
-    project_section = re.search(r"^\[project\]\s*$\n(?P<body>.*?)(?=^\[|\Z)", content, flags=re.MULTILINE | re.DOTALL)
-    version_match = (
-        re.search(r'^version\s*=\s*"([^"]+)"\s*$', project_section.group("body"), flags=re.MULTILINE)
-        if project_section is not None
-        else None
-    )
-    if version_match is None:
+    try:
+        pyproject = tomllib.loads(content)
+    except tomllib.TOMLDecodeError as exc:
+        raise ValueError(f"{pyproject_path} does not define a non-empty project.version") from exc
+    project = pyproject.get("project")
+    version = project.get("version") if isinstance(project, dict) else None
+    if not isinstance(version, str) or not version:
         raise ValueError(f"{pyproject_path} does not define a non-empty project.version")
-    return version_match.group(1)
+    return version
 
 
 def validate_release_tag(tag: str, pyproject_path: Path = DEFAULT_PYPROJECT_PATH) -> str:
