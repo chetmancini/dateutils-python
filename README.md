@@ -62,6 +62,11 @@ There are several excellent date/time libraries in the Python ecosystem. Here's 
 pip install dateutils-python
 ```
 
+## API Reference
+
+The complete public API — every export, signature, and executable example —
+is documented in [docs/API.md](docs/API.md).
+
 ## Usage Examples
 
 ### UTC and Timestamp Operations

@@ -1823,6 +1823,15 @@ def test_add_business_days_validation() -> None:
         add_business_days(start_date, -10001)
 
 
+def test_add_business_days_rejects_boolean_and_non_integer_num_days() -> None:
+    """Module-level add_business_days must reject booleans and non-integers like BusinessCalendar."""
+    start_date = dt.date(2024, 1, 1)
+
+    for invalid in (True, False, cast(Any, 1.5), cast(Any, "3"), cast(Any, None)):
+        with pytest.raises(TypeError, match="num_days must be an integer between -10000 and 10000"):
+            add_business_days(start_date, invalid)
+
+
 def test_month_function_validation() -> None:
     """Test that month functions validate year and month inputs."""
     # Valid inputs should work
