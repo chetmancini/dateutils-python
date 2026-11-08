@@ -47,6 +47,7 @@ print(workdays)
 
 import calendar
 from collections.abc import Generator, Iterable
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from email.utils import format_datetime as _format_http_datetime
 from functools import lru_cache
@@ -1080,6 +1081,171 @@ def get_us_federal_holidays_between(
             if start_date <= holiday <= end_date
         )
     return sorted(holidays_in_range)
+
+
+@dataclass(frozen=True, init=False)
+class BusinessCalendar:
+    """An immutable custom workweek and fixed holiday set.
+
+    Captures a workweek as a set of weekday numbers (Monday is 0, Sunday is 6)
+    and a fixed set of holiday dates, then exposes the familiar business-day
+    operations as methods. `datetime` inputs and holiday values are normalized
+    to their displayed local calendar dates — never converted to UTC. Counting
+    and movement include both endpoints, match the module-level Monday-Friday
+    functions when constructed with the default arguments, and ignore the
+    configured holidays even when they fall inside the workweek.
+    """
+
+    weekdays: frozenset[int]
+    holidays: frozenset[date]
+
+    def __init__(
+        self,
+        weekdays: Iterable[int] = (0, 1, 2, 3, 4),
+        holidays: Iterable[date | datetime] | None = None,
+    ) -> None:
+        """Initialize a frozen calendar with a workweek and holiday set.
+
+        Args:
+            weekdays: Weekday numbers to treat as business days, 0 (Monday)
+                through 6 (Sunday). Duplicates collapse.
+            holidays: Dates to treat as non-business days even inside the
+                workweek. `datetime` values use their local calendar date.
+                Duplicates collapse; `None` means no holidays.
+
+        Raises:
+            ValueError: If `weekdays` is empty.
+            TypeError: If a weekday is a bool or non-integer.
+            ValueError: If a weekday is outside 0 (Monday) through 6 (Sunday).
+            TypeError: If a holiday is neither a date nor a datetime.
+        """
+        validated_weekdays: set[int] = set()
+        for weekday in weekdays:
+            if isinstance(weekday, bool) or not isinstance(weekday, int):
+                raise TypeError("weekdays must contain only integers from 0 (Monday) through 6 (Sunday)")
+            if not 0 <= weekday <= 6:  # noqa: PLR2004
+                raise ValueError("weekdays must contain only integers from 0 (Monday) through 6 (Sunday)")
+            validated_weekdays.add(weekday)
+        if not validated_weekdays:
+            raise ValueError("weekdays must contain at least one weekday")
+
+        validated_holidays: set[date] = set()
+        if holidays is not None:
+            for holiday in holidays:
+                if not isinstance(holiday, date):
+                    raise TypeError("holidays must contain only date or datetime values")
+                validated_holidays.add(_as_date(holiday))
+
+        object.__setattr__(self, "weekdays", frozenset(validated_weekdays))
+        object.__setattr__(self, "holidays", frozenset(validated_holidays))
+
+    def is_business_day(self, dt: date) -> bool:
+        """Check whether a date is a business day for this calendar.
+
+        Args:
+            dt: Date or datetime to check.
+
+        Returns:
+            True if the date's weekday is in the workweek and it is not a
+            configured holiday.
+        """
+        normalized = _as_date(dt)
+        return normalized.weekday() in self.weekdays and normalized not in self.holidays
+
+    def workdays_between(self, start_date: date, end_date: date) -> int:
+        """Count business days between two dates, inclusive.
+
+        Args:
+            start_date: The start date (inclusive).
+            end_date: The end date (inclusive).
+
+        Returns:
+            Number of business days in the inclusive range, skipping weekends
+            and configured holidays.
+
+        Raises:
+            ValueError: If `start_date` is after `end_date`.
+        """
+        start_date = _as_date(start_date)
+        end_date = _as_date(end_date)
+
+        if start_date > end_date:
+            raise ValueError(f"start_date ({start_date}) must be <= end_date ({end_date})")
+
+        total_days = (end_date - start_date).days + 1
+        full_weeks, remaining_days = divmod(total_days, DAYS_IN_WEEK)
+        workdays = full_weeks * len(self.weekdays)
+
+        start_weekday = start_date.weekday()
+        for i in range(remaining_days):
+            if (start_weekday + i) % DAYS_IN_WEEK in self.weekdays:
+                workdays += 1
+
+        for holiday in self.holidays:
+            if start_date <= holiday <= end_date and holiday.weekday() in self.weekdays:
+                workdays -= 1
+
+        return workdays
+
+    def add_business_days(self, dt: date, num_days: int) -> date:
+        """Add business days to a date, skipping weekends and holidays.
+
+        Args:
+            dt: The starting date; not counted when `num_days` is non-zero.
+            num_days: Number of business days to add (can be negative).
+
+        Returns:
+            A new date moved by the requested number of business days. Zero
+            returns the normalized input unchanged, even on a weekend or
+            holiday.
+
+        Raises:
+            TypeError: If `num_days` is not an integer.
+            ValueError: If `num_days` is outside the +-10000 limit.
+        """
+        dt = _as_date(dt)
+
+        if not isinstance(num_days, int):
+            raise TypeError("num_days must be an integer between -10000 and 10000")
+        if not -10000 <= num_days <= 10000:  # noqa: PLR2004
+            raise ValueError(f"num_days must be between -10000 and 10000, got {num_days}")
+
+        if num_days == 0:
+            return dt
+
+        current = dt
+        added = 0
+        direction = 1 if num_days > 0 else -1
+        while added < abs(num_days):
+            current += timedelta(days=direction)
+            if current.weekday() in self.weekdays and current not in self.holidays:
+                added += 1
+
+        return current
+
+    def next_business_day(self, dt: date) -> date:
+        """Find the next business day strictly after ``dt``.
+
+        Args:
+            dt: Date or datetime to move away from.
+
+        Returns:
+            The first business day after `dt`, even when `dt` is itself a
+            business day.
+        """
+        return self.add_business_days(dt, 1)
+
+    def previous_business_day(self, dt: date) -> date:
+        """Find the previous business day strictly before ``dt``.
+
+        Args:
+            dt: Date or datetime to move away from.
+
+        Returns:
+            The last business day before `dt`, even when `dt` is itself a
+            business day.
+        """
+        return self.add_business_days(dt, -1)
 
 
 def workdays_between(start_date: date, end_date: date, holidays: Iterable[date | datetime] | None = None) -> int:

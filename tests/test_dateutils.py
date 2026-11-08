@@ -2,6 +2,7 @@ import datetime as dt
 import locale
 import tomllib
 from collections.abc import Callable
+from dataclasses import FrozenInstanceError
 from importlib.metadata import PackageNotFoundError
 from pathlib import Path
 from typing import Any, cast
@@ -51,7 +52,7 @@ from dateutils import (
     utc_truncate_epoch_day,
     workdays_between,
 )
-from dateutils.dateutils import end_of_week, start_of_week
+from dateutils.dateutils import BusinessCalendar, end_of_week, start_of_week
 
 
 class _IndeterminateTimezone(dt.tzinfo):
@@ -2382,3 +2383,237 @@ def test_get_us_federal_holidays_list_wrapper() -> None:
     observed_list = get_us_federal_holidays_list(2021, ["JUNETEENTH", "INDEPENDENCE_DAY"], observed=True)
     observed_tuple = get_us_federal_holidays(2021, ("JUNETEENTH", "INDEPENDENCE_DAY"), observed=True)
     assert observed_list == observed_tuple
+
+
+######################
+# BusinessCalendar
+######################
+def test_business_calendar_defaults() -> None:
+    """The default calendar is a Monday-Friday workweek with no holidays."""
+    calendar = BusinessCalendar()
+    assert calendar.weekdays == frozenset(range(5))
+    assert calendar.holidays == frozenset()
+
+
+def test_business_calendar_normalizes_weekdays_and_holidays() -> None:
+    """Lists and generators are consumed; duplicates collapse."""
+    calendar = BusinessCalendar(
+        weekdays=iter([1, 3, 1, 5]), holidays=[dt.date(2024, 1, 1), dt.date(2024, 5, 27), dt.date(2024, 1, 1)]
+    )
+    assert calendar.weekdays == frozenset({1, 3, 5})
+    assert calendar.holidays == frozenset({dt.date(2024, 1, 1), dt.date(2024, 5, 27)})
+
+
+def test_business_calendar_holidays_use_local_dates() -> None:
+    """Aware datetimes become plain local dates, never UTC-converted."""
+    evening_before_new_year = dt.datetime(2024, 1, 1, 23, 30, tzinfo=dt.timezone(dt.timedelta(hours=-5)))
+    # 2024-01-01 23:30 -05 is 2024-01-02 04:30 UTC; the local date must win.
+    calendar = BusinessCalendar(holidays=[evening_before_new_year])
+    assert calendar.holidays == frozenset({dt.date(2024, 1, 1)})
+
+
+def test_business_calendar_rejects_empty_workweek() -> None:
+    """A calendar with no working days is rejected."""
+    with pytest.raises(ValueError, match="weekdays must contain at least one weekday"):
+        BusinessCalendar(weekdays=[])
+
+
+@pytest.mark.parametrize("bad_weekdays", [[True], [False, 1], [1, "2"], [1, 2.5]])
+def test_business_calendar_rejects_non_integer_weekdays(bad_weekdays: Any) -> None:
+    """Booleans and non-integers are rejected with a TypeError."""
+    with pytest.raises(TypeError, match=r"weekdays must contain only integers from 0 \(Monday\) through 6 \(Sunday\)"):
+        BusinessCalendar(weekdays=bad_weekdays)
+
+
+@pytest.mark.parametrize("bad_weekdays", [[1, 7], [-1, 2], [8], [-1]])
+def test_business_calendar_rejects_out_of_range_weekdays(bad_weekdays: list[int]) -> None:
+    """Integers outside 0-6 are rejected with a ValueError."""
+    with pytest.raises(ValueError, match=r"weekdays must contain only integers from 0 \(Monday\) through 6 \(Sunday\)"):
+        BusinessCalendar(weekdays=bad_weekdays)
+
+
+@pytest.mark.parametrize("bad_holidays", [cast(Any, ["2024-01-01"]), cast(Any, [2024]), cast(Any, [None])])
+def test_business_calendar_rejects_non_date_holidays(bad_holidays: Any) -> None:
+    """Holiday values that are neither dates nor datetimes are rejected."""
+    with pytest.raises(TypeError, match="holidays must contain only date or datetime values"):
+        BusinessCalendar(holidays=bad_holidays)
+
+
+def test_business_calendar_holidays_none_means_empty() -> None:
+    """holidays=None is the same as passing nothing."""
+    calendar = BusinessCalendar(holidays=None)
+    assert calendar.holidays == frozenset()
+
+
+def test_business_calendar_value_equality_and_immutability() -> None:
+    """Equivalent inputs compare and hash equal; the value object is frozen."""
+    a = BusinessCalendar(weekdays=(4, 3, 2, 1, 0), holidays=[dt.date(2024, 12, 25), dt.date(2024, 1, 1)])
+    b = BusinessCalendar(weekdays=[0, 1, 2, 3, 4], holidays=[dt.date(2024, 1, 1), dt.date(2024, 12, 25)])
+    assert a == b
+    assert hash(a) == hash(b)
+    with pytest.raises(FrozenInstanceError):
+        a.__setattr__("weekdays", frozenset())
+    with pytest.raises(FrozenInstanceError):
+        a.__setattr__("holidays", frozenset())
+
+
+def test_business_calendar_does_not_retain_caller_owned_inputs() -> None:
+    """Mutating the original inputs after construction cannot change the calendar."""
+    weekdays_in = [0, 1, 2]
+    holidays_in = [dt.date(2024, 1, 1)]
+    calendar = BusinessCalendar(weekdays=weekdays_in, holidays=holidays_in)
+    weekdays_in.append(3)
+    holidays_in.append(dt.date(2024, 12, 25))
+    assert calendar.weekdays == frozenset({0, 1, 2})
+    assert calendar.holidays == frozenset({dt.date(2024, 1, 1)})
+
+
+@pytest.mark.parametrize(
+    ("weekdays", "business_days", "non_business_days"),
+    [
+        ((0, 1, 2, 3, 4), [dt.date(2024, 7, 1), dt.date(2024, 7, 5)], [dt.date(2024, 7, 6), dt.date(2024, 7, 7)]),
+        ((6, 0, 1, 2, 3), [dt.date(2024, 7, 1), dt.date(2024, 7, 7)], [dt.date(2024, 7, 5), dt.date(2024, 7, 6)]),
+        ((5, 6), [dt.date(2024, 7, 6), dt.date(2024, 7, 7)], [dt.date(2024, 7, 1), dt.date(2024, 7, 5)]),
+        ((0, 1, 2, 3, 4, 5, 6), [dt.date(2024, 7, 6), dt.date(2024, 7, 7)], []),
+    ],
+)
+def test_business_calendar_is_business_day_workweeks(
+    weekdays: tuple[int, ...], business_days: list[dt.date], non_business_days: list[dt.date]
+) -> None:
+    """is_business_day follows the configured workweek."""
+    calendar = BusinessCalendar(weekdays=weekdays)
+    for day in business_days:
+        assert calendar.is_business_day(day)
+    for day in non_business_days:
+        assert not calendar.is_business_day(day)
+
+
+def test_business_calendar_is_business_day_holidays() -> None:
+    """A configured holiday is non-business even inside the workweek."""
+    calendar = BusinessCalendar(holidays=[dt.date(2024, 7, 4)])
+    assert not calendar.is_business_day(dt.date(2024, 7, 4))
+    assert calendar.is_business_day(dt.date(2024, 7, 5))
+
+
+def test_business_calendar_workdays_between_inclusive() -> None:
+    """Counting is inclusive: same business day is 1, same weekend/holiday is 0."""
+    calendar = BusinessCalendar()
+    assert calendar.workdays_between(dt.date(2024, 7, 1), dt.date(2024, 7, 1)) == 1
+    assert calendar.workdays_between(dt.date(2024, 7, 6), dt.date(2024, 7, 6)) == 0  # Saturday
+    with_holiday = BusinessCalendar(holidays=[dt.date(2024, 7, 4)])
+    assert with_holiday.workdays_between(dt.date(2024, 7, 4), dt.date(2024, 7, 4)) == 0
+    assert calendar.workdays_between(dt.date(2024, 7, 1), dt.date(2024, 7, 7)) == 5
+    assert with_holiday.workdays_between(dt.date(2024, 7, 1), dt.date(2024, 7, 7)) == 4
+
+
+def test_business_calendar_workdays_between_reversed_range() -> None:
+    """Reversed ranges raise the same ValueError as the module function."""
+    calendar = BusinessCalendar()
+    with pytest.raises(ValueError, match=r"start_date \(2024-07-07\) must be <= end_date \(2024-07-01\)"):
+        calendar.workdays_between(dt.date(2024, 7, 7), dt.date(2024, 7, 1))
+
+
+def test_business_calendar_workdays_between_arbitrary_workweek() -> None:
+    """A Tuesday/Thursday-only calendar counts only those days and subtracts holidays."""
+    calendar = BusinessCalendar(weekdays={1, 3}, holidays=[dt.date(2024, 3, 28)])
+    # Tuesday March 26 and Tuesday April 2; Thursday March 28 is excluded as a holiday.
+    assert calendar.workdays_between(dt.date(2024, 3, 25), dt.date(2024, 4, 2)) == 2
+    assert calendar.workdays_between(dt.date(2024, 3, 25), dt.date(2024, 3, 31)) == 1  # only March 26
+
+
+def test_business_calendar_seven_day_workweek_skips_holidays_only() -> None:
+    """A seven-day calendar counts every non-holiday day."""
+    calendar = BusinessCalendar(weekdays={0, 1, 2, 3, 4, 5, 6}, holidays=[dt.date(2024, 7, 4)])
+    assert calendar.workdays_between(dt.date(2024, 7, 1), dt.date(2024, 7, 7)) == 6
+    assert calendar.add_business_days(dt.date(2024, 7, 3), 1) == dt.date(2024, 7, 5)
+
+
+def test_business_calendar_add_business_days_movement() -> None:
+    """Positive and negative movement works from business and non-business starts."""
+    calendar = BusinessCalendar()
+    assert calendar.add_business_days(dt.date(2024, 7, 1), 3) == dt.date(2024, 7, 4)
+    assert calendar.add_business_days(dt.date(2024, 7, 1), -3) == dt.date(2024, 6, 26)
+    # Starting on a weekend still moves the requested number of business days.
+    assert calendar.add_business_days(dt.date(2024, 7, 6), 1) == dt.date(2024, 7, 8)
+    # The starting date is not counted, even when it is business.
+    assert calendar.add_business_days(dt.date(2024, 7, 1), 1) == dt.date(2024, 7, 2)
+
+
+def test_business_calendar_add_business_days_zero_unchanged() -> None:
+    """Zero returns the normalized input even on a weekend or holiday."""
+    calendar = BusinessCalendar(holidays=[dt.date(2024, 7, 4)])
+    assert calendar.add_business_days(dt.date(2024, 7, 6), 0) == dt.date(2024, 7, 6)  # Saturday
+    assert calendar.add_business_days(dt.date(2024, 7, 4), 0) == dt.date(2024, 7, 4)  # holiday
+    assert calendar.add_business_days(dt.date(2024, 7, 3), 0) == dt.date(2024, 7, 3)
+
+
+def test_business_calendar_add_business_days_arbitrary_workweek() -> None:
+    """A Tuesday/Thursday-only calendar honors its workweek and holidays."""
+    calendar = BusinessCalendar(weekdays={1, 3}, holidays=[dt.date(2024, 3, 28)])
+    assert calendar.add_business_days(dt.date(2024, 3, 27), 1) == dt.date(2024, 4, 2)
+    assert calendar.add_business_days(dt.date(2024, 3, 30), 0) == dt.date(2024, 3, 30)
+    assert calendar.add_business_days(dt.date(2024, 4, 2), -1) == dt.date(2024, 3, 26)
+
+
+def test_business_calendar_add_business_days_skips_holidays() -> None:
+    """Holidays are skipped in addition."""
+    calendar = BusinessCalendar(holidays=[dt.date(2024, 7, 4)])
+    assert calendar.add_business_days(dt.date(2024, 7, 3), 1) == dt.date(2024, 7, 5)
+    assert calendar.add_business_days(dt.date(2024, 7, 5), -1) == dt.date(2024, 7, 3)
+
+
+def test_business_calendar_add_business_days_validation() -> None:
+    """Non-integers and out-of-range counts are rejected."""
+    calendar = BusinessCalendar()
+    with pytest.raises(TypeError, match="num_days must be an integer between -10000 and 10000"):
+        calendar.add_business_days(dt.date(2024, 7, 1), cast(Any, "3"))
+    with pytest.raises(TypeError, match="num_days must be an integer between -10000 and 10000"):
+        calendar.add_business_days(dt.date(2024, 7, 1), cast(Any, 1.5))
+    with pytest.raises(TypeError, match="num_days must be an integer between -10000 and 10000"):
+        calendar.add_business_days(dt.date(2024, 7, 1), cast(Any, None))
+    with pytest.raises(ValueError, match="num_days must be between -10000 and 10000, got 10001"):
+        calendar.add_business_days(dt.date(2024, 7, 1), 10001)
+    with pytest.raises(ValueError, match="num_days must be between -10000 and 10000, got -10001"):
+        calendar.add_business_days(dt.date(2024, 7, 1), -10001)
+
+
+def test_business_calendar_next_previous_business_day_strict() -> None:
+    """next/previous always move strictly away from the input."""
+    calendar = BusinessCalendar(weekdays={1, 3}, holidays=[dt.date(2024, 3, 28)])
+    # From a business day and from a non-business day.
+    assert calendar.next_business_day(dt.date(2024, 3, 26)) == dt.date(2024, 4, 2)
+    assert calendar.next_business_day(dt.date(2024, 3, 29)) == dt.date(2024, 4, 2)
+    assert calendar.previous_business_day(dt.date(2024, 3, 28)) == dt.date(2024, 3, 26)
+    assert calendar.previous_business_day(dt.date(2024, 3, 29)) == dt.date(2024, 3, 26)
+
+
+def test_business_calendar_methods_normalize_datetimes_to_local_dates() -> None:
+    """All five methods use the displayed local date, never the UTC date."""
+    calendar = BusinessCalendar()
+    local_monday_night = dt.datetime(2024, 7, 1, 23, 30, tzinfo=dt.timezone(dt.timedelta(hours=-5)))
+    # 2024-07-01 23:30 -05 is 2024-07-02 04:30 UTC; the local Monday must win.
+    assert calendar.is_business_day(local_monday_night)
+    assert calendar.workdays_between(local_monday_night, dt.date(2024, 7, 1)) == 1
+    assert calendar.add_business_days(local_monday_night, 1) == dt.date(2024, 7, 2)
+    assert calendar.next_business_day(local_monday_night) == dt.date(2024, 7, 2)
+    assert calendar.previous_business_day(local_monday_night) == dt.date(2024, 6, 28)
+
+
+def test_business_calendar_default_parity_with_module_functions() -> None:
+    """The default calendar agrees with the unchanged module-level functions."""
+    calendar = BusinessCalendar()
+    calendar_with_holidays = BusinessCalendar(holidays=get_us_federal_holidays(2024))
+    start, end = dt.date(2024, 7, 1), dt.date(2024, 7, 14)
+    for day in (dt.date(2024, 7, 1), dt.date(2024, 7, 4), dt.date(2024, 7, 6), dt.date(2024, 7, 8)):
+        assert calendar.is_business_day(day) == is_business_day(day)
+    assert calendar_with_holidays.is_business_day(dt.date(2024, 7, 4)) == is_business_day(
+        dt.date(2024, 7, 4), holidays=get_us_federal_holidays(2024)
+    )
+    assert calendar.workdays_between(start, end) == workdays_between(start, end)
+    assert calendar_with_holidays.workdays_between(start, end) == workdays_between(
+        start, end, holidays=get_us_federal_holidays(2024)
+    )
+    for num_days in (-3, 0, 3):
+        assert calendar.add_business_days(start, num_days) == add_business_days(start, num_days)
+    assert calendar.next_business_day(start) == next_business_day(start)
+    assert calendar.previous_business_day(start) == previous_business_day(start)

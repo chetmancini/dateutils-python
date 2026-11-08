@@ -329,6 +329,30 @@ end_of_week(value, start_on_monday=True)  # date(2024, 7, 21)
 
 Both helpers return inclusive plain dates; a datetime input is normalized to its local calendar date.
 
+### Configurable Business Calendars
+
+The module-level helpers above (and `workdays_between`, `next_business_day`,
+`previous_business_day`) always follow Monday through Friday. For custom
+workweeks and fixed holiday sets, use the immutable `BusinessCalendar` value
+object:
+
+```python
+from datetime import date
+from dateutils import BusinessCalendar, get_us_federal_holidays
+
+business_calendar = BusinessCalendar(
+    weekdays={6, 0, 1, 2, 3},  # Sunday through Thursday
+    holidays=get_us_federal_holidays(2024),
+)
+business_calendar.is_business_day(date(2024, 7, 4))  # False (Independence Day)
+business_calendar.add_business_days(date(2024, 7, 3), 1)  # date(2024, 7, 7)
+business_calendar.workdays_between(date(2024, 7, 1), date(2024, 7, 7))  # 3
+```
+
+The five business-day methods match the module-level semantics: inclusive
+day counts, zero addition returns the input unchanged, and next/previous move
+strictly away from the input.
+
 ### Human-readable Dates
 
 ```python
