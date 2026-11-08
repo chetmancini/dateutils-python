@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - Add Python 3.16 (3.16.0a1) to the CI test matrix (non-blocking).
 - Accept datetime now_override references in pretty_date using the existing naive-UTC and aware-instant rules.
 - Add point-in-time timezone offset lookup with aware-instant and local wall-time handling.
+- Add start_of_week and end_of_week helpers with Sunday or Monday week starts.
 
 ### Changed
 - Bump the development Python from 3.14.8 to 3.14.10.
