@@ -384,7 +384,8 @@ def format_timezone_offset(tz: str | tzinfo, *, at: datetime | None = None) -> s
 
     Returns:
         String in format "+HH:MM" or "-HH:MM"; a ":SS" seconds component is
-        included when the offset is not a whole number of minutes.
+        included when the offset is not a whole number of minutes, and a
+        ".ffffff" fraction when the offset carries sub-second precision.
 
     Raises:
         InvalidTimezoneError: If the timezone name is invalid. Subclasses both
@@ -403,6 +404,9 @@ def format_timezone_offset(tz: str | tzinfo, *, at: datetime | None = None) -> s
         >>> format_timezone_offset(timezone(timedelta(hours=5, minutes=45, seconds=30)))
         '+05:45:30'
 
+        >>> format_timezone_offset(timezone(timedelta(microseconds=-500000)))
+        '-00:00:00.500000'
+
     Note:
         Returns the offset at the **current moment** unless ``at`` is given.
         An aware ``at`` represents an instant and is converted to the target
@@ -413,12 +417,19 @@ def format_timezone_offset(tz: str | tzinfo, *, at: datetime | None = None) -> s
     """
     offset = get_timezone_offset(tz, at=at)
 
-    # Convert timedelta to hours and minutes
-    total_seconds = int(offset.total_seconds())
-    hours, remainder = divmod(abs(total_seconds), _SECONDS_IN_HOUR)
+    # Convert timedelta to hours, minutes, and seconds without truncation:
+    # int(total_seconds()) would discard sub-second offsets entirely,
+    # flipping the sign of a negative fraction.
+    total = abs(offset)
+    total_seconds = total.days * 86400 + total.seconds
+    hours, remainder = divmod(total_seconds, _SECONDS_IN_HOUR)
     minutes, seconds = divmod(remainder, _SECONDS_IN_MINUTE)
 
-    sign = "-" if total_seconds < 0 else "+"
+    sign = "-" if offset < timedelta(0) else "+"
+    if total.microseconds:
+        # Caller-supplied tzinfo objects can carry sub-second precision;
+        # keep it exact rather than rounding to the nearest second.
+        return f"{sign}{hours:02d}:{minutes:02d}:{seconds:02d}.{total.microseconds:06d}"
     if seconds:
         # Historical or fixed offsets can carry whole seconds (for example,
         # Africa/Monrovia was -00:44:30 until 1972); dropping them would

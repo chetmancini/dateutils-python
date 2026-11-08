@@ -380,6 +380,18 @@ def test_format_timezone_offset_retains_sub_minute_seconds() -> None:
     assert format_timezone_offset(dt.timezone(dt.timedelta(hours=5, minutes=45)), at=at_1970) == "+05:45"
 
 
+def test_format_timezone_offset_preserves_fractional_seconds() -> None:
+    """Sub-second offsets keep their sign and precision instead of rounding to zero."""
+    negative_fraction = dt.timezone(dt.timedelta(microseconds=-500000))
+    assert format_timezone_offset(negative_fraction) == "-00:00:00.500000"
+    assert format_timezone_offset(negative_fraction, at=dt.datetime(2024, 7, 15, 12)) == "-00:00:00.500000"
+    assert format_timezone_offset(dt.timezone(dt.timedelta(microseconds=250000))) == "+00:00:00.250000"
+    assert (
+        format_timezone_offset(dt.timezone(dt.timedelta(hours=5, minutes=45, seconds=30, microseconds=123000)))
+        == "+05:45:30.123000"
+    )
+
+
 def test_timezone_offset_naive_at_matches_localized_equivalent() -> None:
     """A naive non-transition wall time equals its explicitly localized equivalent."""
     wall_time = dt.datetime(2024, 4, 10, 10, 30)
