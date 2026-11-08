@@ -72,14 +72,14 @@ jobs:
         run: uv sync --locked --all-extras --dev
 
       # CPython 3.16.0a1: the twine→keyring→secretstorage→cryptography→cffi
-      # chain cannot build — cffi 2.1.1 (latest published) lacks the 3.16 C-API
-      # fix (upstream cffi 2.2.0, unreleased). This job only runs tests and the
-      # wheel smoke test, which need pytest + freezegun; install those and skip
-      # the toolchain. Revisit when cffi 2.2.0 is released.
+      # dev chain cannot build — cffi 2.1.1 (latest published) lacks the 3.16
+      # C-API fix (upstream cffi 2.2.0, unreleased). This job only runs tests
+      # and the wheel smoke test, which need pytest + freezegun; install those
+      # and skip the dev group. Revisit when cffi 2.2.0 is released.
       - name: Install the project (3.16 alpha)
         if: matrix.python-version == '3.16'
         run: |
-          uv sync --locked --all-extras
+          uv sync --locked --all-extras --no-dev
           uv pip install "pytest>=9.1.1" "freezegun>=1.5.5"
 
       - name: Run quality checks
