@@ -179,15 +179,15 @@ bump-version = @set -eu; \
 		exit 1; \
 	fi; \
 	echo "${BLUE}Bumping $(1) version...${NC}"; \
-	OLD_VERSION=$$(grep '^version = ' pyproject.toml | cut -d'"' -f2); \
-	uv run bump2version --current-version $$OLD_VERSION $(1); \
-	NEW_VERSION=$$(grep '^version = ' pyproject.toml | cut -d'"' -f2); \
+	OLD_VERSION=$$(uv run bump-my-version show current_version); \
+	uv run bump-my-version bump $(1); \
+	NEW_VERSION=$$(uv run bump-my-version show current_version); \
 	$(MAKE) --no-print-directory update-changelog VERSION=$$NEW_VERSION; \
 	uv lock; \
 	uv run python scripts/validate_release_tag.py "v$$NEW_VERSION"; \
 	$(MAKE) --no-print-directory check; \
 	echo "${BLUE}Staging release files...${NC}"; \
-	git add .bumpversion.cfg pyproject.toml CHANGELOG.md uv.lock; \
+	git add .bumpversion.toml pyproject.toml CHANGELOG.md uv.lock; \
 	git commit -m "Bump version: $$OLD_VERSION → $$NEW_VERSION"; \
 	git tag "v$$NEW_VERSION"; \
 	echo "${BLUE}Atomically pushing branch and tag to GitHub...${NC}"; \

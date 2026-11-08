@@ -120,7 +120,7 @@ The `version-*` target requires a clean working tree, runs `make check`, commits
 tags, and atomically pushes the branch and tag. GitHub Actions repeats the full
 release validation after the tag is pushed.
 
-1. **Version bump** - Updates the version in `pyproject.toml` and `.bumpversion.cfg`
+1. **Version bump** - Updates the version in `pyproject.toml` and `.bumpversion.toml`
 2. **Changelog update** - Updates `CHANGELOG.md` and refreshes `uv.lock`
 3. **Local validation** - Verifies the release tag and runs `make check`
 4. **Git operations** - Stages only release metadata, creates a commit and tag, and atomically pushes both
