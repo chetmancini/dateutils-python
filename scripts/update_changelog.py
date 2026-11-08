@@ -79,12 +79,12 @@ def get_commits_since_tag(tag: str) -> list[Commit]:
     return [commit for line in output.split("\n") if (commit := _parse_commit_line(line)) is not None]
 
 
-def get_changed_files(tag: str) -> set[str]:
-    """Get list of files that changed since the tag."""
+def get_added_files(tag: str) -> set[str]:
+    """Get files added since the tag."""
     if not tag:
         cmd = ["ls-files"]
     else:
-        cmd = ["diff", "--name-only", f"{tag}..HEAD"]
+        cmd = ["diff", "--name-only", "--diff-filter=A", f"{tag}..HEAD"]
 
     output = run_git_command(cmd)
     return set(output.split("\n")) if output else set()
@@ -133,15 +133,15 @@ def _categorize_by_keywords(subject: str) -> str:
     return "changed"  # Default category
 
 
-def _analyze_file_changes(changed_files: set[str]) -> list[str]:
-    """Analyze file changes for additional context."""
-    new_files = [f for f in changed_files if f and any(kw in f.lower() for kw in ["new", "add"])]
+def _analyze_added_files(added_files: set[str]) -> list[str]:
+    """Analyze added files for additional context."""
+    new_files = [f for f in added_files if f]
     if new_files:
         return [f"Added {len(new_files)} new file{'s' if len(new_files) > 1 else ''}"]
     return []
 
 
-def categorize_changes(commits: list[Commit], changed_files: set[str]) -> dict[str, list[str]]:
+def categorize_changes(commits: list[Commit], added_files: set[str]) -> dict[str, list[str]]:
     """Categorize changes into Added/Changed/Fixed based on commits and files."""
     changes = {"added": [], "changed": [], "fixed": []}
     patterns = _get_commit_patterns()
@@ -159,7 +159,7 @@ def categorize_changes(commits: list[Commit], changed_files: set[str]) -> dict[s
                 changes[category].append(subject)
 
     # Add file-based insights
-    file_changes = _analyze_file_changes(changed_files)
+    file_changes = _analyze_added_files(added_files)
     for change in file_changes:
         if change not in changes["added"]:
             changes["added"].append(change)
@@ -323,12 +323,12 @@ def update_changelog(version: str, date: str | None = None) -> None:
         print("📍 No previous tags found, analyzing all commits")
 
     commits = get_commits_since_tag(latest_tag)
-    changed_files = get_changed_files(latest_tag)
+    added_files = get_added_files(latest_tag)
 
-    print(f"📝 Found {len(commits)} commits and {len(changed_files)} changed files")
+    print(f"📝 Found {len(commits)} commits and {len(added_files)} added files")
 
     # Categorize changes
-    changes = categorize_changes(commits, changed_files)
+    changes = categorize_changes(commits, added_files)
 
     # Show summary of what was found
     total_changes = sum(len(items) for items in changes.values())
