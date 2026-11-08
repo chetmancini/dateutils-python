@@ -60,6 +60,7 @@ def validate_markdown_blocks(markdown: str, document_name: str) -> list[str]:
 
 
 SIGNATURE_LINE_RE = re.compile(r"^### `([A-Za-z_][A-Za-z0-9_]*)`\n\n`([^`]+)`", flags=re.MULTILINE)
+HEADING_RE = re.compile(r"^### `([A-Za-z_][A-Za-z0-9_]*)`$", flags=re.MULTILINE)
 
 
 def _normalize_signature(signature: str) -> str:
@@ -73,19 +74,30 @@ def _normalize_signature(signature: str) -> str:
 
 
 def validate_api_signatures(markdown: str) -> list[str]:
-    """Verify documented signatures under callable headings match the live package."""
+    """Verify every callable heading documents a live, matching signature.
+
+    Callable ``### `name``` headings are enumerated independently of the
+    signature lines, so a heading whose signature is omitted or moved away
+    from its canonical position is reported instead of silently skipped.
+    Headings whose exports cannot be inspected (for example exception
+    classes without an inspectable constructor) are documented in prose and
+    exempt.
+    """
     failures: list[str] = []
-    for match in SIGNATURE_LINE_RE.finditer(markdown):
-        name, documented = match.groups()
+    documented = dict(SIGNATURE_LINE_RE.findall(markdown))
+    for name in HEADING_RE.findall(markdown):
         obj = getattr(dateutils, name, None)
         if obj is None or not callable(obj):
             continue
         try:
             live = name + str(inspect.signature(obj))
         except (TypeError, ValueError):
-            continue  # e.g. exception classes without a meaningful signature
-        if _normalize_signature(documented) != _normalize_signature(live):
-            failures.append(f"{name}: documented signature `{documented}` does not match `{live}`")
+            continue  # prose-only callables without an inspectable signature
+        if name not in documented:
+            failures.append(f"{name}: missing documented signature under its heading")
+            continue
+        if _normalize_signature(documented[name]) != _normalize_signature(live):
+            failures.append(f"{name}: documented signature `{documented[name]}` does not match `{live}`")
     return failures
 
 

@@ -1361,6 +1361,7 @@ def add_business_days(dt: date, num_days: int, holidays: Iterable[date | datetim
 
     Raises:
         ValueError: If num_days is extremely large (> 10000 or < -10000)
+        TypeError: If `num_days` is a boolean or not an integer.
         TypeError: If `holidays` contains values that are not date/datetime
 
     Examples:
@@ -1385,6 +1386,8 @@ def add_business_days(dt: date, num_days: int, holidays: Iterable[date | datetim
     """
     dt = _as_date(dt)
 
+    if isinstance(num_days, bool) or not isinstance(num_days, int):
+        raise TypeError("num_days must be an integer between -10000 and 10000")
     if not -10000 <= num_days <= 10000:  # noqa: PLR2004
         raise ValueError(f"num_days must be between -10000 and 10000, got {num_days}")
 

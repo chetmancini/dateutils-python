@@ -26,6 +26,7 @@ All notable changes to this project will be documented in this file.
 - Reject boolean quarter values and boolean `pretty_date` timestamp arguments.
 - Document InvalidTimezoneError across timezone APIs and add deterministic fixed-offset examples.
 - Align contributor documentation with the full make check gate and tested-asset PyPI publish workflow.
+- Reject boolean and non-integer `num_days` in the module-level `add_business_days`, matching `BusinessCalendar`.
 
 ## [0.9.0] - 2026-10-27
 

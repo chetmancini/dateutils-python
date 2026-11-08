@@ -91,8 +91,11 @@ from dateutils import ParseError, parse_date
 
 try:
     parse_date("not-a-date")
+    raise AssertionError("parse_date must raise ParseError for unparseable input")
 except ParseError as exc:
-    print(exc.parser, "|", exc.reason)
+    assert exc.parser == "date"
+    assert exc.value == "not-a-date"
+    assert "did not match any supported format" in exc.reason
 ```
 
 ### `InvalidTimezoneError`
@@ -107,8 +110,12 @@ from dateutils import InvalidTimezoneError, now_in_timezone
 
 try:
     now_in_timezone("Invalid/Timezone")
+    raise AssertionError("now_in_timezone must raise InvalidTimezoneError for unknown timezone names")
 except InvalidTimezoneError as exc:
-    print(type(exc).__mro__[1].__name__, "/", type(exc).__mro__[2].__name__)
+    assert isinstance(exc, ValueError)
+    assert exc.args == (
+        "Invalid timezone name 'Invalid/Timezone'. Use get_available_timezones() to see valid options.",
+    )
 ```
 
 ## UTC and Epoch Operations

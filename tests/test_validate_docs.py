@@ -118,6 +118,27 @@ The number of seconds in a day (`86400`).
     assert validate_docs_script.validate_api_signatures(markdown) == []
 
 
+def test_api_signature_validation_requires_signature_for_every_callable_heading() -> None:
+    markdown = """### `epoch_s`
+
+Returns whole Unix seconds.
+
+```python
+assert True
+```
+
+### `SECONDS_IN_DAY`
+
+The number of seconds in a day (`86400`).
+"""
+
+    failures = validate_docs_script.validate_api_signatures(markdown)
+
+    assert len(failures) == 1
+    assert "epoch_s" in failures[0]
+    assert "missing documented signature" in failures[0]
+
+
 def test_real_api_signatures_match_live_api() -> None:
     api = validate_docs_script.API_PATH.read_text(encoding="utf-8")
 
