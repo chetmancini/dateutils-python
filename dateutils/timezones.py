@@ -71,6 +71,12 @@ def now_in_timezone(tz: str | tzinfo) -> datetime:
         InvalidTimezoneError: If the timezone name is invalid. Subclasses both
             ``ValueError`` and ``zoneinfo.ZoneInfoNotFoundError``.
         TypeError: If ``tz`` is neither a timezone name nor a ``tzinfo`` instance.
+
+    Examples:
+        >>> now_in_timezone("Invalid/Timezone")
+        Traceback (most recent call last):
+        ...
+        dateutils.timezones.InvalidTimezoneError: Invalid timezone name 'Invalid/Timezone'. Use get_available_timezones() to see valid options.
     """
     return datetime.now(_resolve_timezone(tz))
 
@@ -90,6 +96,12 @@ def today_in_timezone(tz: str | tzinfo) -> date:
         InvalidTimezoneError: If the timezone name is invalid. Subclasses both
             ``ValueError`` and ``zoneinfo.ZoneInfoNotFoundError``.
         TypeError: If ``tz`` is neither a timezone name nor a ``tzinfo`` instance.
+
+    Examples:
+        >>> today_in_timezone("Invalid/Timezone")
+        Traceback (most recent call last):
+        ...
+        dateutils.timezones.InvalidTimezoneError: Invalid timezone name 'Invalid/Timezone'. Use get_available_timezones() to see valid options.
     """
     return now_in_timezone(tz).date()
 
@@ -126,9 +138,12 @@ def localize_datetime(
         An aware datetime in ``tz``.
 
     Raises:
-        ValueError: If ``dt`` already has a usable UTC offset, the timezone name
-            or a policy is invalid, or a DST transition requires a policy that
-            was not selected.
+        InvalidTimezoneError: If the timezone name is invalid. Subclasses both
+            ``ValueError`` and ``zoneinfo.ZoneInfoNotFoundError``.
+        ValueError: If ``dt`` already has a usable UTC offset, a policy is
+            invalid, or a DST transition requires a policy that was not
+            selected. Timezone-name failures raise :class:`InvalidTimezoneError`
+            instead.
         TypeError: If ``tz`` is neither a timezone name nor a
             :class:`datetime.tzinfo` instance.
 
@@ -141,6 +156,11 @@ def localize_datetime(
         ...     datetime(2024, 11, 3, 1, 30), "America/New_York", ambiguous="latest"
         ... ).fold
         1
+
+        >>> localize_datetime(datetime(2024, 7, 22, 10, 30), "Invalid/Timezone")
+        Traceback (most recent call last):
+        ...
+        dateutils.timezones.InvalidTimezoneError: Invalid timezone name 'Invalid/Timezone'. Use get_available_timezones() to see valid options.
     """
     if _is_aware_datetime(dt):
         raise ValueError("Input datetime must be naive")
@@ -184,8 +204,9 @@ def convert_timezone(dt: datetime, to_tz: str | tzinfo) -> datetime:
                   in the target timezone.
 
     Raises:
-        ValueError: If the input datetime `dt` has no usable UTC offset or if
-            the timezone name is invalid.
+        InvalidTimezoneError: If the timezone name is invalid. Subclasses both
+            ``ValueError`` and ``zoneinfo.ZoneInfoNotFoundError``.
+        ValueError: If the input datetime ``dt`` has no usable UTC offset.
         TypeError: If ``to_tz`` is neither a timezone name nor a ``tzinfo``
             instance.
 
@@ -220,6 +241,12 @@ def convert_timezone(dt: datetime, to_tz: str | tzinfo) -> datetime:
         ... except ValueError as e:
         ...     print(e)
         Input datetime must include timezone information
+
+        >>> # Example of error for an invalid timezone name
+        >>> convert_timezone(utc_time, "Invalid/Timezone")
+        Traceback (most recent call last):
+        ...
+        dateutils.timezones.InvalidTimezoneError: Invalid timezone name 'Invalid/Timezone'. Use get_available_timezones() to see valid options.
     """
     if not _is_aware_datetime(dt):
         raise ValueError("Input datetime must include timezone information")
@@ -297,8 +324,19 @@ def get_timezone_offset(tz: str | tzinfo) -> timedelta:
         Timedelta representing the offset from UTC
 
     Raises:
-        ValueError: If timezone name is invalid
+        InvalidTimezoneError: If the timezone name is invalid. Subclasses both
+            ``ValueError`` and ``zoneinfo.ZoneInfoNotFoundError``.
         TypeError: If ``tz`` is neither a timezone name nor a ``tzinfo`` instance.
+
+    Examples:
+        >>> from datetime import timedelta, timezone
+        >>> get_timezone_offset(timezone(timedelta(hours=5, minutes=45)))
+        datetime.timedelta(seconds=20700)
+
+        >>> get_timezone_offset("Invalid/Timezone")
+        Traceback (most recent call last):
+        ...
+        dateutils.timezones.InvalidTimezoneError: Invalid timezone name 'Invalid/Timezone'. Use get_available_timezones() to see valid options.
     """
     now = datetime.now(_resolve_timezone(tz))
     return now.utcoffset() or timedelta(0)
@@ -315,8 +353,14 @@ def format_timezone_offset(tz: str | tzinfo) -> str:
         String in format "+HH:MM" or "-HH:MM"
 
     Raises:
-        ValueError: If timezone name is invalid
+        InvalidTimezoneError: If the timezone name is invalid. Subclasses both
+            ``ValueError`` and ``zoneinfo.ZoneInfoNotFoundError``.
         TypeError: If ``tz`` is neither a timezone name nor a ``tzinfo`` instance.
+
+    Examples:
+        >>> from datetime import timedelta, timezone
+        >>> format_timezone_offset(timezone(timedelta(hours=5, minutes=45)))
+        '+05:45'
 
     Note:
         Returns the offset at the **current moment**. For DST zones, this varies

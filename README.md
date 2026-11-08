@@ -187,8 +187,9 @@ from dateutils import (
     get_available_timezones,
     get_timezone_offset,
     format_timezone_offset,
+    InvalidTimezoneError,
 )
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 # Get current time in a timezone
 nyc_now = now_in_timezone("America/New_York")
@@ -209,6 +210,16 @@ timezones = get_available_timezones()  # List of all available timezone names
 # Get timezone offset
 offset = get_timezone_offset("America/New_York")  # Returns timedelta
 offset_str = format_timezone_offset("America/New_York")  # Returns "-05:00" or "-04:00" (DST)
+
+# Every timezone function that accepts a name or tzinfo instance raises
+# InvalidTimezoneError for an unknown name (a ValueError subclass)
+try:
+    now_in_timezone("Invalid/Timezone")
+except InvalidTimezoneError as e:
+    print(e)  # "Invalid timezone name 'Invalid/Timezone'. Use get_available_timezones() to see valid options."
+
+# Fixed offsets retain minute precision
+assert format_timezone_offset(timezone(timedelta(hours=5, minutes=45))) == "+05:45"
 ```
 
 ### Quarter and Month Operations
