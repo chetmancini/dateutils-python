@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
 - Bump the development Python from 3.14.8 to 3.14.10.
 
 ### Fixed
--
+- Accept fractional seconds in space-separated parse_datetime inputs, including numeric timezone offsets.
 
 ## [0.9.0] - 2026-10-27
 

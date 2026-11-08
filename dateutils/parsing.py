@@ -64,8 +64,11 @@ _DAY_MONTH_YEAR_PATTERN = re.compile(r"^(?P<day>\d{1,2})\s+(?P<month>[A-Za-z.]+)
 # Shared default datetime parsing formats for parse_datetime()
 _COMMON_DATETIME_FORMATS = (
     "%Y-%m-%d %H:%M:%S",  # 2023-01-31 14:30:45
+    "%Y-%m-%d %H:%M:%S.%f",  # 2023-01-31 14:30:45.123456
     "%Y-%m-%d %H:%M:%S%z",  # 2023-01-31 14:30:45+02:00
+    "%Y-%m-%d %H:%M:%S.%f%z",  # 2023-01-31 14:30:45.123456+02:00
     "%Y-%m-%d %H:%M:%S %z",  # 2023-01-31 14:30:45 +02:00
+    "%Y-%m-%d %H:%M:%S.%f %z",  # 2023-01-31 14:30:45.123456 +02:00
     "%Y-%m-%dT%H:%M:%S",  # 2023-01-31T14:30:45
     "%Y-%m-%dT%H:%M:%S%z",  # 2023-01-31T14:30:45+02:00
     "%Y-%m-%dT%H:%M:%S.%f",  # 2023-01-31T14:30:45.123456
@@ -73,7 +76,14 @@ _COMMON_DATETIME_FORMATS = (
     "%Y-%m-%dT%H:%M:%SZ",  # 2023-01-31T14:30:45Z
     "%Y-%m-%dT%H:%M:%S.%fZ",  # 2023-01-31T14:30:45.123456Z
 )
-_TIME_SUFFIXES = ("%H:%M:%S", "%H:%M:%S%z", "%H:%M:%S %z")
+_TIME_SUFFIXES = (
+    "%H:%M:%S",
+    "%H:%M:%S%z",
+    "%H:%M:%S %z",
+    "%H:%M:%S.%f",
+    "%H:%M:%S.%f%z",
+    "%H:%M:%S.%f %z",
+)
 _AMBIGUOUS_DATE_FORMATS = {
     True: ("%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y", "%m-%d-%Y"),
     False: ("%m/%d/%Y", "%d/%m/%Y", "%m-%d-%Y", "%d-%m-%Y"),
@@ -375,6 +385,9 @@ def parse_datetime(
     Supports timezone-aware values in default parsing, including:
     - UTC designator `Z`
     - Numeric offsets with or without a colon (for example `+02:00`, `-0500`)
+
+    Default parsing accepts one to six fractional-second digits for supported
+    seconds forms.
 
     Args:
         datetime_str: The datetime string to parse

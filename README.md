@@ -158,6 +158,10 @@ try:
 except ParseError:
     pass  # Rejected because the numeric order is ambiguous.
 
+# Parse common datetime formats, including fractional seconds
+dt = parse_datetime("2024-06-06 12:30:45.123456")
+assert dt.microsecond == 123456
+
 # Parse ISO 8601 datetime
 dt = parse_iso8601("2024-06-06T12:30:45Z")  # With timezone
 dt = parse_iso8601("2024-06-06")  # Date only
