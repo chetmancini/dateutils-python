@@ -92,7 +92,19 @@ This project uses automated tooling with pre-commit hooks:
 - **`ty`** for type checking
 - **`pytest`** for testing
 
-Pre-commit hooks automatically run these checks on every commit. The `make fix` command automatically resolves most style issues. Ensure `make check` passes before submitting your PR.
+Pre-commit hooks automatically run a fast subset of these checks on every
+commit, and `make fix` resolves most style issues automatically. The canonical
+quality gate is `make check`, which runs each stage in full:
+
+- Ruff lint and format checks.
+- Changelog structure validation.
+- `ty` type checking.
+- Full tests with 100% statement and branch coverage.
+- Public doctests and executable documentation examples.
+
+`make build-check` is a separate gate that builds the package, smoke-tests the
+installed wheel in isolation, and validates the distributions with twine; it is
+not part of `make check`. Ensure `make check` passes before submitting your PR.
 
 ## Release Process
 
@@ -125,7 +137,7 @@ release validation after the tag is pushed.
 3. **Local validation** - Verifies the release tag and runs `make check`
 4. **Git operations** - Stages only release metadata, creates a commit and tag, and atomically pushes both
 5. **GitHub Actions** - Revalidates the tag, runs `make check`, builds and smoke-tests the wheel, and creates a draft GitHub release
-6. **PyPI publish** - Publishing the draft GitHub release triggers the PyPI publish workflow, which checks out the tag and rebuilds the validated distribution before uploading it
+6. **PyPI publish** - Publishing the draft GitHub release triggers a workflow that checks out the tag and validates it, downloads the wheel and source archive produced and tested by the Release workflow, verifies the artifact pair and smoke-tests the wheel, and publishes those tested assets to PyPI using trusted publishing
 
 ### Manual Steps (if needed)
 

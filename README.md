@@ -382,6 +382,9 @@ make deps
 make check
 ```
 
+See the [Contributing guide](https://github.com/chetmancini/dateutils-python/blob/master/CONTRIBUTING.md) for setup, pre-commit hooks, the
+`make check` quality gate, and release details.
+
 ## License
 
 MIT License

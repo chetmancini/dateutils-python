@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
 - Derive generated changelog new-file counts from Git addition status instead of filename keywords.
 - Reject boolean quarter values and boolean `pretty_date` timestamp arguments.
 - Document InvalidTimezoneError across timezone APIs and add deterministic fixed-offset examples.
+- Align contributor documentation with the full make check gate and tested-asset PyPI publish workflow.
 
 ## [0.9.0] - 2026-10-27
 
