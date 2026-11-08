@@ -77,7 +77,7 @@ validate-changelog: ## Validate CHANGELOG.md structure
 
 typecheck: ## Run static type checking with ty
 	@echo "${BLUE}Running type checks...${NC}"
-	@uv run ty check dateutils tests
+	@uv run ty check
 
 # Testing
 PYTEST_COV_ARGS = --cov=dateutils --cov=scripts --cov-report=term-missing

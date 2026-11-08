@@ -170,7 +170,7 @@ unused-ignore-comment = "warn"
 redundant-cast = "warn"
 
 [tool.ty.src]
-include = ["dateutils", "tests"]
+include = ["dateutils", "tests", "scripts"]
 exclude = [
     ".git",
     ".hg",
