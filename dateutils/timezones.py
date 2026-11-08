@@ -383,7 +383,8 @@ def format_timezone_offset(tz: str | tzinfo, *, at: datetime | None = None) -> s
             latest) and nonexistent times shift forward.
 
     Returns:
-        String in format "+HH:MM" or "-HH:MM"
+        String in format "+HH:MM" or "-HH:MM"; a ":SS" seconds component is
+        included when the offset is not a whole number of minutes.
 
     Raises:
         InvalidTimezoneError: If the timezone name is invalid. Subclasses both
@@ -399,6 +400,9 @@ def format_timezone_offset(tz: str | tzinfo, *, at: datetime | None = None) -> s
         >>> format_timezone_offset("America/New_York", at=datetime(2024, 1, 15, 12))
         '-05:00'
 
+        >>> format_timezone_offset(timezone(timedelta(hours=5, minutes=45, seconds=30)))
+        '+05:45:30'
+
     Note:
         Returns the offset at the **current moment** unless ``at`` is given.
         An aware ``at`` represents an instant and is converted to the target
@@ -412,7 +416,12 @@ def format_timezone_offset(tz: str | tzinfo, *, at: datetime | None = None) -> s
     # Convert timedelta to hours and minutes
     total_seconds = int(offset.total_seconds())
     hours, remainder = divmod(abs(total_seconds), _SECONDS_IN_HOUR)
-    minutes, _ = divmod(remainder, _SECONDS_IN_MINUTE)
+    minutes, seconds = divmod(remainder, _SECONDS_IN_MINUTE)
 
     sign = "-" if total_seconds < 0 else "+"
+    if seconds:
+        # Historical or fixed offsets can carry whole seconds (for example,
+        # Africa/Monrovia was -00:44:30 until 1972); dropping them would
+        # silently change the offset.
+        return f"{sign}{hours:02d}:{minutes:02d}:{seconds:02d}"
     return f"{sign}{hours:02d}:{minutes:02d}"

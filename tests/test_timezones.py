@@ -366,6 +366,20 @@ def test_timezone_offset_aware_gap_instant_preserves_instant() -> None:
     assert format_timezone_offset("America/New_York", at=gap_dt) == "-05:00"
 
 
+def test_format_timezone_offset_retains_sub_minute_seconds() -> None:
+    """Offsets with seconds keep them instead of being silently truncated."""
+    at_1970 = dt.datetime(1970, 1, 1)
+    # Africa/Monrovia used -00:44:30 until 1972-01-07.
+    assert get_timezone_offset("Africa/Monrovia", at=at_1970) == dt.timedelta(seconds=-2670)
+    assert format_timezone_offset("Africa/Monrovia", at=at_1970) == "-00:44:30"
+    # Seconds-bearing fixed tzinfo instances format the same way, with or without `at`.
+    secs_zone = dt.timezone(dt.timedelta(hours=5, minutes=45, seconds=30))
+    assert format_timezone_offset(secs_zone, at=at_1970) == "+05:45:30"
+    assert format_timezone_offset(secs_zone) == "+05:45:30"
+    # Whole-minute offsets keep the established +HH:MM/-HH:MM shape.
+    assert format_timezone_offset(dt.timezone(dt.timedelta(hours=5, minutes=45)), at=at_1970) == "+05:45"
+
+
 def test_timezone_offset_naive_at_matches_localized_equivalent() -> None:
     """A naive non-transition wall time equals its explicitly localized equivalent."""
     wall_time = dt.datetime(2024, 4, 10, 10, 30)
