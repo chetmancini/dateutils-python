@@ -211,8 +211,8 @@ timezones = get_available_timezones()  # List of all available timezone names
 offset = get_timezone_offset("America/New_York")  # Returns timedelta
 offset_str = format_timezone_offset("America/New_York")  # Returns "-05:00" or "-04:00" (DST)
 
-# Every public timezone function accepts a name or tzinfo instance, and all of
-# them raise InvalidTimezoneError for an unknown name (a ValueError subclass)
+# Every timezone function that accepts a name or tzinfo instance raises
+# InvalidTimezoneError for an unknown name (a ValueError subclass)
 try:
     now_in_timezone("Invalid/Timezone")
 except InvalidTimezoneError as e:
