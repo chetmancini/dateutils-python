@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - Move pytest coverage flags from global addopts into coverage-owning Make targets so focused tests run normally.
 - Include scripts in ty source selection and use the configured roots for the typecheck target.
 - Limit watch-test to first-party Python files, pyproject.toml, and uv.lock instead of scanning virtualenvs and nested worktrees.
+- Replace bump2version with bump-my-version and migrate release configuration to .bumpversion.toml.
 
 ### Fixed
 - Accept fractional seconds in space-separated parse_datetime inputs, including numeric timezone offsets.

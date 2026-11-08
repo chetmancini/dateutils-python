@@ -32,14 +32,14 @@ make version-major  # 0.2.1 -> 1.0.0
 
 The selected `version-*` target:
 
-- Reads the current version from `pyproject.toml`
-- Runs `bump2version` for the selected bump type
+- Reads the current version with `bump-my-version`
+- Runs `bump-my-version` for the selected bump type
 - Updates `CHANGELOG.md` with `make update-changelog VERSION=<new-version>`
   - Bullets written under ## [Unreleased] are carried into the new version entry, ahead of commit-derived notes.
 - Refreshes `uv.lock`
 - Validates that `v<new-version>` matches the version in `pyproject.toml`
 - Runs `make check` before creating the release commit
-- Stages only `.bumpversion.cfg`, `pyproject.toml`, `CHANGELOG.md`, and `uv.lock`
+- Stages only `.bumpversion.toml`, `pyproject.toml`, `CHANGELOG.md`, and `uv.lock`
 - Commits the release changes with a `Bump version: <old> -> <new>` message
 - Creates a local `v<new-version>` git tag
 - Atomically pushes the current branch and new tag to `origin`
