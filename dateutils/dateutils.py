@@ -1284,11 +1284,16 @@ def previous_business_day(dt: date, holidays: Iterable[date | datetime] | None =
     return add_business_days(dt, -1, holidays)
 
 
-def _ts_difference(timestamp: float | datetime | None = None, now_override: float | None = None) -> timedelta:
+def _ts_difference(
+    timestamp: float | datetime | None = None, now_override: float | datetime | None = None
+) -> timedelta:
     """Helper function to calculate time difference for pretty_date."""
     if isinstance(now_override, bool):
         raise TypeError("now_override must not be a boolean")
-    if now_override is not None:
+    if isinstance(now_override, datetime):
+        # Assume UTC for datetimes without a usable offset (matches epoch_s).
+        now = datetime_to_utc(now_override)
+    elif now_override is not None:
         try:
             now = datetime.fromtimestamp(now_override, tz=UTC)
         except (ValueError, OSError, OverflowError) as e:
@@ -1353,7 +1358,7 @@ def _format_relative_day_or_longer(day_diff: int, *, future: bool) -> str:
     return _format_relative_count(day_diff // DAYS_IN_YEAR, "year", future=future)
 
 
-def pretty_date(timestamp: float | datetime | None = None, now_override: float | None = None) -> str:
+def pretty_date(timestamp: float | datetime | None = None, now_override: float | datetime | None = None) -> str:
     """
     Format a timestamp as a human-readable relative time string.
 
@@ -1367,8 +1372,10 @@ def pretty_date(timestamp: float | datetime | None = None, now_override: float |
             - datetime: A datetime object. If it has no usable UTC offset, it is
               assumed to be UTC. Otherwise it is converted to UTC for comparison.
             - None: Returns "just now".
-        now_override: Optional Unix timestamp to use as the reference "now" time.
-            Primarily useful for testing to ensure deterministic output.
+        now_override: Optional Unix timestamp (int or float) or datetime to use as
+            the reference "now" time. Numeric values are seconds since epoch;
+            datetimes follow the same naive-UTC and aware-instant policy as
+            `timestamp`. Primarily useful for testing to ensure deterministic output.
         Booleans are rejected for both timestamp arguments since `bool` subclasses `int`.
 
     Returns:
@@ -1400,6 +1407,10 @@ def pretty_date(timestamp: float | datetime | None = None, now_override: float |
         '30 seconds ago'
         >>> pretty_date(datetime(2024, 3, 27, 10, 0, 0, tzinfo=timezone.utc), now_ts)
         '2 hours ago'
+
+        >>> # Using a datetime reference (naive datetimes are treated as UTC)
+        >>> pretty_date(datetime(2024, 3, 27, 11, 59, 30), datetime(2024, 3, 27, 12, 0, 0))
+        '30 seconds ago'
 
         >>> # Future dates
         >>> pretty_date(datetime(2024, 3, 27, 14, 0, 0, tzinfo=timezone.utc), now_ts)
