@@ -5,12 +5,31 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+-
+
+### Changed
+-
+
+### Fixed
+-
+
+## [0.10.0] - 2026-11-08
+
+### Added
 - Add Python 3.16 (3.16.0a1) to the CI test matrix (non-blocking).
 - Accept datetime now_override references in pretty_date using the existing naive-UTC and aware-instant rules.
 - Add point-in-time timezone offset lookup with aware-instant and local wall-time handling.
 - Add start_of_week and end_of_week helpers with Sunday or Monday week starts.
 - Add immutable BusinessCalendar value objects for custom workweeks and fixed holiday sets.
 - Add a complete validated public API reference in `docs/API.md`, covered by `make check`.
+- Add complete public API reference (#124).
+- Address codex review: reject bool num_days, fix README count (#123).
+- Add configurable BusinessCalendar (#122).
+- Add start_of_week and end_of_week (#121).
+- Add instant-aware timezone offset lookup (#119).
+- Derive changelog additions from Git status (#112).
+- Chore: bump dev Python to 3.14.10 and add 3.16 to CI.
+- Added 3 new files.
 
 ### Changed
 - Bump the development Python from 3.14.8 to 3.14.10.
@@ -19,6 +38,25 @@ All notable changes to this project will be documented in this file.
 - Include scripts in ty source selection and use the configured roots for the typecheck target.
 - Limit watch-test to first-party Python files, pyproject.toml, and uv.lock instead of scanning virtualenvs and nested worktrees.
 - Replace bump2version with bump-my-version and migrate release configuration to .bumpversion.toml.
+- Align contributor documentation with actual workflows (#120).
+- Parse project versions with tomllib (#118).
+- Accept datetime references in pretty_date (#117).
+- Migrate release bumps to bump-my-version (#116).
+- Document timezone errors and offset examples consistently (#114).
+- Scope watch-test to project inputs (#115).
+- Reject boolean quarter and relative-time inputs (#113).
+- Type-check release and documentation scripts (#111).
+- Ci: bump anthropics/claude-code-action from 1.0.261 to 1.0.265 (#105).
+- Ci: bump pypa/gh-action-pypi-publish from 1.14.2 to 1.14.3 (#106).
+- Ci: bump astral-sh/setup-uv from 10.3.2 to 10.3.3 (#107).
+- Allow focused pytest runs without coverage (#110).
+- Ci: bump pinned uv 0.12.23 → 0.13.7 so setup-uv can provision Python 3.14.10 (#109).
+- Accept space-separated fractional datetimes (#108).
+- Chore(deps): upgrade dev dependencies.
+- Ci: bump actions/download-artifact from 8.0.1 to 8.0.2 (#98).
+- Ci: bump actions/upload-artifact from 7.0.1 to 7.0.2 (#100).
+- Ci: bump astral-sh/setup-uv from 10.2.0 to 10.3.2 (#103).
+- Ci: bump anthropics/claude-code-action from 1.0.241 to 1.0.261 (#104).
 
 ### Fixed
 - Accept fractional seconds in space-separated parse_datetime inputs, including numeric timezone offsets.
