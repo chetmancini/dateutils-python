@@ -44,7 +44,7 @@ Run `make help` to see all available commands. The most important ones:
 
 - **`make dev`** - Complete development environment setup
 - **`make fix`** - Fix formatting and linting issues automatically
-- **`make check`** - Run all quality checks (lint, format-check, typecheck, test)
+- **`make check`** - Run all quality checks (lint, format, changelog, typecheck, tests, doctests)
 - **`make pre-commit-run`** - Run all pre-commit hooks manually
 - **`make test-fast`** - Quick tests without coverage
 - **`make watch-test`** - Continuous testing (requires `brew install entr`)
