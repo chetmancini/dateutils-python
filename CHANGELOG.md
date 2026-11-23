@@ -13,6 +13,20 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 -
 
+## [0.10.1] - 2026-11-23
+
+### Added
+-
+
+### Changed
+- Bump development dependencies and pinned uv.
+- Refresh stale maintainer docs. (#128).
+- Bump pinned uv to 0.13.8 and claude-code-action to v1.0.272. (#127).
+- Upgrade development dependencies to current releases. (#126).
+
+### Fixed
+- Bump transitive dev dependencies to current patches. (#129).
+
 ## [0.10.0] - 2026-11-08
 
 ### Added
